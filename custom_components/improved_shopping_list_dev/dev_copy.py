@@ -14,6 +14,7 @@ from .stock import materialized_stock
 
 SOURCE_DOMAIN = "improved_shopping_list"
 COPY_ORIGINAL = "copy_original"
+ALLOW_SHARED_LIST = "allow_shared_list"
 COPY_COMPLETE = "original_copy_complete"
 _LOGGER = logging.getLogger(__name__)
 _IMAGE = re.compile(r"[a-f0-9]{64}\.(?:svg|png|jpg|webp)\Z")
@@ -23,8 +24,8 @@ class CopyError(ValueError):
     """A snapshot cannot be made without risking existing data."""
 
 
-def source_for_copy(hass, target):
-    """Require a loaded source and a destination outside its selected lists."""
+def source_for_copy(hass, target, *, allow_shared=False):
+    """Require a loaded source and explicit consent for a shared to-do list."""
     source = hass.data.get(SOURCE_DOMAIN, {})
     if not source.get("active") or not source.get("settings") or not source["settings"].entry:
         raise CopyError("original_unavailable")
@@ -32,7 +33,7 @@ def source_for_copy(hass, target):
     used = set(settings["entities"])
     for gateway in settings.get("gateway_lists", []):
         used.update((gateway["entity_id"], gateway["target_entity"]))
-    if target in used:
+    if target in used and not allow_shared:
         raise CopyError("original_list")
     return source
 
@@ -142,7 +143,7 @@ async def async_copy_original(hass, entry):
     destination = hass.data[DOMAIN]
     stage = Store(hass, 1, f"{DOMAIN}.copy_stage.{entry.entry_id}", private=True)
     try:
-        source = source_for_copy(hass, target)
+        source = source_for_copy(hass, target, allow_shared=entry.data.get(ALLOW_SHARED_LIST, False))
         saved = await stage.async_load()
         if saved is None:
             if not _is_empty(destination):

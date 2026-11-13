@@ -10,7 +10,7 @@ from homeassistant.helpers import selector
 
 from .const import CONF_TODO_ENTITY, CONF_TODO_ENTITIES, DOMAIN, NAME
 from .list_settings import list_options
-from .dev_copy import COPY_ORIGINAL, CopyError, source_for_copy
+from .dev_copy import ALLOW_SHARED_LIST, COPY_ORIGINAL, CopyError, source_for_copy
 
 
 def _schema(selected: str | None = None, *, copying: bool = False) -> vol.Schema:
@@ -22,6 +22,7 @@ def _schema(selected: str | None = None, *, copying: bool = False) -> vol.Schema
     fields = {field: selector.EntitySelector(selector.EntitySelectorConfig(domain="todo"))}
     if copying:
         fields[vol.Optional(COPY_ORIGINAL, default=False)] = selector.BooleanSelector()
+        fields[vol.Optional(ALLOW_SHARED_LIST, default=False)] = selector.BooleanSelector()
     return vol.Schema(fields)
 
 
@@ -44,13 +45,16 @@ class ImprovedShoppingListConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             if _valid_entity(self.hass, user_input[CONF_TODO_ENTITY]):
                 try:
                     if user_input.get(COPY_ORIGINAL):
-                        source_for_copy(self.hass, user_input[CONF_TODO_ENTITY])
+                        source_for_copy(self.hass, user_input[CONF_TODO_ENTITY],
+                                        allow_shared=user_input.get(ALLOW_SHARED_LIST, False))
                 except CopyError as err:
                     errors["base"] = str(err)
                 else:
                     data = dict(user_input)
                     if not data.get(COPY_ORIGINAL):
                         data.pop(COPY_ORIGINAL, None)
+                    if not data.get(ALLOW_SHARED_LIST):
+                        data.pop(ALLOW_SHARED_LIST, None)
                     return self.async_create_entry(title=NAME, data=data)
             else:
                 errors[CONF_TODO_ENTITY] = "invalid_entity"

@@ -4,17 +4,18 @@
     "step": {
       "user": {
         "title": "Improved Shopping List Dev",
-        "description": "Elige una lista de pruebas que no esté seleccionada en el original. Puedes copiar una vez catálogo, categorías, recetas, compras, Stock, precios y apariencia/tiendas. La copia es independiente: no incluye artículos de listas, sesiones de cuentas, lectores, pasarelas ni notificaciones; las automatizaciones quedan desactivadas.",
+        "description": "Copia una vez el catálogo, categorías, recetas, compras, stock, precios y preferencias de apariencia y tiendas. Las cuentas, lectores, pasarelas y notificaciones no se copian; los automatismos quedan apagados. Usa otra lista para aislar también sus artículos, o permite compartir una lista del original: marcar o borrar artículos se reflejará en ambos paneles.",
         "data": {
           "todo_entity": "Lista de la compra predeterminada",
-          "copy_original": "Copiar los datos del original a Dev"
+          "copy_original": "Copiar los datos del original a Dev",
+          "allow_shared_list": "Permitir compartir la lista con el original (sus artículos cambiarán en ambos paneles)"
         }
       }
     },
     "error": {
       "invalid_entity": "Selecciona una entidad de tipo todo existente.",
       "original_unavailable": "El original debe estar configurado y activo para copiar sus datos.",
-      "original_list": "Elige una lista de pruebas que no utilice el original."
+      "original_list": "Selecciona otra lista o permite expresamente compartir sus artículos con el original."
     },
     "abort": {
       "already_configured": "Ya está configurada. Usa Configurar para cambiar la lista predeterminada."

@@ -16,7 +16,7 @@ Versión actual: **0.88.2**, basada en la 0.88.0 de TitoTB, con las correcciones
 
 Dev tiene configuración, catálogo, compras, Stock, iconos y preferencias de navegador propios. No importa automáticamente los datos, las cuentas ni los ajustes del original. La instalación original permanece intacta.
 
-**Las entidades `todo` pertenecen a sus proveedores, no a Dev.** Si eliges la misma entidad en ambas integraciones, ambas podrán modificar sus artículos. Crea una lista local de tareas para las pruebas y selecciónala al configurar Dev. Solo esa lista se añade inicialmente; las demás deben añadirse expresamente desde Ajustes. Las cuentas externas y las notificaciones tampoco se duplican automáticamente.
+**Las entidades `todo` pertenecen a sus proveedores, no a Dev.** Si eliges la misma entidad en ambas integraciones, ambas podrán modificar sus artículos. Puedes seleccionar tu lista habitual y compartir sus artículos, o crear una lista local para aislarlos también. Solo esa lista se añade inicialmente; las demás deben añadirse expresamente desde Ajustes. Las cuentas externas y las notificaciones tampoco se duplican automáticamente.
 
 ## Instalación con Marketplace
 
@@ -24,7 +24,7 @@ Dev tiene configuración, catálogo, compras, Stock, iconos y preferencias de na
 2. En **Ajustes → Marketplace → Añadir desde enlace**, añade `https://github.com/micasadomotica/Improved-Shopping-List-Dev`. Conecta GitHub si se solicita. El tipo es **Integración**.
 3. Abre **Improved Shopping List Dev** e instala **0.88.2**. Es una release normal de este repositorio de desarrollo: no requiere habilitar versiones preliminares.
 4. Sigue el aviso de reinicio si aparece. En **Ajustes → Dispositivos y servicios → Añadir integración**, busca **Improved Shopping List Dev** si no se abre el asistente automáticamente.
-5. Selecciona la lista de pruebas. Si quieres tus datos actuales, marca **Copiar los datos del original a Dev**. El original debe estar configurado y activo. La lista de pruebas no puede pertenecer a las listas seleccionadas o pasarelas del original.
+5. Selecciona la lista que quieres usar en Dev. Si quieres tus datos actuales, marca **Copiar los datos del original a Dev**. El original debe estar configurado y activo. Si eliges una lista del original, marca también **Permitir compartir la lista con el original**. Los artículos se comparten, mientras que el catálogo y los ajustes tienen copias propias.
 6. Abre el panel **Improved Shopping List Dev** y comprueba su versión y catálogo.
 
 Estas instrucciones corresponden a Marketplace de Home Assistant 2026.11 o posterior. El código conserva su compatibilidad mínima con Core 2026.10. El archivo técnico `hacs.json` sigue siendo necesario en Marketplace.
@@ -45,7 +45,7 @@ Desde 0.88.2, la configuración inicial permite copiar una vez el catálogo (pro
 
 La copia mantiene los identificadores internos para conservar las relaciones entre productos, Stock y compras, pero los guarda exclusivamente bajo el dominio de Dev. Los iconos locales se copian y sus URL se cambian a Dev. No hay sincronización posterior: editar un producto en Dev no cambia el original, y los cambios posteriores del original tampoco llegan a Dev.
 
-No se copian los artículos de las listas todo, sus cantidades/UID, sesiones o credenciales de cuentas, lectores físicos, pasarelas, notificaciones, detección de compras ni tareas en curso. Dev selecciona únicamente la lista de pruebas. La actualización programada de precios y la recurrencia quedan apagadas; Stock conserva las cantidades del momento de la copia en modo manual, sin reposición automática ni consumo por sensores/comidas. Puedes configurar estas funciones después en Dev de manera explícita.
+No se copian los artículos de las listas todo, sus cantidades/UID, sesiones o credenciales de cuentas, lectores físicos, pasarelas, notificaciones, detección de compras ni tareas en curso. Dev selecciona únicamente la lista elegida. Si permites compartirla con el original, no se duplican sus artículos: ambos paneles modifican la misma lista. La actualización programada de precios y la recurrencia quedan apagadas; Stock conserva las cantidades del momento de la copia en modo manual, sin reposición automática ni consumo por sensores/comidas. Puedes configurar estas funciones después en Dev de manera explícita.
 
 La copia requiere un Dev vacío y se ofrece al crear su configuración, no como una operación que sobrescriba datos existentes. Si una escritura falla, Dev no inicia sus tareas y reintenta el mismo conjunto de datos guardado temporalmente, sin recapturar ni modificar el original. Una vez completada, los reinicios no repiten la copia.
 

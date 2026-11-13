@@ -13,7 +13,7 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 from custom_components.improved_shopping_list_dev.catalog import Catalog
 from custom_components.improved_shopping_list_dev.const import DOMAIN
 from custom_components.improved_shopping_list_dev.dev_copy import (
-    COPY_COMPLETE, COPY_ORIGINAL, SOURCE_DOMAIN, async_copy_original,
+    ALLOW_SHARED_LIST, COPY_COMPLETE, COPY_ORIGINAL, SOURCE_DOMAIN, async_copy_original,
 )
 from custom_components.improved_shopping_list_dev.stock import StockManager
 
@@ -173,6 +173,20 @@ async def test_copy_flow_requires_loaded_original(hass):
         "todo_entity": "todo.test", COPY_ORIGINAL: True,
     })
     assert result["errors"] == {"base": "original_unavailable"}
+
+
+async def test_copy_can_use_shared_list_with_explicit_consent(hass, original):
+    result = await hass.config_entries.flow.async_init(DOMAIN, context={"source": SOURCE_USER})
+    result = await hass.config_entries.flow.async_configure(result["flow_id"], {
+        "todo_entity": "todo.home", COPY_ORIGINAL: True, ALLOW_SHARED_LIST: True,
+    })
+    assert result["type"] == FlowResultType.CREATE_ENTRY
+    await hass.async_block_till_done()
+    entry = result["result"]
+    assert entry.data[COPY_COMPLETE]
+    assert entry.options["todo_entities"] == ["todo.home"]
+    assert hass.data[DOMAIN]["catalog"].products[0]["id"] == original["catalog"].products[0]["id"]
+    assert hass.states.get("todo.home").state == "5"
 
 
 async def test_copy_rejects_unsafe_local_icon_before_writing(hass, original, hass_storage):
