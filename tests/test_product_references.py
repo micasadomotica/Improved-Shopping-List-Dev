@@ -23,6 +23,11 @@ class ReferenceTests(unittest.TestCase):
         self.assertEqual(saved['measure_price']['price'],5.3)
         self.assertEqual(saved['sale_mode'],'package')
         self.assertIsNone(saved['content_quantity'])
+        from _reference_tests.receipt_quantities import price_from_option
+        piece={**saved,'sale_mode':'weight'}
+        self.assertEqual(price_from_option(piece)['price'],5.3)
+        piece.pop('measure_price')
+        self.assertIsNone(price_from_option(piece))
         reference['last_price']['estimated']='true'
         with self.assertRaises(ValueError):refs.normalized_references([reference])
 
