@@ -193,8 +193,6 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Add the sidebar panel. List data stays in the selected to-do provider."""
-    from .dev_copy import async_copy_original
-    await async_copy_original(hass, entry)
     hass.data[DOMAIN]["settings"].attach(entry)
     await _async_register_panel(hass, entry)
     hass.data[DOMAIN]["active"] = True

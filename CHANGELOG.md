@@ -1,11 +1,3 @@
-# 0.88.2 — Copia inicial e icono de Dev
-
-- Copia opcional del catálogo, categorías, recetas, compras, Stock, precios, nutrición e iconos del original al configurar un Dev vacío.
-- Permite compartir expresamente la lista de compra con el original, manteniendo copias propias del catálogo y los ajustes de Dev.
-- Apariencia y tiendas propias; automatizaciones desactivadas. No copia sesiones, lectores ni artículos de las listas originales.
-- La copia no modifica el original, no se repite al reiniciar y puede continuar tras un fallo de escritura.
-- Documenta el icono local ya incluido: se muestra tras instalar Dev; el icono previo a la instalación depende del catálogo público de Marketplace.
-
 # 0.88.1 — Improved Shopping List Dev
 
 - Integración independiente instalable junto al original desde Marketplace.

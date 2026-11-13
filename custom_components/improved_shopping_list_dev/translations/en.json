@@ -4,18 +4,14 @@
     "step": {
       "user": {
         "title": "Improved Shopping List Dev",
-        "description": "Copy the catalog, categories, recipes, purchases, stock, prices and appearance/shop preferences once. Accounts, readers, gateways and notifications are excluded; automations are disabled. Use a separate list to isolate its items too, or allow a shared original list: completing or deleting items will affect both panels.",
+        "description": "Choose a to-do list created for testing. Dev has its own catalog and settings, but selecting the same to-do list shares its items with the original. Original data is not copied.",
         "data": {
-          "todo_entity": "Default shopping list",
-          "copy_original": "Copy original data to Dev",
-          "allow_shared_list": "Allow sharing the original list (item changes affect both panels)"
+          "todo_entity": "Default shopping list"
         }
       }
     },
     "error": {
-      "invalid_entity": "Select an existing to-do entity.",
-      "original_unavailable": "The original integration must be configured and loaded to copy its data.",
-      "original_list": "Choose another list or explicitly allow sharing its items with the original."
+      "invalid_entity": "Select an existing to-do entity."
     },
     "abort": {
       "already_configured": "Already configured. Use Configure to change the default list."
