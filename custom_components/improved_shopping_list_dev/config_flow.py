@@ -10,19 +10,19 @@ from homeassistant.helpers import selector
 
 from .const import CONF_TODO_ENTITY, CONF_TODO_ENTITIES, DOMAIN, NAME
 from .list_settings import list_options
+from .dev_copy import COPY_ORIGINAL, CopyError, source_for_copy
 
 
-def _schema(selected: str | None = None) -> vol.Schema:
+def _schema(selected: str | None = None, *, copying: bool = False) -> vol.Schema:
     field = (
         vol.Required(CONF_TODO_ENTITY, default=selected)
         if selected
         else vol.Required(CONF_TODO_ENTITY)
     )
-    return vol.Schema(
-        {
-            field: selector.EntitySelector(selector.EntitySelectorConfig(domain="todo"))
-        }
-    )
+    fields = {field: selector.EntitySelector(selector.EntitySelectorConfig(domain="todo"))}
+    if copying:
+        fields[vol.Optional(COPY_ORIGINAL, default=False)] = selector.BooleanSelector()
+    return vol.Schema(fields)
 
 
 def _valid_entity(hass: HomeAssistant, entity_id: str) -> bool:
@@ -42,10 +42,20 @@ class ImprovedShoppingListConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         errors: dict[str, str] = {}
         if user_input is not None:
             if _valid_entity(self.hass, user_input[CONF_TODO_ENTITY]):
-                return self.async_create_entry(title=NAME, data=user_input)
-            errors[CONF_TODO_ENTITY] = "invalid_entity"
+                try:
+                    if user_input.get(COPY_ORIGINAL):
+                        source_for_copy(self.hass, user_input[CONF_TODO_ENTITY])
+                except CopyError as err:
+                    errors["base"] = str(err)
+                else:
+                    data = dict(user_input)
+                    if not data.get(COPY_ORIGINAL):
+                        data.pop(COPY_ORIGINAL, None)
+                    return self.async_create_entry(title=NAME, data=data)
+            else:
+                errors[CONF_TODO_ENTITY] = "invalid_entity"
         return self.async_show_form(
-            step_id="user", data_schema=_schema(), errors=errors
+            step_id="user", data_schema=_schema(copying=True), errors=errors
         )
 
     @staticmethod

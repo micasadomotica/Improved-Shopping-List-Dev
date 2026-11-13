@@ -1,4 +1,4 @@
-import { installDialogCloseButtons } from './dialog-controls.js?v=0.88.1';
+import { installDialogCloseButtons } from './dialog-controls.js?v=0.88.2';
 const PREFIX='improved_shopping_list_dev/catalog/refresh_pending/';
 
 class PendingInformationRefresh extends HTMLElement {

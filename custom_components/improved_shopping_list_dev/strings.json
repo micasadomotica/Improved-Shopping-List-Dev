@@ -4,14 +4,17 @@
     "step": {
       "user": {
         "title": "Improved Shopping List Dev",
-        "description": "Choose a to-do list created for testing. Dev has its own catalog and settings, but selecting the same to-do list shares its items with the original. Original data is not copied.",
+        "description": "Choose a test list not selected in the original. Optionally copy its catalog, categories, recipes, purchases, stock, prices and appearance/shop settings once. The copy is independent: list items, account sessions, readers, gateways and notifications are excluded; automations are disabled.",
         "data": {
-          "todo_entity": "Default shopping list"
+          "todo_entity": "Default shopping list",
+          "copy_original": "Copy original data to Dev"
         }
       }
     },
     "error": {
-      "invalid_entity": "Select an existing to-do entity."
+      "invalid_entity": "Select an existing to-do entity.",
+      "original_unavailable": "The original integration must be configured and loaded to copy its data.",
+      "original_list": "Choose a test list that is not used by the original."
     },
     "abort": {
       "already_configured": "Already configured. Use Configure to change the default list."

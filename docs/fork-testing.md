@@ -2,7 +2,7 @@
 
 Repositorio: https://github.com/micasadomotica/Improved-Shopping-List-Dev
 
-Versión inicial: **0.88.1**, basada en la 0.88.0 de TitoTB, con las correcciones de URL y Mercadona.
+Versión actual: **0.88.2**, basada en la 0.88.0 de TitoTB, con las correcciones de URL y Mercadona.
 
 ## Convivencia con el original
 
@@ -22,9 +22,10 @@ Dev tiene configuración, catálogo, compras, Stock, iconos y preferencias de na
 
 1. Mantén instalado el original. No hace falta desinstalarlo ni sustituir archivos.
 2. En **Ajustes → Marketplace → Añadir desde enlace**, añade `https://github.com/micasadomotica/Improved-Shopping-List-Dev`. Conecta GitHub si se solicita. El tipo es **Integración**.
-3. Abre **Improved Shopping List Dev** e instala **0.88.1**. Es una release normal de este repositorio de desarrollo: no requiere habilitar versiones preliminares.
+3. Abre **Improved Shopping List Dev** e instala **0.88.2**. Es una release normal de este repositorio de desarrollo: no requiere habilitar versiones preliminares.
 4. Sigue el aviso de reinicio si aparece. En **Ajustes → Dispositivos y servicios → Añadir integración**, busca **Improved Shopping List Dev** si no se abre el asistente automáticamente.
-5. Selecciona la lista de pruebas. Abre el panel **Improved Shopping List Dev** y comprueba su versión.
+5. Selecciona la lista de pruebas. Si quieres tus datos actuales, marca **Copiar los datos del original a Dev**. El original debe estar configurado y activo. La lista de pruebas no puede pertenecer a las listas seleccionadas o pasarelas del original.
+6. Abre el panel **Improved Shopping List Dev** y comprueba su versión y catálogo.
 
 Estas instrucciones corresponden a Marketplace de Home Assistant 2026.11 o posterior. El código conserva su compatibilidad mínima con Core 2026.10. El archivo técnico `hacs.json` sigue siendo necesario en Marketplace.
 
@@ -40,7 +41,17 @@ Estas instrucciones corresponden a Marketplace de Home Assistant 2026.11 o poste
 
 ## Datos y retirada de Dev
 
-No se ha implementado una copia completa de datos entre el original y Dev. Exportar el catálogo no equivale a una copia de toda la configuración, compras y Stock. Para comenzar las pruebas se usan datos de prueba. Una futura copia debe ser explícita, sin compartir almacenamiento entre ambas integraciones.
+Desde 0.88.2, la configuración inicial permite copiar una vez el catálogo (productos, alternativas, categorías, recetas y grupos), Stock y compras guardadas, historial de precios, datos nutricionales ya consultados e iconos personalizados. También copia la apariencia y las preferencias de tiendas. Los precios guardados en las alternativas se conservan.
+
+La copia mantiene los identificadores internos para conservar las relaciones entre productos, Stock y compras, pero los guarda exclusivamente bajo el dominio de Dev. Los iconos locales se copian y sus URL se cambian a Dev. No hay sincronización posterior: editar un producto en Dev no cambia el original, y los cambios posteriores del original tampoco llegan a Dev.
+
+No se copian los artículos de las listas todo, sus cantidades/UID, sesiones o credenciales de cuentas, lectores físicos, pasarelas, notificaciones, detección de compras ni tareas en curso. Dev selecciona únicamente la lista de pruebas. La actualización programada de precios y la recurrencia quedan apagadas; Stock conserva las cantidades del momento de la copia en modo manual, sin reposición automática ni consumo por sensores/comidas. Puedes configurar estas funciones después en Dev de manera explícita.
+
+La copia requiere un Dev vacío y se ofrece al crear su configuración, no como una operación que sobrescriba datos existentes. Si una escritura falla, Dev no inicia sus tareas y reintenta el mismo conjunto de datos guardado temporalmente, sin recapturar ni modificar el original. Una vez completada, los reinicios no repiten la copia.
+
+## Icono de la integración
+
+Dev incluye `brand/icon.png` para Home Assistant 2026.3 o posterior. Se utiliza tras instalar la integración; la imagen anterior a la instalación en Marketplace depende del catálogo público de marcas, donde un repositorio añadido manualmente puede no figurar. El catálogo personal y las fotos de productos son independientes de este icono. [Documentación oficial](https://contributors.home-assistant.io/marketplace/guides/integrations/#brand-images).
 
 Para dejar de probar, puedes deshabilitar la integración **Dev**. Para eliminarla, comprueba que estás en **Improved Shopping List Dev** antes de borrar su configuración y desinstalar su repositorio. Esto elimina las entidades de Dev; las listas externas `todo` son de su proveedor y pueden seguir existiendo. Si quieres conservar los datos de pruebas antes de retirar Dev, crea una copia de seguridad de Home Assistant.
 

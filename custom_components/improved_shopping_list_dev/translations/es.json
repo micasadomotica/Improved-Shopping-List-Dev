@@ -4,14 +4,17 @@
     "step": {
       "user": {
         "title": "Improved Shopping List Dev",
-        "description": "Elige una lista de tareas creada para pruebas. Dev tiene catálogo y ajustes propios, pero una misma lista todo comparte sus artículos con el original. No se copian los datos del original.",
+        "description": "Elige una lista de pruebas que no esté seleccionada en el original. Puedes copiar una vez catálogo, categorías, recetas, compras, Stock, precios y apariencia/tiendas. La copia es independiente: no incluye artículos de listas, sesiones de cuentas, lectores, pasarelas ni notificaciones; las automatizaciones quedan desactivadas.",
         "data": {
-          "todo_entity": "Lista de la compra predeterminada"
+          "todo_entity": "Lista de la compra predeterminada",
+          "copy_original": "Copiar los datos del original a Dev"
         }
       }
     },
     "error": {
-      "invalid_entity": "Selecciona una entidad de tipo todo existente."
+      "invalid_entity": "Selecciona una entidad de tipo todo existente.",
+      "original_unavailable": "El original debe estar configurado y activo para copiar sus datos.",
+      "original_list": "Elige una lista de pruebas que no utilice el original."
     },
     "abort": {
       "already_configured": "Ya está configurada. Usa Configurar para cambiar la lista predeterminada."
