@@ -19,7 +19,8 @@ const originalNames = [
 
 async function main() {
   const modules = (await fs.readdir(root)).filter(name => name.endsWith('.js'));
-  const html = `<!doctype html><script type="module">await Promise.all(${JSON.stringify(modules)}.map(name=>import('/'+name)));window.ready=true;</script>`;
+  const version = require('../package.json').version;
+  const html = `<!doctype html><script type="module">await Promise.all(${JSON.stringify(modules)}.map(name=>import('/'+name+'?v=${version}')));window.ready=true;</script>`;
   const server = http.createServer(async (req, res) => {
     const pathname = new URL(req.url, 'http://localhost').pathname;
     if (pathname === '/') { res.end(html); return; }
@@ -38,7 +39,7 @@ async function main() {
     for (const originalFirst of [true, false]) {
       const page = await browser.newPage();
       const errors = [];
-      page.on('pageerror', error => errors.push(error.message));
+      page.on('pageerror', error => {errors.push(error.message); console.error(error.message);});
       await page.addInitScript(({names, first}) => {
         window.registerOriginal = () => {
           window.originalConstructors = new Map();
