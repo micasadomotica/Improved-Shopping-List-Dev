@@ -9,10 +9,10 @@ from unittest.mock import AsyncMock, Mock
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 from homeassistant.util import dt as dt_util
-from custom_components.improved_shopping_list.account_history import twelve_months_ago
+from custom_components.improved_shopping_list_dev.account_history import twelve_months_ago
 
-from custom_components.improved_shopping_list.carrefour_account import CarrefourAccount, CarrefourAccountError, WEB, API, IDENTITY, OFFSET_KEYS
-from custom_components.improved_shopping_list.const import DOMAIN, CONF_TODO_ENTITY
+from custom_components.improved_shopping_list_dev.carrefour_account import CarrefourAccount, CarrefourAccountError, WEB, API, IDENTITY, OFFSET_KEYS
+from custom_components.improved_shopping_list_dev.const import DOMAIN, CONF_TODO_ENTITY
 
 
 @pytest.fixture
@@ -179,7 +179,7 @@ async def test_identity_bootstrap_keeps_provider_device_cookie(account,monkeypat
         Response({"errorCode":0},"gmid=device-issued-by-provider; Path=/; Secure; HttpOnly"),
         Response({"errorCode":0,"sessionInfo":{"login_token":"session"}}),
     ])
-    monkeypatch.setattr("custom_components.improved_shopping_list.carrefour_account.async_create_clientsession",Mock(return_value=session))
+    monkeypatch.setattr("custom_components.improved_shopping_list_dev.carrefour_account.async_create_clientsession",Mock(return_value=session))
     result=await account.async_login("owner","test@example.test","password")
     assert result["connected"] and session.request.call_count==2
     assert account._cookies["gmid"]=="device-issued-by-provider"
@@ -390,7 +390,7 @@ async def test_rotated_device_cookie_is_persisted_before_restart(account,hass,mo
         async def __aenter__(self):return self
         async def __aexit__(self,*_args):pass
         def request(self,*_args,**_kwargs):return Response()
-    monkeypatch.setattr("custom_components.improved_shopping_list.carrefour_account.async_create_clientsession",Mock(return_value=Session()))
+    monkeypatch.setattr("custom_components.improved_shopping_list_dev.carrefour_account.async_create_clientsession",Mock(return_value=Session()))
     await account._identity("accounts.getJWT",{"login_token":"PRIVATE_SESSION"})
     await account.async_stop()
     restored=CarrefourAccount(hass,account.receipts,account.activity)
@@ -415,7 +415,7 @@ async def test_transient_renewal_failure_preserves_saved_session(account):
 
 
 async def test_unrecognized_detail_lines_use_pdf(account):
-    from custom_components.improved_shopping_list.catalog import CatalogError
+    from custom_components.improved_shopping_list_dev.catalog import CatalogError
     account._session={"login_token":"private","jwt":"private-jwt","jwt_until":time.time()+500}
     account._purchases["key"]={"id":"test-ticket","owner":"owner","expires":time.time()+500,"supported":True,"amount":5.22}
     account._http=AsyncMock(side_effect=[{"ticketId":"test-ticket"},b"%PDF-test"])
@@ -428,7 +428,7 @@ async def test_unrecognized_detail_lines_use_pdf(account):
 
 @pytest.mark.parametrize("code",["duplicate","conflict","invalid"])
 async def test_detail_validation_failures_do_not_use_pdf_fallback(account,code):
-    from custom_components.improved_shopping_list.catalog import CatalogError
+    from custom_components.improved_shopping_list_dev.catalog import CatalogError
     account._session={"login_token":"private","jwt":"private-jwt","jwt_until":time.time()+500}
     account._purchases["key"]={"id":"test-ticket","owner":"owner","expires":time.time()+500,"supported":True,"amount":5.22}
     account._http=AsyncMock(return_value={"ticketId":"test-ticket"})
@@ -440,7 +440,7 @@ async def test_detail_validation_failures_do_not_use_pdf_fallback(account,code):
 
 
 async def test_both_ticket_formats_fail_with_safe_diagnostic(account):
-    from custom_components.improved_shopping_list.catalog import CatalogError
+    from custom_components.improved_shopping_list_dev.catalog import CatalogError
     account._session={"login_token":"private","jwt":"private-jwt","jwt_until":time.time()+500}
     account._purchases["key"]={"id":"test-ticket","owner":"owner","expires":time.time()+500,"supported":True,"amount":5.22}
     account._http=AsyncMock(side_effect=[{"private_customer":"PRIVATE_DATA"},b"%PDF-test"])
@@ -457,7 +457,7 @@ async def test_persistent_login_allows_jwt_renewal_after_half_hour(account, monk
     # Emulate CDC: dynamic sessions (-1) expire after 60s without gltexp.
     # A cached JWT masks that until its first renewal around half an hour later.
     now = [1000.0]
-    monkeypatch.setattr("custom_components.improved_shopping_list.carrefour_account.time", SimpleNamespace(time=lambda: now[0]))
+    monkeypatch.setattr("custom_components.improved_shopping_list_dev.carrefour_account.time", SimpleNamespace(time=lambda: now[0]))
     deadline = [0.0]
     jwt_requests = []
 

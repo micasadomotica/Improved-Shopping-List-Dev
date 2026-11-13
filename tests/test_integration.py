@@ -7,7 +7,7 @@ from homeassistant.config_entries import SOURCE_USER
 from homeassistant.data_entry_flow import FlowResultType, InvalidData
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.improved_shopping_list.const import (
+from custom_components.improved_shopping_list_dev.const import (
     CONF_TODO_ENTITY,
     DOMAIN,
     PANEL_PATH,
@@ -58,7 +58,7 @@ async def test_setup_options_reload_unload_and_reinstall(hass):
     hass.states.async_set("todo.bring", "2", {"friendly_name": "Bring!"})
     hass.states.async_set("todo.local", "1", {"friendly_name": "Casa"})
     entry = MockConfigEntry(
-        domain=DOMAIN, unique_id=DOMAIN, title="Improved Shopping List",
+        domain=DOMAIN, unique_id=DOMAIN, title="Improved Shopping List Dev",
         data={CONF_TODO_ENTITY: "todo.bring"},
     )
     entry.add_to_hass(hass)
@@ -90,6 +90,6 @@ async def test_frontend_module_is_served(hass, hass_client):
     entry.add_to_hass(hass)
     assert await hass.config_entries.async_setup(entry.entry_id)
     client = await hass_client()
-    response = await client.get(f"/improved_shopping_list_static/panel.js?v={VERSION}")
+    response = await client.get(f"/improved_shopping_list_dev_static/panel.js?v={VERSION}")
     assert response.status == 200
-    assert "improved-shopping-list-panel" in await response.text()
+    assert "improved-shopping-list-dev-panel" in await response.text()

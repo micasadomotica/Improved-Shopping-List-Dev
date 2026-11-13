@@ -7,14 +7,14 @@ import time
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.improved_shopping_list.catalog import Catalog
-from custom_components.improved_shopping_list.const import DOMAIN, CONF_TODO_ENTITY
-from custom_components.improved_shopping_list.ean_links import EANLinks, parse_dictionary
-from custom_components.improved_shopping_list.mercadona_catalog import MercadonaCatalog, product_data
-from custom_components.improved_shopping_list.option_lookup import OptionLookup
-from custom_components.improved_shopping_list.price_sources import PriceError
-from custom_components.improved_shopping_list.product_references import gtin
-from custom_components.improved_shopping_list.store_links import normalize_link
+from custom_components.improved_shopping_list_dev.catalog import Catalog
+from custom_components.improved_shopping_list_dev.const import DOMAIN, CONF_TODO_ENTITY
+from custom_components.improved_shopping_list_dev.ean_links import EANLinks, parse_dictionary
+from custom_components.improved_shopping_list_dev.mercadona_catalog import MercadonaCatalog, product_data
+from custom_components.improved_shopping_list_dev.option_lookup import OptionLookup
+from custom_components.improved_shopping_list_dev.price_sources import PriceError
+from custom_components.improved_shopping_list_dev.product_references import gtin
+from custom_components.improved_shopping_list_dev.store_links import normalize_link
 
 EAN='8430543025611'
 OTHER='8410199023094'

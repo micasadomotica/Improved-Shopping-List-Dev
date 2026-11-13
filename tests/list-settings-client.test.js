@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { DEFAULT_APPEARANCE, ListSettingsSession, gradientTextColor } from "../custom_components/improved_shopping_list/frontend/list-settings-client.js";
+import { DEFAULT_APPEARANCE, ListSettingsSession, gradientTextColor } from "../custom_components/improved_shopping_list_dev/frontend/list-settings-client.js";
 
 const deferred = () => {
   let resolve;
@@ -12,12 +12,12 @@ test("gateway settings synchronize and preserve newer pushed configuration", asy
   const response=deferred();const calls=[];
   const session=new ListSettingsSession(()=>({callWS:msg=>{calls.push(msg);return response.promise;}}),()=>{});
   const saving=session.saveGateway('todo.voice','todo.main',true);
-  assert.deepEqual(calls[0],{type:'improved_shopping_list/settings/gateway_save',entity_id:'todo.voice',target_entity:'todo.main',remove_after_transfer:true});
+  assert.deepEqual(calls[0],{type:'improved_shopping_list_dev/settings/gateway_save',entity_id:'todo.voice',target_entity:'todo.main',remove_after_transfer:true});
   session._revision++;
   session._receive({gateway_lists:[{entity_id:'todo.voice',target_entity:'todo.other',remove_after_transfer:false}]});
   response.resolve({gateway_lists:[]});await saving;
   assert.equal(session.gatewayLists[0].target_entity,'todo.other');
-  await session.removeGateway('todo.voice');assert.equal(calls[1].type,'improved_shopping_list/settings/gateway_remove');
+  await session.removeGateway('todo.voice');assert.equal(calls[1].type,'improved_shopping_list_dev/settings/gateway_remove');
   assert.deepEqual(session.gatewayLists,[]);
 });
 
@@ -26,7 +26,7 @@ test("store activation keeps newer pushed settings", async () => {
     const response=deferred();let message;
     const session=new ListSettingsSession(()=>({callWS:msg=>{message=msg;return response.promise;}}),()=>{});
     const saving=session[method](...args);
-    assert.equal(message.type,`improved_shopping_list/settings/${type}`);
+    assert.equal(message.type,`improved_shopping_list_dev/settings/${type}`);
     session._revision++;
     session._receive({stores:{alcampo:{enabled:false}}});
     response.resolve({stores:{alcampo:{enabled:true}}});
@@ -108,7 +108,7 @@ test("store settings receive pushes and a stale write cannot override them", asy
   let message;
   const session = new ListSettingsSession(() => ({callWS: msg => {message = msg; return response.promise;}}), () => {});
   const saving = session.saveStore(true, "28001");
-  assert.equal(message.type, "improved_shopping_list/settings/store");
+  assert.equal(message.type, "improved_shopping_list_dev/settings/store");
   assert.equal(message.postal_code, "28001");
   session._revision++;
   session._receive({stores:{mercadona:{enabled:false}},favorite_store:""});
@@ -124,7 +124,7 @@ test("store and favorite changes preserve a later pushed snapshot", async () => 
     let message;
     const session = new ListSettingsSession(() => ({callWS: msg => {message=msg;return response.promise;}}),()=>{});
     const saving = session[method](...args);
-    assert.equal(message.type, `improved_shopping_list/settings/${type}`);
+    assert.equal(message.type, `improved_shopping_list_dev/settings/${type}`);
     assert.equal(message.store, "carrefour");
     session._revision++;
     session._receive({stores:{carrefour:{enabled:false}},favorite_store:"mercadona"});
@@ -146,7 +146,7 @@ test("regional coverage lookup does not change settings and stale saves yield to
   assert.equal(coverage.areas[0].id,"301D");
   assert.deepEqual(session.stores,{});
   const saving = session.saveRegionalStore("consum",true,"46409","301D",true);
-  assert.deepEqual(messages[1],{type:"improved_shopping_list/settings/store",store:"consum",enabled:true,postal_code:"46409",area_id:"301D",verify:true});
+  assert.deepEqual(messages[1],{type:"improved_shopping_list_dev/settings/store",store:"consum",enabled:true,postal_code:"46409",area_id:"301D",verify:true});
   session._revision++;
   session._receive({stores:{consum:{enabled:false}}});
   response.resolve({stores:{consum:{enabled:true}}});

@@ -5,8 +5,8 @@ from types import SimpleNamespace
 import unittest
 from unittest.mock import AsyncMock, patch
 
-from custom_components.improved_shopping_list import stock as module
-from custom_components.improved_shopping_list.stock import StockManager, DEFAULT_CONFIG, DAY, remaining_quantity, remaining_percentage, stock_needs_reorder
+from custom_components.improved_shopping_list_dev import stock as module
+from custom_components.improved_shopping_list_dev.stock import StockManager, DEFAULT_CONFIG, DAY, remaining_quantity, remaining_percentage, stock_needs_reorder
 
 
 class StockDecayTests(unittest.IsolatedAsyncioTestCase):

@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from custom_components.improved_shopping_list import public_http as module
+from custom_components.improved_shopping_list_dev import public_http as module
 
 URL='https://www.carrefour.es/supermercado/pavo/R-prod1/p'
 

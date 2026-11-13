@@ -8,10 +8,10 @@ import unittest
 from unittest.mock import AsyncMock, Mock
 
 from homeassistant.util import dt as dt_util
-from custom_components.improved_shopping_list.catalog import CatalogError
-from custom_components.improved_shopping_list.carrefour_account import CarrefourAccount, CarrefourAccountError
-from custom_components.improved_shopping_list.receipt_parser import extract_carrefour_account_ticket, parse_carrefour
-from custom_components.improved_shopping_list.receipts import ReceiptManager
+from custom_components.improved_shopping_list_dev.catalog import CatalogError
+from custom_components.improved_shopping_list_dev.carrefour_account import CarrefourAccount, CarrefourAccountError
+from custom_components.improved_shopping_list_dev.receipt_parser import extract_carrefour_account_ticket, parse_carrefour
+from custom_components.improved_shopping_list_dev.receipts import ReceiptManager
 
 
 class CarrefourReceiptRecoveryTests(unittest.IsolatedAsyncioTestCase):

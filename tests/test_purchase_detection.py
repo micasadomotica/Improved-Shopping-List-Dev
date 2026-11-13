@@ -11,10 +11,10 @@ import pytest
 pytestmark = pytest.mark.usefixtures("archived_store_capabilities")
 from homeassistant.util import dt as dt_util
 
-from custom_components.improved_shopping_list.purchase_detection import PurchaseDetection
-from custom_components.improved_shopping_list import purchase_detection as module
-from custom_components.improved_shopping_list.receipts import ReceiptManager
-from custom_components.improved_shopping_list.catalog import CatalogError
+from custom_components.improved_shopping_list_dev.purchase_detection import PurchaseDetection
+from custom_components.improved_shopping_list_dev import purchase_detection as module
+from custom_components.improved_shopping_list_dev.receipts import ReceiptManager
+from custom_components.improved_shopping_list_dev.catalog import CatalogError
 
 
 class Ledger:

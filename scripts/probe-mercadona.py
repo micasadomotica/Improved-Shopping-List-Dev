@@ -16,7 +16,7 @@ import types
 from homeassistant.core import HomeAssistant
 from homeassistant.components.network.network import async_get_network
 
-root=Path(__file__).resolve().parents[1]/"custom_components/improved_shopping_list"
+root=Path(__file__).resolve().parents[1]/"custom_components/improved_shopping_list_dev"
 package=types.ModuleType("_mercadona_probe")
 package.__path__=[str(root)]
 sys.modules[package.__name__]=package

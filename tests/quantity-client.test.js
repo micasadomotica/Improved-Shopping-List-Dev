@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { purchaseQuantity, quantityLabel, QuantitySession } from '../custom_components/improved_shopping_list/frontend/quantity-client.js';
-import { recoveredStockQuantity } from '../custom_components/improved_shopping_list/frontend/reference-formats.js';
+import { purchaseQuantity, quantityLabel, QuantitySession } from '../custom_components/improved_shopping_list_dev/frontend/quantity-client.js';
+import { recoveredStockQuantity } from '../custom_components/improved_shopping_list_dev/frontend/reference-formats.js';
 
 test('stock replenishment prioritizes recovered or estimated quantities and leaves unknown amounts to the stock default',()=>{
   const product={unit:'g',refill_quantity:1000,commercial_references:[]};
@@ -29,7 +29,7 @@ test('quantity adjustments preserve newer pushed snapshots and propagate errors'
   let resolve,message;const response=new Promise(done=>resolve=done);
   const session=new QuantitySession(()=>({callWS:msg=>{message=msg;return response;}}),()=>{});
   const saving=session.adjust('todo.main','entry',1);
-  assert.deepEqual(message,{type:'improved_shopping_list/quantities/adjust',entity_id:'todo.main',uid:'entry',direction:1});
+  assert.deepEqual(message,{type:'improved_shopping_list_dev/quantities/adjust',entity_id:'todo.main',uid:'entry',direction:1});
   session._revision++;session._receive({entries:{'todo.main':{entry:{quantity:350,unit:'g'}}}});
   resolve({entries:{'todo.main':{entry:{quantity:300,unit:'g'}}}});await saving;
   assert.equal(session.entries['todo.main'].entry.quantity,350);

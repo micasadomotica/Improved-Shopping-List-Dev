@@ -5,7 +5,7 @@ from pathlib import Path
 import re
 import sys
 
-sys.path.insert(0,str(Path(__file__).resolve().parents[1]/"custom_components/improved_shopping_list"))
+sys.path.insert(0,str(Path(__file__).resolve().parents[1]/"custom_components/improved_shopping_list_dev"))
 from ean_common import consensus, observed_at
 
 SOURCE="https://huggingface.co/datasets/datania/mercadona-catalog"

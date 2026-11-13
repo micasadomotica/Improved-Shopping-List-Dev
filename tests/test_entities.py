@@ -13,9 +13,9 @@ from homeassistant.helpers import device_registry as dr, entity_registry as er
 from homeassistant.util import dt as dt_util
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.improved_shopping_list.const import CONF_TODO_ENTITIES, CONF_TODO_ENTITY, DOMAIN
-from custom_components.improved_shopping_list.stock import DEFAULT_CONFIG
-from custom_components.improved_shopping_list.store_links import normalize_link
+from custom_components.improved_shopping_list_dev.const import CONF_TODO_ENTITIES, CONF_TODO_ENTITY, DOMAIN
+from custom_components.improved_shopping_list_dev.stock import DEFAULT_CONFIG
+from custom_components.improved_shopping_list_dev.store_links import normalize_link
 
 
 class Todo:
@@ -44,7 +44,7 @@ async def env(hass, monkeypatch):
     await hass.async_block_till_done()
     managers = hass.data[DOMAIN]
     fetch = AsyncMock(side_effect=AssertionError("Sensors must not request prices"))
-    monkeypatch.setattr("custom_components.improved_shopping_list.price_sources.PriceSources.fetch", fetch)
+    monkeypatch.setattr("custom_components.improved_shopping_list_dev.price_sources.PriceSources.fetch", fetch)
     todos = {entity: Todo() for entity in ("todo.main", "todo.other")}
     component = hass.data[DATA_COMPONENT]
     monkeypatch.setattr(component, "get_entity", todos.get)
@@ -67,7 +67,7 @@ async def test_fifteen_entities_share_one_device_and_update_without_http(env, ha
     assert len(entries) == 15
     assert len({entry.device_id for entry in entries}) == 1
     device = dr.async_get(hass).async_get(entries[0].device_id)
-    assert device.name == "Improved Shopping List" and device.manufacturer == "Aguacatec"
+    assert device.name == "Improved Shopping List Dev" and device.manufacturer == "Aguacatec"
     assert env.state("catalog_products").state == "0"
     assert env.state("catalog_categories").state == "0"
     assert env.state("shopping_list_products").state == "0"

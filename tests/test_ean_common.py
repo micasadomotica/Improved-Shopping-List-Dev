@@ -6,12 +6,12 @@ from unittest.mock import AsyncMock
 import time
 
 import pytest
-from custom_components.improved_shopping_list.ean_common import extract, consensus, validate, observed_at
-from custom_components.improved_shopping_list.catalog import Catalog
-from custom_components.improved_shopping_list.ean_links import EANLinks
-from custom_components.improved_shopping_list.mercadona_catalog import MercadonaCatalog
-from custom_components.improved_shopping_list.mercadona_index import MercadonaIndex, URL, parse_index
-from custom_components.improved_shopping_list.product_references import gtin, normalized_references, merge_reference
+from custom_components.improved_shopping_list_dev.ean_common import extract, consensus, validate, observed_at
+from custom_components.improved_shopping_list_dev.catalog import Catalog
+from custom_components.improved_shopping_list_dev.ean_links import EANLinks
+from custom_components.improved_shopping_list_dev.mercadona_catalog import MercadonaCatalog
+from custom_components.improved_shopping_list_dev.mercadona_index import MercadonaIndex, URL, parse_index
+from custom_components.improved_shopping_list_dev.product_references import gtin, normalized_references, merge_reference
 
 EAN='8430543025611'
 OTHER='8410199023094'

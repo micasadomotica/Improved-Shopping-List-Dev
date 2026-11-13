@@ -1,0 +1,200 @@
+import './analytics-insights.js?v=0.88.1';
+const node=(tag,cls,text)=>{const el=document.createElement(tag);if(cls)el.className=cls;if(text!==undefined)el.textContent=text;return el;};
+const names={masymas:"Masymas",bm:"BM",elcorteingles:'El Corte Inglés',mercadona:'Mercadona',carrefour:'Carrefour',alcampo:'Alcampo',consum:'Consum',lasirena:'La Sirena',eroski:'Eroski',dia:'DIA',lidl:'Lidl'};
+const money=(cents,currency)=>new Intl.NumberFormat('es-ES',{style:'currency',currency,minimumFractionDigits:2,maximumFractionDigits:2}).format(cents/100);
+const scales={uds:['uds',1],ud:['uds',1],kg:['kg',1],g:['kg',.001],gr:['kg',.001],ml:['l',.001],cl:['l',.01],l:['l',1],m:['m',1]};
+const number=value=>typeof value==='boolean'||value===null||value===''?NaN:Number(value);
+const validMoney=value=>Number.isFinite(number(value))&&number(value)>=0;
+const gtin=value=>{if(typeof value!=='string'||!/^(?:\d{8}|\d{12,14})$/.test(value))return '';const sum=[...value.slice(0,-1)].reverse().reduce((total,digit,i)=>total+Number(digit)*(i%2?1:3),0);return (10-sum%10)%10===Number(value.at(-1))?value.padStart(14,'0'):'';};
+export function normalizeObservation(raw){
+  if(!raw||raw.reference_excluded||!validMoney(raw.price)||!Number.isFinite(number(raw.at))||number(raw.at)<=0||!/^[A-Z]{3}$/.test(raw.currency??''))return null;
+  const price=number(raw.price),ean=gtin(raw.ean),reference=String(raw.reference_unit??'').toLowerCase().trim().replace(/^€\s*\/\s*/,'');
+  const refs={per_each:['uds',1],per_1kg:['kg',1],per_1l:['l',1],m:['m',1],per_100g:['kg',.1],per_100ml:['l',.1],...scales};
+  let unit='',quantity=null,rate=null;
+  const pack=scales[String(raw.pack_unit??'').toLowerCase()];
+  if(!raw.format_pending&&pack&&number(raw.pack_quantity)>0){unit=pack[0];quantity=number(raw.pack_quantity)*pack[1];rate=price/quantity;}
+  else if(!raw.format_pending&&refs[reference]&&validMoney(raw.reference_price)){unit=refs[reference][0];rate=number(raw.reference_price)/refs[reference][1];quantity=rate>0?price/rate:null;}
+  else if(!raw.format_pending&&raw.source==='web'){
+    const match=String(raw.store_name||raw.name||'').match(/(\d+(?:[.,]\d+)?)\s*(kg|g|ml|cl|l|m)\b/i);
+    if(match&&Number(match[1].replace(',','.'))>0){const factor=scales[match[2].toLowerCase()];unit=factor[0];quantity=Number(match[1].replace(',','.'))*factor[1];rate=price/quantity;}
+  }
+  return {...raw,price,at:number(raw.at),ean,basis:unit|| (ean?'ean:'+ean:null),unit:unit||'envase',quantity,rate:unit?rate:ean?price:null};
+}
+export function analyzeCatalog(products,observations,options={}){
+  const now=options.now??Date.now()/1000,stores=options.stores??[],currency=options.currency??'EUR',age=options.maxAge?options.maxAge*86400:Infinity;
+  const latest=new Map();
+  for(const raw of observations){const offer=normalizeObservation(raw);if(!offer||offer.currency!==currency||!stores.includes(offer.store)||offer.at>now||now-offer.at>age)continue;const key=offer.product_id+':'+offer.store+':'+(offer.commercial_reference_id||offer.reference_id||offer.ean||'legacy');const candidate={...offer,basis:scales[offer.unit]?.[0]??null,rate:scales[offer.unit]?offer.rate:null},previous=latest.get(key);if(!previous||candidate.basis&&!previous.basis||Boolean(candidate.basis)===Boolean(previous.basis)&&previous.at<candidate.at)latest.set(key,candidate);}
+  const filtered=products.filter(p=>(!options.category||p.category===options.category)&&(!options.store||[...latest.values()].some(offer=>offer.product_id===p.id&&offer.store===options.store)));
+  const rows=filtered.map(product=>{
+    const allOffers=[...latest.values()].filter(offer=>offer.product_id===product.id),groups=new Map();
+    for(const offer of allOffers)if(offer.basis){if(!groups.has(offer.basis))groups.set(offer.basis,[]);const group=groups.get(offer.basis),before=group.find(o=>o.store===offer.store);if(!before)group.push(offer);else if(offer.rate<before.rate)group.splice(group.indexOf(before),1,offer);}
+    const comparable=[...groups.values()].sort((a,b)=>b.length-a.length||a[0].basis.localeCompare(b[0].basis))[0]??[];
+    const offers=comparable;
+    const min=comparable.length>1?Math.min(...comparable.map(o=>o.rate)):null,max=min===null?null:Math.max(...comparable.map(o=>o.rate));
+    return {product,offers,basis:comparable[0]?.basis??null,unit:comparable[0]?.unit??'envase',comparable:comparable.length>1,min,max,difference:min===null?null:max-min,bestStores:min===null?[]:comparable.filter(o=>Math.abs(o.rate-min)<.000001).map(o=>o.store)};
+  }).filter(row=>row.comparable).sort((a,b)=>a.product.name.localeCompare(b.product.name,'es'));
+  const ranking=stores.map(store=>({store,known:rows.filter(r=>r.offers.some(o=>o.store===store)).length,wins:rows.filter(r=>r.bestStores.includes(store)).length})).sort((a,b)=>b.wins-a.wins||b.known-a.known||a.store.localeCompare(b.store));
+  const participating=ranking.filter(shop=>shop.known).map(shop=>shop.store);
+  const common=participating.length>1?rows.filter(row=>row.comparable&&participating.every(store=>row.offers.some(o=>o.store===store&&o.basis===row.basis))):[];
+  const totals=common.length?participating.map(store=>({store,total:common.reduce((sum,row)=>sum+row.offers.find(o=>o.store===store).rate,0)})).sort((a,b)=>a.total-b.total):[];
+  return {rows,ranking,common:common.length,totals,known:rows.filter(r=>r.offers.length).length,comparable:rows.filter(r=>r.comparable).length,oldest:Math.min(...rows.flatMap(r=>r.offers.map(o=>o.at))),currency};
+}
+export function indexObservations(observations){
+  const index=new Map();for(const raw of observations){const offer=normalizeObservation(raw);if(!offer)continue;const key=offer.product_id+':'+offer.store+':'+offer.currency;if(!index.has(key))index.set(key,[]);index.get(key).push(offer);}for(const values of index.values())values.sort((a,b)=>b.at-a.at);return index;
+}
+export function analyzePurchase(purchase,observations,options={}){
+  const now=options.now??Date.now()/1000,historical=options.mode!=='current',cutoff=historical?purchase.at:now,window=(options.days??30)*86400;
+  const index=options.index??indexObservations(observations);
+  const lines=purchase.lines??[],stores=(options.stores??[]).filter(store=>store!==purchase.store);
+  const alternatives=stores.map(store=>{
+    const compared=lines.map(line=>{
+      if(!line.product_id||!validMoney(line.amount)||!(number(line.count)>0))return null;
+      const original=normalizeObservation({...line,price:number(line.amount)/number(line.count),at:purchase.at,currency:purchase.currency});
+      if(!original)return null;
+      const fresh=new Map();for(const o of index.get(line.product_id+':'+store+':'+purchase.currency)??[]){if(o.at>cutoff||(historical&&cutoff-o.at>window))continue;const key=o.commercial_reference_id||o.reference_id||o.ean||'legacy';if(!fresh.has(key))fresh.set(key,o);}
+      const candidates=[...fresh.values()].filter(o=>(original.ean&&o.ean===original.ean)||(original.basis&&original.quantity>0&&o.basis===original.basis)).map(offer=>{
+        if(original.ean&&offer.ean===original.ean)return {offer,cost:offer.price*number(line.count),packages:number(line.count)};
+        const required=original.quantity*number(line.count),packages=offer.quantity>0?Math.ceil(Math.max(0,required/offer.quantity-1e-9)):null;
+        return {offer,cost:packages===null?offer.rate*required:packages*offer.price,packages};
+      }).sort((a,b)=>a.cost-b.cost);if(!candidates.length)return null;
+      const {offer,cost,packages}=candidates[0];
+      return {line,offer,paid:number(line.amount),cost:Math.round(cost*100)/100,packages};
+    }).filter(Boolean);
+    const complete=compared.length===lines.length&&lines.length>0;
+    const paid=complete?number(purchase.total)-(number(purchase.shipping)||0):compared.reduce((sum,l)=>sum+l.paid,0),cost=compared.reduce((sum,l)=>sum+l.cost,0);
+    const discountAmbiguous=!complete&&Math.abs(number(purchase.discount)||0)>.001;
+    return {store,lines:compared,coverage:compared.length,complete,paid,cost,difference:paid-cost,savings:discountAmbiguous?null:paid-cost,discountAmbiguous};
+  }).filter(a=>a.coverage).sort((a,b)=>Number(b.complete)-Number(a.complete)||b.coverage-a.coverage||a.cost-b.cost);
+  const split=lines.map(line=>{
+    const candidates=alternatives.flatMap(a=>a.lines.filter(l=>l.line===line).map(l=>({...l,store:a.store})));
+    const chosen=candidates.sort((a,b)=>a.cost-b.cost)[0];
+    return chosen&&chosen.cost<number(line.amount)?chosen:{line,store:purchase.store,cost:number(line.amount),paid:number(line.amount)};
+  });
+  const splitCost=split.reduce((sum,l)=>sum+l.cost,0),changed=split.filter(l=>l.store!==purchase.store).length;
+  return {purchase,alternatives,split,splitCost,changed,splitSavings:Math.abs(number(purchase.discount)||0)>.001?null:lines.reduce((sum,l)=>sum+number(l.amount),0)-splitCost,mode:historical?'historical':'current'};
+}
+
+export function orderComparisonRows(rows,{store='',only=false,order='name'}={}){
+  const percent=row=>row.max>0?row.difference/row.max:0;
+  return rows.filter(row=>!only||!store||row.bestStores.includes(store)).sort((a,b)=>Number(Boolean(store)&&b.bestStores.includes(store))-Number(Boolean(store)&&a.bestStores.includes(store))||(order==='percentage'?percent(b)-percent(a):order==='difference'?b.difference-a.difference:0)||a.product.name.localeCompare(b.product.name,'es'));
+}
+
+class ImprovedShoppingAnalytics extends HTMLElement {
+  constructor(){super();this.attachShadow({mode:'open'});this._catalogLimit=30;}
+  set data(value){if(value.active&&value.view==='comparison'&&(!this._active||this._view!=='comparison'))this._comparisonKey=null;const entering=value.active&&value.view==='nutrition'&&(!this._active||this._view!=='nutrition');this._data=value;this._active=value.active;this._view=value.view;if(entering)this._nutritionKey=null;if(!this._built)this._build();this._render();}
+  disconnectedCallback(){this._nutritionToken=null;this._nutritionKey=null;this._comparisonToken=null;this._comparisonKey=null;}
+  _build(){this._built=true;this.shadowRoot.innerHTML=`<style>
+    :host{display:block;color:inherit;font:inherit}*{box-sizing:border-box}[hidden]{display:none!important}
+    .card{padding:22px;border:1px solid var(--divider-color,#dfe7e1);border-radius:18px;background:var(--card-background-color,#fff);margin-bottom:18px;min-width:0}
+    h2{font-size:18px;margin:0 0 14px}h3{font-size:16px}p{line-height:1.5}.muted{color:var(--secondary-text-color,#63766b);font-size:12px}
+    .list-select{display:flex;align-items:center;gap:12px;margin-bottom:18px}select{font:inherit;color:inherit;background:var(--card-background-color,#fff);border:1px solid var(--divider-color,#dfe7e1);border-radius:10px;padding:10px;min-width:0;max-width:100%}
+    .shops{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,180px),1fr));gap:10px}.shop{padding:14px;border-radius:12px;background:var(--secondary-background-color,#edf4ee)}.shop img{width:32px;height:32px;object-fit:contain;background:#fff;padding:3px;border-radius:50%;vertical-align:middle;margin-right:8px}.shop strong,.shop small{display:block;margin-top:8px}
+    .stats .stat-text strong{font-size:clamp(15px,4vw,24px)}.stats .stat-date strong{white-space:nowrap;font-variant-numeric:tabular-nums;font-size:26px}@media(max-width:540px){.stats .stat-date strong{font-size:14px}}
+    .best{color:var(--success-color,#268455);font-weight:700}.scroll{overflow:auto;max-width:100%}table{border-collapse:collapse;width:100%;font-size:14px}th,td{text-align:center;padding:12px 10px;border-bottom:1px solid var(--divider-color,#dfe7e1);white-space:nowrap}th:first-child,td:first-child{text-align:left;white-space:normal;min-width:120px}caption{text-align:left;font-weight:700;padding:12px 0}td small,th small{display:block;font-weight:400;font-size:11px;color:var(--secondary-text-color,#63766b)}
+    ul{padding-left:22px}li{margin:8px 0}select:focus-visible,summary:focus-visible{outline:3px solid var(--primary-color,#267052);outline-offset:3px}
+            .nutrition-row { display:grid; grid-template-columns:36px minmax(0,1fr) 105px; align-items:center; gap:12px; margin:18px 0; }
+        .nutrition-grade { display:grid; place-items:center; width:36px; height:36px; border-radius:9px; font-weight:750; }
+        .nutrition-track { background:var(--secondary-background-color,#edf4ee); height:28px; border-radius:6px; overflow:hidden; }
+        .nutrition-bar { height:100%; border-radius:6px; }
+        .nutrition-value { text-align:right; font-size:13px; font-variant-numeric:tabular-nums; }
+        .nutrition-row { cursor:pointer; list-style:none; }
+        .nutrition-row::-webkit-details-marker { display:none; }
+        .nutrition-row::before,.nutrition-group[open]>.nutrition-row::before { content:none; }
+        .nutrition-row:focus-visible { outline:3px solid var(--primary-color,#267052); outline-offset:3px; }
+        .nutrition-value::after { content:" ▾"; }
+        .nutrition-group[open] .nutrition-value::after { content:" ▴"; }
+        .nutrition-products { margin:0 0 20px; padding:0; list-style:none; }
+        .nutrition-products li { padding:10px 12px; border-bottom:1px solid var(--divider-color,#dfe7e1); overflow-wrap:anywhere; }
+        @media(max-width:390px) { .nutrition-row { grid-template-columns:30px minmax(0,1fr) 90px; gap:8px; } .nutrition-grade { width:30px; height:30px; } }
+    @media(max-width:540px){.card{padding:18px 14px}.list-select{flex-wrap:wrap}}
+
+    button,input{font:inherit;color:inherit}button{cursor:pointer}.comparison-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}.comparison-tabs button{display:flex;align-items:center;gap:7px;border:0;border-radius:10px;padding:11px 16px;background:transparent}.comparison-tabs [aria-pressed=true]{background:var(--secondary-background-color,#edf4ee);font-weight:700}.comparison-tabs ha-icon{--mdc-icon-size:20px;width:20px;height:20px}
+    .filters{display:flex;gap:10px;flex-wrap:wrap;align-items:end;margin-bottom:18px}.filters label{font-size:12px;display:flex;flex-direction:column;gap:6px;min-width:0;flex:1 1 135px}.filters input{width:100%;min-width:0;border:1px solid var(--divider-color,#dfe7e1);background:var(--card-background-color,#fff);border-radius:10px;padding:10px;min-height:42px}.filters select{width:100%;min-height:42px}.stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-bottom:18px}.stat{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:18px;border-radius:15px;background:var(--card-background-color,#fff);border:1px solid var(--divider-color,#dfe7e1);min-width:0}.stat strong{display:block;font-size:clamp(20px,3vw,30px);line-height:1.2;margin-bottom:8px;color:var(--primary-color,#267052);overflow-wrap:anywhere}.stat span{font-size:12px;opacity:.7}.stat small{display:block;font-size:11px;opacity:.6;margin-top:5px}.chart-title{margin-bottom:20px}.rank-row{display:grid;grid-template-columns:140px minmax(40px,1fr) 100px;align-items:center;gap:12px;margin:16px 0}.shop-label{display:flex;align-items:center;gap:8px;min-width:0;font-weight:650;font-size:13px}.shop-label img{width:30px;height:30px;padding:3px;border-radius:8px;background:#fff;object-fit:contain;flex:none}.rank-track{height:24px;background:var(--secondary-background-color,#edf4ee);border-radius:8px;overflow:hidden}.rank-bar{height:100%;border-radius:8px;background:linear-gradient(90deg,#268a71,#5bbc95)}.rank-total{text-align:right;font-size:12px}.rank-total small{display:block;font-size:10px;opacity:.65}thead .shop-label{justify-content:center}.table-product{display:flex;align-items:center;gap:9px;min-width:150px}.table-product img,.table-product ha-icon{width:32px;height:32px;--mdc-icon-size:30px;object-fit:contain;flex:none}.table-product span{overflow-wrap:anywhere}.saving{display:inline-block;border-radius:7px;padding:4px 7px;background:color-mix(in srgb,var(--success-color,#268455) 12%,transparent);color:var(--success-color,#268455);font-size:12px;font-weight:700}.costlier{color:var(--error-color,#d32f2f)}.comparison-more{display:block;margin:14px auto;border:0;background:var(--secondary-background-color,#edf4ee);border-radius:10px;padding:12px 20px}.purchase-comparison{margin-bottom:16px;padding:0;overflow:hidden}.purchase-comparison>summary{list-style:none;display:flex;align-items:center;gap:12px;cursor:pointer;padding:18px}.purchase-comparison>summary::-webkit-details-marker{display:none}.purchase-comparison>summary::after{content:'▾';margin-left:8px}.purchase-comparison[open]>summary::after{content:'▴'}.purchase-comparison>summary>.shop-label{flex:1;min-width:0}.purchase-identity{display:flex;flex-direction:column;gap:5px}.purchase-paid{text-align:right;white-space:nowrap;font-weight:700}.purchase-paid small{display:block;font-size:11px;font-weight:400;opacity:.65}.purchase-body{padding:0 18px 18px}.purchase-note{font-size:12px;opacity:.7}.alternative{border-top:1px solid var(--divider-color,#dfe7e1);padding:16px 0}.alternative-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}.pair-bars{display:grid;grid-template-columns:90px minmax(0,1fr) 80px;gap:7px;align-items:center;margin-top:10px;font-size:12px}.pair-track{height:18px;background:var(--secondary-background-color,#edf4ee);border-radius:6px;overflow:hidden}.pair-value{height:100%;background:#94a3b8;border-radius:6px}.pair-value.alternative-value{background:#38a583}.pair-price{text-align:right;white-space:nowrap}.row-detail{margin-top:12px}.row-detail table{font-size:12px}.pill{font-size:11px;display:inline-block;border-radius:7px;background:var(--secondary-background-color,#edf4ee);padding:4px 7px;margin-top:5px}.empty-state{padding:25px;text-align:center;border:1px dashed var(--divider-color,#dfe7e1);border-radius:14px;font-size:14px}.comparison-message{padding:12px 0}.common-cards{display:flex;gap:10px;flex-wrap:wrap}.common-shop{padding:12px;background:var(--secondary-background-color,#edf4ee);border-radius:10px;flex:1 1 140px}.common-shop strong{display:block;margin-top:8px}.comparison-note{font-size:12px;line-height:1.6;opacity:.7;margin:10px 0 18px}.card-head{display:flex;align-items:center;justify-content:space-between;gap:8px}.comparison-retry{padding:10px 16px;border:0;border-radius:8px;background:var(--secondary-background-color,#edf4ee)}
+    @media(max-width:540px){.stats{gap:7px;grid-template-columns:repeat(2,minmax(0,1fr))}.stat{padding:12px 9px}.stat strong{font-size:20px}.stat span{font-size:11px}.rank-row{grid-template-columns:95px minmax(30px,1fr) 68px;gap:7px}.rank-total{font-size:11px}.shop-label{font-size:12px;gap:6px}.shop-label img{width:26px;height:26px}.purchase-comparison>summary{padding:14px;gap:8px}.purchase-body{padding:0 14px 14px}.pair-bars{grid-template-columns:62px minmax(25px,1fr) 65px;font-size:11px;gap:5px}.comparison-tabs button{padding:10px 12px}.comparison-note{font-size:11px}}
+    .comparison-columns{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.rank-row{width:100%;border:0;background:transparent;color:inherit;cursor:pointer;padding:6px;border-radius:9px;text-align:left}.rank-row[aria-pressed=true]{outline:1px solid #36a577;background:color-mix(in srgb,#267052 10%,transparent)}.shop-sort{color:inherit;background:transparent;border:0;padding:4px;cursor:pointer}.shop-sort[aria-pressed=true]{color:var(--success-color,#268455)}.comparison-toolbar{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:8px}.comparison-chip{padding:8px 10px;border:0;border-radius:9px;background:var(--secondary-background-color,#edf4ee);color:inherit}.opportunity{display:flex;align-items:center;gap:10px;width:100%;padding:12px 0;border:0;border-bottom:1px solid var(--divider-color,#dfe7e1);background:transparent;color:inherit;text-align:left;cursor:pointer}.opportunity img,.opportunity ha-icon{width:32px;height:32px;--mdc-icon-size:30px;object-fit:contain;flex:none}.opportunity strong{display:block;font-size:14px}.opportunity small{font-size:12px;opacity:.7}.shop-label img{border-radius:50%}.scroll thead{position:sticky;top:0;background:var(--card-background-color,#fff)}#analytics-nutrition{background:transparent;border:0;padding:0}#nutrition-overview{padding:20px;border:1px solid var(--divider-color,#dfe7e1);background:var(--card-background-color,#fff);border-radius:14px;margin-bottom:18px}.nutrition-products{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.nutrition-products li{padding:10px;border:1px solid var(--divider-color,#dfe7e1);border-radius:9px;margin:0}.nutrition-row{margin:12px 0}.nutrition-track{height:18px}button:focus-visible{outline:2px solid var(--primary-color,#267052);outline-offset:2px}@media(max-width:650px){.comparison-columns{grid-template-columns:minmax(0,1fr)}.nutrition-products{grid-template-columns:minmax(0,1fr)}}
+    </style><section id="comparison"><p id="comparison-status" class="comparison-message" role="status" hidden></p><button id="comparison-retry" class="comparison-retry" type="button" hidden>Reintentar</button><div id="comparison-data"></div></section>
+    <section id="expenses-view" hidden><isl-dev-analytics-insights id="expenses-insights"></isl-dev-analytics-insights></section><section id="analytics-nutrition" hidden><isl-dev-analytics-insights id="nutrition-insights"></isl-dev-analytics-insights></section>`;
+    this.shadowRoot.querySelector('#comparison-retry').addEventListener('click',()=>{this._comparisonKey=null;this._render();});
+  }
+  _render(){
+    const root=this.shadowRoot,d=this._data;
+    root.querySelector('#comparison').hidden=this._view!=='comparison';root.querySelector('#analytics-nutrition').hidden=this._view!=='nutrition';
+    root.querySelector('#expenses-view').hidden=this._view!=='expenses';
+    for(const [id,mode] of [['expenses-insights','expenses'],['nutrition-insights','nutrition']])root.querySelector('#'+id).data={...d,mode,active:this._active&&this._view===mode};
+    if(!this._active)return;
+    if(this._view==='nutrition'){this._renderNutrition();return;}if(this._view!=='comparison')return;
+    this._ensureComparison();this._renderComparison();
+  }
+
+  _ensureComparison(){
+    const d=this._data;if(!d.enabled)return;
+    const key=JSON.stringify([(d.products??[]).map(p=>[p.id,p.revision]),d.stores,d.comparisonRevision,d.priceKey]);
+    if(this._comparisonKey===key)return;this._comparisonKey=key;this._comparisonLoading=true;this._comparisonError='';
+    const token=this._comparisonToken={};
+    void d.hass.callWS({type:'improved_shopping_list_dev/analytics/comparison'}).then(result=>{
+      if(token!==this._comparisonToken||!this.isConnected)return;
+      this._comparisonSnapshot=result;this._comparisonDataRevision=(this._comparisonDataRevision||0)+1;this._comparisonLoading=false;this._renderComparison();
+    }).catch(error=>{if(token!==this._comparisonToken||!this.isConnected)return;this._comparisonLoading=false;this._comparisonError=error.message||'No se han podido cargar los datos de comparación.';this._renderComparison();});
+  }
+  _shopLabel(store,caption){const label=node('span','shop-label');if(this._data.logos?.[store]){const image=node('img');image.src=this._data.logos[store];image.alt='';image.referrerPolicy='no-referrer';label.append(image);}label.append(node('span','',caption||names[store]||store));return label;}
+  _stat(value,label,detail){const card=node('div','stat'+(/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(String(value))?' stat-date':typeof value==='string'?' stat-text':''));card.append(node('strong','',value),node('span','',label));if(detail)card.append(node('small','',detail));return card;}
+  _amount(value,currency='EUR'){return money(Math.round(value*100),currency);}
+  _empty(text){return node('p','empty-state',text);}
+  _renderComparison(){
+    if(!this._built||!this._active||this._view!=='comparison')return;
+    const root=this.shadowRoot,container=root.querySelector('#comparison-data'),status=root.querySelector('#comparison-status');
+    const renderKey=JSON.stringify([this._comparisonKey,this._comparisonLoading,this._comparisonError,this._comparisonDataRevision,this._data.enabled,this._catalogLimit,this._selectedStore,this._storeOnly,this._comparisonOrder]);
+    if(renderKey===this._comparisonRenderKey)return;this._comparisonRenderKey=renderKey;
+    container.replaceChildren();root.querySelector('#comparison-retry').hidden=!this._comparisonError;
+    const message=!this._data.enabled?'Los precios están desactivados en Ajustes → Tiendas.':this._comparisonLoading?'Preparando el análisis de precios guardados…':this._comparisonError;
+    status.textContent=message||'';status.hidden=!message;if(message)return;
+    if(!this._comparisonSnapshot)return;
+    this._renderCatalogComparison(container);
+  }
+  _chooseStore(store){if(this._selectedStore!==store){this._selectedStore=store;this._storeOnly=false;}else if(!this._storeOnly)this._storeOnly=true;else{this._selectedStore='';this._storeOnly=false;}this._catalogLimit=30;this._renderComparison();}
+  _renderCatalogComparison(container){
+    const root=this.shadowRoot,data=this._comparisonSnapshot;
+    const result=analyzeCatalog(this._data.products??[],data.observations??[],{stores:data.stores??[]});
+    const stats=node('div','stats'),winner=result.ranking[0]?.wins?result.ranking[0]:null,winners=winner?result.ranking.filter(shop=>shop.wins===winner.wins):[];
+    stats.append(this._stat(result.comparable,'Productos comparables'),this._stat(winners.length>1?winners.length+' tiendas':winner?names[winner.store]:'—',winners.length>1?'Empate en mínimos':'Más productos al menor precio'));
+    container.append(stats);
+    if(data.observations_truncated)container.append(node('p','comparison-note','El análisis usa las 20.000 observaciones de precio más recientes disponibles.'));
+    if(!result.rows.length){container.append(this._empty('No hay productos con precios por kg, litro, metro o unidad comparables en al menos dos tiendas.'));return;}
+    if(result.known){
+      const chart=node('section','card');chart.append(node('h2','chart-title','Dónde están los precios más bajos'));
+      const maximum=Math.max(1,...result.ranking.map(shop=>shop.wins));
+      for(const shop of result.ranking.filter(shop=>shop.wins>0)){
+        const row=node('button','rank-row');row.type='button';row.dataset.store=shop.store;row.setAttribute('aria-pressed',String(this._selectedStore===shop.store));row.setAttribute('aria-label','Priorizar productos más baratos en '+(names[shop.store]||shop.store));row.addEventListener('click',()=>this._chooseStore(shop.store));row.append(this._shopLabel(shop.store));const track=node('div','rank-track'),bar=node('div','rank-bar');bar.style.width=shop.wins/maximum*100+'%';track.append(bar);track.setAttribute('role','img');track.setAttribute('aria-label',(names[shop.store]??shop.store)+': '+shop.wins+' productos al menor precio');
+        const total=node('span','rank-total',shop.wins+(shop.wins===1?' mínimo':' mínimos'));total.append(node('small','',shop.known+' con precio'));row.append(track,total);chart.append(row);
+      }
+      const opportunities=node('section','card');opportunities.append(node('h2','','Dónde puedes ahorrar más'));
+      for(const row of orderComparisonRows(result.rows,{order:'percentage'}).filter(row=>row.difference>0).slice(0,3)){
+        const button=node('button','opportunity');button.type='button';if(row.product.image_url){const image=node('img');image.src=row.product.image_url;image.alt='';button.append(image);}else{const icon=node('ha-icon');icon.setAttribute('icon',row.product.icon||'mdi:shopping');icon.setAttribute('aria-hidden','true');button.append(icon);}const text=node('span');text.append(node('strong','',row.product.name),node('small','',this._amount(row.difference,result.currency)+'/'+(row.unit==='uds'?'ud':row.unit)+' · '+(row.max?row.difference/row.max*100:0).toLocaleString('es-ES',{maximumFractionDigits:1})+' %'));button.append(text);button.addEventListener('click',()=>{this._selectedStore='';this._storeOnly=false;this._catalogLimit=result.rows.length;this._renderComparison();const target=[...root.querySelectorAll('tbody tr')].find(tr=>tr.dataset.productId===row.product.id);if(target){target.tabIndex=-1;target.focus({preventScroll:true});target.scrollIntoView({behavior:'smooth',block:'center'});}});opportunities.append(button);
+      }
+      const columns=node('div','comparison-columns');columns.append(chart,opportunities);container.append(columns);
+    }else container.append(this._empty('No hay precios guardados para estos productos en estas tiendas.'));
+    if(result.common){
+      const card=node('section','card');card.append(node('h2','','La misma cesta de referencia · '+result.common+(result.common===1?' producto':' productos')));
+      const shops=node('div','common-cards');for(const [index,shop] of result.totals.entries()){const block=node('div','common-shop');block.append(this._shopLabel(shop.store),node('strong',Math.abs(shop.total-result.totals[0].total)<.000001?'best':'',this._amount(shop.total,result.currency)));shops.append(block);}card.append(shops);container.append(card);
+    }
+    const card=node('section','card'),scroll=node('div','scroll'),table=node('table');
+    const toolbar=node('div','comparison-toolbar');if(this._selectedStore){const chip=node('button','comparison-chip',(this._storeOnly?'Solo más baratos en ':'Primero más baratos en ')+(names[this._selectedStore]||this._selectedStore)+' ×');chip.type='button';chip.addEventListener('click',()=>{this._selectedStore='';this._storeOnly=false;this._renderComparison();});toolbar.append(chip);}const order=node('select');order.setAttribute('aria-label','Ordenar comparativa');for(const [value,label] of [['name','Orden alfabético'],['percentage','Mayor diferencia porcentual'],['difference','Mayor diferencia por unidad']])order.add(new Option(label,value));order.value=this._comparisonOrder||'name';order.addEventListener('change',()=>{this._comparisonOrder=order.value;this._catalogLimit=30;this._renderComparison();});toolbar.append(order);card.append(toolbar);
+table.append(node('caption','','Precios del catálogo · '+result.currency));const stores=result.ranking.filter(shop=>shop.known>0).map(shop=>shop.store);
+    const head=node('tr');head.append(node('th','','Producto'));for(const store of stores){const th=node('th');const button=node('button','shop-sort');button.type='button';button.setAttribute('aria-label','Ordenar por precios más bajos en '+(names[store]||store));button.setAttribute('aria-pressed',String(this._selectedStore===store));button.append(this._shopLabel(store));button.addEventListener('click',()=>this._chooseStore(store));th.append(button);head.append(th);}head.append(node('th','','Diferencia máxima'));const thead=node('thead');thead.append(head);table.append(thead);
+    const body=node('tbody');
+    const ordered=orderComparisonRows(result.rows,{store:this._selectedStore,only:this._storeOnly,order:this._comparisonOrder});
+    for(const row of ordered.slice(0,this._catalogLimit)){
+      const tr=node('tr'),title=node('th'),product=node('div','table-product');tr.dataset.productId=row.product.id;
+      if(row.product.image_url){const image=node('img');image.src=row.product.image_url;image.alt='';image.loading='lazy';product.append(image);}else{const icon=node('ha-icon');icon.setAttribute('icon',row.product.icon||'mdi:shopping');icon.setAttribute('aria-hidden','true');product.append(icon);}
+      const name=node('span','',row.product.name);product.append(name);title.append(product);tr.append(title);
+      for(const store of stores){const offer=row.offers.find(o=>o.store===store);const td=node('td',row.bestStores.includes(store)?'best':'',offer?this._amount(offer.rate,result.currency)+'/'+(row.unit==='uds'?'ud':row.unit):'Sin precio');
+        if(offer){td.append(node('small','',new Date(offer.at*1000).toLocaleDateString('es-ES')));}tr.append(td);}
+      const difference=node('td');difference.append(row.difference!==null?node('span','saving',this._amount(row.difference,result.currency)+'/'+(row.unit==='uds'?'ud':row.unit)):node('span','muted','Sin comparación'));tr.append(difference);body.append(tr);
+    }
+    table.append(body);scroll.append(table);card.append(scroll);container.append(card);
+    if(ordered.length>this._catalogLimit){const more=node('button','comparison-more','Mostrar más productos');more.type='button';more.addEventListener('click',()=>{this._catalogLimit+=30;this._renderComparison();});container.append(more);}
+  }
+  _renderNutrition() {}
+
+}
+if(!customElements.get('isl-dev-analytics'))customElements.define('isl-dev-analytics',ImprovedShoppingAnalytics);

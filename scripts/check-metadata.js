@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
-const base = "custom_components/improved_shopping_list/";
+const base = "custom_components/improved_shopping_list_dev/";
 const read = async (path) => JSON.parse(await readFile(path, "utf8"));
 const manifest = await read(`${base}manifest.json`);
 const pkg = await read("package.json");
@@ -9,7 +9,7 @@ const strings = await read(`${base}strings.json`);
 const spanish = await read(`${base}translations/es.json`);
 const english = await read(`${base}translations/en.json`);
 const hacs = await read("hacs.json");
-assert.equal(manifest.domain, "improved_shopping_list");
+assert.equal(manifest.domain, "improved_shopping_list_dev");
 assert.equal(manifest.version, pkg.version);
 assert.match(await readFile(`${base}const.py`, "utf8"), new RegExp(`VERSION = "${pkg.version.replaceAll(".", "\\.")}"`));
 assert.match(await readFile(`${base}frontend/panel.js`, "utf8"), new RegExp(`todo-client.js\\?v=${pkg.version.replaceAll(".", "\\.")}`));

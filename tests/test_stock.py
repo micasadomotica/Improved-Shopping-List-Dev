@@ -7,9 +7,9 @@ from unittest.mock import AsyncMock
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.improved_shopping_list.catalog import Catalog, CatalogError
-from custom_components.improved_shopping_list.const import CONF_TODO_ENTITY, DOMAIN
-from custom_components.improved_shopping_list.stock import StockManager
+from custom_components.improved_shopping_list_dev.catalog import Catalog, CatalogError
+from custom_components.improved_shopping_list_dev.const import CONF_TODO_ENTITY, DOMAIN
+from custom_components.improved_shopping_list_dev.stock import StockManager
 
 
 async def test_stock_normalization_concurrent_units_and_restart(hass):

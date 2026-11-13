@@ -8,12 +8,12 @@ from unittest.mock import AsyncMock
 import time
 
 import pytest
-from custom_components.improved_shopping_list import mercadona_index as module
-from custom_components.improved_shopping_list.mercadona_index import MercadonaIndex, URL, INITIAL_URL, parse_index
-from custom_components.improved_shopping_list.mercadona_catalog import MercadonaCatalog
-from custom_components.improved_shopping_list.catalog import Catalog
-from custom_components.improved_shopping_list.ean_links import EANLinks, DAY
-from custom_components.improved_shopping_list.product_references import gtin
+from custom_components.improved_shopping_list_dev import mercadona_index as module
+from custom_components.improved_shopping_list_dev.mercadona_index import MercadonaIndex, URL, INITIAL_URL, parse_index
+from custom_components.improved_shopping_list_dev.mercadona_catalog import MercadonaCatalog
+from custom_components.improved_shopping_list_dev.catalog import Catalog
+from custom_components.improved_shopping_list_dev.ean_links import EANLinks, DAY
+from custom_components.improved_shopping_list_dev.product_references import gtin
 
 EAN='8430543025611'
 OTHER='8410199023094'

@@ -7,10 +7,10 @@ import aiohttp
 import pytest
 from yarl import URL
 
-from custom_components.improved_shopping_list.eroski import EroskiClient, EroskiError, parse_page, pickup_areas, product_offer, ROOT, SLOT_PATH
-from custom_components.improved_shopping_list.price_sources import PriceSources, PriceError
-from custom_components.improved_shopping_list.regional_stores import async_resolve_areas
-from custom_components.improved_shopping_list.store_links import normalize_link
+from custom_components.improved_shopping_list_dev.eroski import EroskiClient, EroskiError, parse_page, pickup_areas, product_offer, ROOT, SLOT_PATH
+from custom_components.improved_shopping_list_dev.price_sources import PriceSources, PriceError
+from custom_components.improved_shopping_list_dev.regional_stores import async_resolve_areas
+from custom_components.improved_shopping_list_dev.store_links import normalize_link
 
 AREA="f7e80707-fd7a-437c-b451-698301f2cf77"
 CONFIG={"postal_code":"48001","area_id":AREA,"zone":"244"}

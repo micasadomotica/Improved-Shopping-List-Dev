@@ -4,13 +4,13 @@ from unittest.mock import AsyncMock, Mock
 
 import pytest
 
-from custom_components.improved_shopping_list import alcampo as clock_module
-from custom_components.improved_shopping_list import dia_prices as module
-from custom_components.improved_shopping_list.catalog import Catalog, CatalogError
-from custom_components.improved_shopping_list.dia_prices import DiaPriceManager
-from custom_components.improved_shopping_list.price_manager import PriceManager
-from custom_components.improved_shopping_list.price_sources import PriceError
-from custom_components.improved_shopping_list.store_links import normalize_link
+from custom_components.improved_shopping_list_dev import alcampo as clock_module
+from custom_components.improved_shopping_list_dev import dia_prices as module
+from custom_components.improved_shopping_list_dev.catalog import Catalog, CatalogError
+from custom_components.improved_shopping_list_dev.dia_prices import DiaPriceManager
+from custom_components.improved_shopping_list_dev.price_manager import PriceManager
+from custom_components.improved_shopping_list_dev.price_sources import PriceError
+from custom_components.improved_shopping_list_dev.store_links import normalize_link
 
 
 @pytest.fixture

@@ -6,11 +6,11 @@ from unittest.mock import AsyncMock
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.improved_shopping_list.catalog import Catalog, CatalogError, FIELDS
-from custom_components.improved_shopping_list.const import CONF_TODO_ENTITY, DOMAIN
-from custom_components.improved_shopping_list.list_settings import ListSettings
-from custom_components.improved_shopping_list.price_sources import PriceSources
-from custom_components.improved_shopping_list.store_links import normalize_link
+from custom_components.improved_shopping_list_dev.catalog import Catalog, CatalogError, FIELDS
+from custom_components.improved_shopping_list_dev.const import CONF_TODO_ENTITY, DOMAIN
+from custom_components.improved_shopping_list_dev.list_settings import ListSettings
+from custom_components.improved_shopping_list_dev.price_sources import PriceSources
+from custom_components.improved_shopping_list_dev.store_links import normalize_link
 
 
 @pytest.mark.parametrize("other_enabled,expected_favorite", [(True,"lidl"),(False,"lidl")])

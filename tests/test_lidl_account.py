@@ -11,11 +11,11 @@ import time
 
 import pytest
 from homeassistant.util import dt as dt_util
-from custom_components.improved_shopping_list.catalog import CatalogError
-from custom_components.improved_shopping_list.lidl_account import LidlAccount, LidlAccountError
-from custom_components.improved_shopping_list import lidl_account as module
-from custom_components.improved_shopping_list.lidl_receipts import extract_lidl_ticket
-from custom_components.improved_shopping_list.receipts import ReceiptManager
+from custom_components.improved_shopping_list_dev.catalog import CatalogError
+from custom_components.improved_shopping_list_dev.lidl_account import LidlAccount, LidlAccountError
+from custom_components.improved_shopping_list_dev import lidl_account as module
+from custom_components.improved_shopping_list_dev.lidl_receipts import extract_lidl_ticket
+from custom_components.improved_shopping_list_dev.receipts import ReceiptManager
 
 
 def fixture_ticket():
@@ -145,7 +145,7 @@ async def test_lidl_options_require_connection_and_do_not_enable_on_invalid_inpu
 
 async def test_lidl_account_commands_are_admin_only_and_never_return_tokens(hass,hass_ws_client,hass_read_only_user):
     from pytest_homeassistant_custom_component.common import MockConfigEntry
-    from custom_components.improved_shopping_list.const import DOMAIN, CONF_TODO_ENTITY
+    from custom_components.improved_shopping_list_dev.const import DOMAIN, CONF_TODO_ENTITY
     entry=MockConfigEntry(domain=DOMAIN,data={CONF_TODO_ENTITY:'todo.main'});entry.add_to_hass(hass)
     assert await hass.config_entries.async_setup(entry.entry_id)
     manager=hass.data[DOMAIN]['lidl_account'];manager._session={'access_token':'PRIVATE_ACCESS','refresh_token':'PRIVATE_REFRESH'}
@@ -162,8 +162,8 @@ async def test_lidl_account_commands_are_admin_only_and_never_return_tokens(hass
 
 
 async def test_lidl_saved_summary_review_and_confirm_preserve_stock_until_confirmation(hass):
-    from custom_components.improved_shopping_list.catalog import Catalog
-    from custom_components.improved_shopping_list.stock import StockManager
+    from custom_components.improved_shopping_list_dev.catalog import Catalog
+    from custom_components.improved_shopping_list_dev.stock import StockManager
     catalog=Catalog(hass);await catalog.async_load();product=await catalog.async_save_product({'name':'Pan'})
     stock=StockManager(hass,catalog);await stock.async_load();item=await stock.async_add('Pan')
     automation=SimpleNamespace(_lock=asyncio.Lock(),async_check=AsyncMock(),_snapshots={},settings=SimpleNamespace(snapshot={'primary_entity':'todo.main'}))

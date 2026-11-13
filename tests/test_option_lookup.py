@@ -5,11 +5,11 @@ from unittest.mock import AsyncMock
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.improved_shopping_list.const import DOMAIN, CONF_TODO_ENTITY
-from custom_components.improved_shopping_list.option_lookup import OptionLookup, page_product
-from custom_components.improved_shopping_list.price_sources import PriceError
-from custom_components.improved_shopping_list.product_references import normalized_references
-from custom_components.improved_shopping_list.store_links import normalize_link
+from custom_components.improved_shopping_list_dev.const import DOMAIN, CONF_TODO_ENTITY
+from custom_components.improved_shopping_list_dev.option_lookup import OptionLookup, page_product
+from custom_components.improved_shopping_list_dev.price_sources import PriceError
+from custom_components.improved_shopping_list_dev.product_references import normalized_references
+from custom_components.improved_shopping_list_dev.store_links import normalize_link
 
 URL = "https://www.carrefour.es/supermercado/pavo/R-prod1/p"
 CODE = "3017620422003"
@@ -17,7 +17,7 @@ CODE = "3017620422003"
 
 @pytest.fixture(autouse=True)
 def no_unmocked_native_requests(monkeypatch):
-    from custom_components.improved_shopping_list import public_http
+    from custom_components.improved_shopping_list_dev import public_http
     monkeypatch.setattr(public_http,'fetch',AsyncMock(side_effect=public_http.PublicHTTPError('No response')))
 
 
@@ -240,7 +240,7 @@ async def test_kilogram_package_stays_packaged_despite_kilo_comparison_price(has
 
 
 async def test_rejected_page_uses_one_native_fallback_then_cache(hass,aioclient_mock,monkeypatch):
-    from custom_components.improved_shopping_list import public_http
+    from custom_components.improved_shopping_list_dev import public_http
     lookup=OptionLookup(hass);before=AsyncMock();monkeypatch.setattr(lookup,'_before_request',before)
     aioclient_mock.get(URL,status=403)
     native=AsyncMock(return_value=public_http.Response(200,{},html_product().encode()))
@@ -255,7 +255,7 @@ async def test_rejected_page_uses_one_native_fallback_then_cache(hass,aioclient_
 
 
 async def test_explicit_retry_after_never_uses_native_fallback(hass,aioclient_mock,monkeypatch):
-    from custom_components.improved_shopping_list import public_http
+    from custom_components.improved_shopping_list_dev import public_http
     lookup=OptionLookup(hass);monkeypatch.setattr(lookup,'_before_request',AsyncMock())
     aioclient_mock.get(URL,status=403,headers={'Retry-After':'1800'})
     try:

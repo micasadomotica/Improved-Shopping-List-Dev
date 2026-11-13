@@ -8,9 +8,9 @@ from aiohttp import ClientError
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.improved_shopping_list import product_lookup as module
-from custom_components.improved_shopping_list.product_lookup import BASE_URL, ProductLookup, is_product_barcode, product_hint
-from custom_components.improved_shopping_list.const import CONF_TODO_ENTITY, DOMAIN
+from custom_components.improved_shopping_list_dev import product_lookup as module
+from custom_components.improved_shopping_list_dev.product_lookup import BASE_URL, ProductLookup, is_product_barcode, product_hint
+from custom_components.improved_shopping_list_dev.const import CONF_TODO_ENTITY, DOMAIN
 
 CODE = "3017620422003"
 PAYLOAD = {"product":{"code":CODE,"generic_name_es":" Crema de avellanas ","generic_name":"Hazelnut spread",
@@ -192,7 +192,7 @@ async def test_nutrition_distribution_uses_stored_catalog_data_only(hass, hass_w
 
 
 def test_nutrition_facts_use_only_normalized_finite_values():
-    from custom_components.improved_shopping_list.product_lookup import nutrition_facts
+    from custom_components.improved_shopping_list_dev.product_lookup import nutrition_facts
     facts = nutrition_facts({"nutriments":{"energy-kcal_100g":230,"fat_100g":5.2,"salt_100g":float('nan'),"fiber_100g":True,"proteins_100g":-1},"nova_group":4,"ingredients_analysis_tags":["en:vegan"],"categories_tags":["en:vegetables"]})
     assert facts['nutrients'] == {'energy-kcal':230,'fat':5.2}
     assert facts['nova'] == 4 and facts['vegan'] is True

@@ -5,7 +5,7 @@ const fs = require("node:fs/promises");
 const path = require("node:path");
 const { chromium } = require("playwright");
 
-const root = path.resolve(__dirname, "../custom_components/improved_shopping_list/frontend");
+const root = path.resolve(__dirname, "../custom_components/improved_shopping_list_dev/frontend");
 const html = `<!doctype html><html lang="es"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Panel test</title><style>html,body{margin:0;height:100%;font-family:system-ui}</style><body><script src="/scoped-custom-element-registry.js"></script><script type="module">
 import '/panel.js';
 const data = {
@@ -59,7 +59,7 @@ window.emitSettings=()=>{
 };
 window.attentionFixture={catalog_new:0,low_stock:0,purchases:0};
 window.emitAttention=()=>{for(const listener of listeners.keys())if(listener.attention)listener.callback(structuredClone(window.attentionFixture));};
-const panel=document.createElement('improved-shopping-list-panel');
+const panel=document.createElement('improved-shopping-list-dev-panel');
 const hass={
   user:{is_admin:true},
   services:{notify:{mobile_app_one:{name:"Móvil uno"},mobile_app_two:{name:"Móvil dos"},send_message:{name:"Enviar mensaje"},notify:{name:"Genérico"}}},
@@ -70,7 +70,7 @@ const hass={
     'todo.readonly':{entity_id:'todo.readonly',state:'1',attributes:{friendly_name:'Solo lectura',supported_features:0}}
   },
   connection:{subscribeMessage:async(callback,msg)=>{
-    if(msg.type==='improved_shopping_list/catalog_sources/subscribe'){
+    if(msg.type==='improved_shopping_list_dev/catalog_sources/subscribe'){
       window.catalogSourceSubscriptions=(window.catalogSourceSubscriptions??0)+1;
       const listener={callback,catalogSource:true,source:msg.source??'alcampo'};listeners.set(listener,true);
       callback(structuredClone((msg.source==='mercadona'?window.mercadonaSourceFixture:msg.source==='elcorteingles'?window.eciSourceFixture:['masymas','bm','consum','lasirena','eroski'].includes(msg.source)?window.publicSourceFixtures?.[msg.source]:window.catalogSourceFixture)??{enabled:false,phase:'idle',total:0,processed:0,errors:[]}));
@@ -79,39 +79,39 @@ const hass={
       window.emitEciCatalogSource=state=>{window.eciSourceFixture=state;for(const item of listeners.keys())if(item.catalogSource&&item.source==='elcorteingles')item.callback(structuredClone(state));};
       return()=>{listeners.delete(listener);window.catalogSourceSubscriptions--;};
     }
-    if(msg.type==='improved_shopping_list/attention/subscribe'){
+    if(msg.type==='improved_shopping_list_dev/attention/subscribe'){
       const listener={callback,attention:true};listeners.set(listener,true);callback(structuredClone(window.attentionFixture));return()=>listeners.delete(listener);
     }
-    if(msg.type==='improved_shopping_list/quantities/subscribe'){
+    if(msg.type==='improved_shopping_list_dev/quantities/subscribe'){
       const listener={callback,quantities:true};listeners.set(listener,true);callback({entries:structuredClone(window.quantityEntries)});return()=>listeners.delete(listener);
     }
-    if(msg.type==='improved_shopping_list/receipts/subscribe'){
+    if(msg.type==='improved_shopping_list_dev/receipts/subscribe'){
       const listener={callback,receipts:true};listeners.set(listener,true);callback({receipts:structuredClone(window.receiptHistory)});return()=>listeners.delete(listener);
     }
-    if(msg.type==='improved_shopping_list/stock/subscribe'){
+    if(msg.type==='improved_shopping_list_dev/stock/subscribe'){
       const listener={callback,stock:true};listeners.set(listener,true);callback({items:structuredClone(window.stockItems),receipt_stores:structuredClone(window.receiptStores)});return()=>listeners.delete(listener);
     }
-    if(msg.type==='improved_shopping_list/settings/store_progress'){
+    if(msg.type==='improved_shopping_list_dev/settings/store_progress'){
       (window.storeProgressListeners??=new Set()).add(callback);callback(JSON.parse(localStorage.getItem('price-progress-fixture')??'null')??{running:false,last_updated:window.lastPriceUpdateFixture??0});
       return()=>window.storeProgressListeners.delete(callback);
     }
-    if(msg.type==='improved_shopping_list/logs/subscribe'){
+    if(msg.type==='improved_shopping_list_dev/logs/subscribe'){
       if(window.failLogs)throw new Error('Error al cargar logs');
       const listener={callback,logs:true};listeners.set(listener,true);callback(structuredClone(window.logFixture));return()=>listeners.delete(listener);
     }
-    if(msg.type==='improved_shopping_list/readers/capture'){
+    if(msg.type==='improved_shopping_list_dev/readers/capture'){
       if(window.failCapture)throw new Error('Lector ocupado');
       const captures=window.captureListeners??=new Map();
       captures.set(msg.reader_id,callback);return()=>captures.delete(msg.reader_id);
     }
-    if(msg.type==='improved_shopping_list/readers/subscribe'){
+    if(msg.type==='improved_shopping_list_dev/readers/subscribe'){
       const listener={callback,readers:true};listeners.set(listener,true);callback(structuredClone(window.readerFixture));return()=>listeners.delete(listener);
     }
-    if(msg.type==='improved_shopping_list/settings/subscribe'){
+    if(msg.type==='improved_shopping_list_dev/settings/subscribe'){
       const listener={callback,settings:true};listeners.set(listener,true);
       callback(settingsSnapshot());return ()=>listeners.delete(listener);
     }
-    if(msg.type==='improved_shopping_list/catalog/subscribe'){
+    if(msg.type==='improved_shopping_list_dev/catalog/subscribe'){
       const listener={callback,catalog:true};listeners.set(listener,true);
       callback(snapshot());
       return ()=>listeners.delete(listener);
@@ -122,30 +122,30 @@ const hass={
   }},
   callWS:async(msg)=>{
     (window.wsRequests??=[]).push(msg.type);
-    if(msg.type.startsWith('improved_shopping_list/routines/')){
+    if(msg.type.startsWith('improved_shopping_list_dev/routines/')){
       if(window.failRoutine)throw new Error('No se ha podido guardar la rutina');
       window.routinesFixture??=[];
       if(msg.type.endsWith('/save')){const row={...structuredClone(msg.routine),id:msg.routine.id??crypto.randomUUID(),revision:(msg.routine.revision??0)+1};window.routinesFixture=window.routinesFixture.filter(r=>r.id!==row.id);window.routinesFixture.push(row);}
       if(msg.type.endsWith('/delete'))window.routinesFixture=window.routinesFixture.filter(r=>r.id!==msg.routine_id);
       return {routines:structuredClone(window.routinesFixture)};
     }
-    if(msg.type==='improved_shopping_list/catalog_sources/status'){
+    if(msg.type==='improved_shopping_list_dev/catalog_sources/status'){
       window.catalogStatusReads=(window.catalogStatusReads??0)+1;
       return structuredClone((msg.source==='mercadona'?window.mercadonaSourceFixture:msg.source==='elcorteingles'?window.eciSourceFixture:['masymas','bm','consum','lasirena','eroski'].includes(msg.source)?window.publicSourceFixtures?.[msg.source]:window.catalogSourceFixture)??{enabled:false,phase:'idle',total:0,processed:0,errors:[]});
     }
-    if(msg.type==='improved_shopping_list/catalog_sources/visibility'){
+    if(msg.type==='improved_shopping_list_dev/catalog_sources/visibility'){
       if(['masymas','bm','consum','lasirena','eroski'].includes(msg.source)){const state={...((window.publicSourceFixtures??={})[msg.source]??{}),show_store:msg.show_store};window.publicSourceFixtures[msg.source]=state;return structuredClone(state);}
       if(msg.source==='mercadona'){window.mercadonaSourceFixture={...(window.mercadonaSourceFixture??{}),show_store:msg.show_store};return structuredClone(window.mercadonaSourceFixture);}
       if(msg.source==='elcorteingles'){window.eciSourceFixture={...(window.eciSourceFixture??{}),show_store:msg.show_store};return structuredClone(window.eciSourceFixture);}
       const state={...(window.catalogSourceFixture??{}),show_store:msg.show_store};window.emitCatalogSource?.(state);return state;
     }
-    if(msg.type==='improved_shopping_list/catalog/refresh_pending/status')return structuredClone(window.pendingRefreshFixture??{phase:'idle',running:false,total:0,processed:0,errors:[]});
-    if(msg.type==='improved_shopping_list/catalog/refresh_pending/start'){
+    if(msg.type==='improved_shopping_list_dev/catalog/refresh_pending/status')return structuredClone(window.pendingRefreshFixture??{phase:'idle',running:false,total:0,processed:0,errors:[]});
+    if(msg.type==='improved_shopping_list_dev/catalog/refresh_pending/start'){
       window.pendingRefreshStarts=(window.pendingRefreshStarts??0)+1;
       if(!window.pendingRefreshFixture?.running)window.pendingRefreshFixture={phase:'running',running:true,total:2,processed:0,updated_products:[],errors:[]};
       return structuredClone(window.pendingRefreshFixture);
     }
-    if(msg.type==='improved_shopping_list/catalog_sources/set'){
+    if(msg.type==='improved_shopping_list_dev/catalog_sources/set'){
       if(['masymas','bm','consum','lasirena','eroski'].includes(msg.source)){const state={...((window.publicSourceFixtures??={})[msg.source]??{}),enabled:msg.enabled,phase:msg.enabled?'finished':'idle',total:1,processed:1,updated:1,errors:[]};window.publicSourceFixtures[msg.source]=state;for(const item of listeners.keys())if(item.catalogSource&&item.source===msg.source)item.callback(structuredClone(state));return state;}
       if(msg.source==='mercadona'){window.mercadonaSourceSets=(window.mercadonaSourceSets??0)+1;const state={...(window.mercadonaSourceFixture??{}),enabled:msg.enabled,total:2,processed:0,phase:msg.enabled?'waiting':'idle'};window.emitMercadonaCatalogSource(state);return state;}
       if(msg.source==='elcorteingles'){window.eciSourceSets=(window.eciSourceSets??0)+1;window.eciSourceFixture={...(window.eciSourceFixture??{}),enabled:msg.enabled,total:0,processed:0,phase:'preparing'};const snapshot=structuredClone(window.eciSourceFixture);if(msg.enabled&&window.eciEnableGate)await window.eciEnableGate;return snapshot;}
@@ -153,22 +153,22 @@ const hass={
       const state={...(window.catalogSourceFixture??{}),enabled:msg.enabled,phase:msg.enabled?'waiting':'idle',running:msg.enabled,total:2,processed:0,updated:0,errors:[],next_request:Date.now()/1000+20};
       window.emitCatalogSource?.(state);return state;
     }
-    if(msg.type==='improved_shopping_list/settings/name_mode'){
+    if(msg.type==='improved_shopping_list_dev/settings/name_mode'){
       (window.listSettings.description_as_name??={})[msg.entity_id]=msg.enabled;
       window.emitSettings();return settingsSnapshot();
     }
-    if(msg.type==='improved_shopping_list/settings/purchase_detection'){
+    if(msg.type==='improved_shopping_list_dev/settings/purchase_detection'){
       window.listSettings.purchase_detection=structuredClone(msg.config);window.emitSettings();return structuredClone(window.listSettings);
     }
-    if(msg.type==='improved_shopping_list/receipts/complete_detection'||msg.type==='improved_shopping_list/receipts/discard_detection'){
+    if(msg.type==='improved_shopping_list_dev/receipts/complete_detection'||msg.type==='improved_shopping_list_dev/receipts/discard_detection'){
       if(window.failDetectedPurchase)throw new Error('No se pudo guardar la compra');
       const receipt=window.receiptHistory.find(receipt=>receipt.id===msg.receipt_id);
       if(msg.type.endsWith('/discard_detection'))window.receiptHistory=window.receiptHistory.filter(receipt=>receipt.id!==msg.receipt_id);
       else Object.assign(receipt,{store:msg.store==='other'?'other:test':msg.store,store_name:msg.store==='other'?msg.store_name:msg.store,total:msg.total,needs_details:false});
       localStorage.setItem('receipt-fixture',JSON.stringify(window.receiptHistory));return receipt??{removed:true};
     }
-    if(msg.type==='improved_shopping_list/quantities/get')return {entries:structuredClone(window.quantityEntries)};
-    if(msg.type==='improved_shopping_list/quantities/adjust'){
+    if(msg.type==='improved_shopping_list_dev/quantities/get')return {entries:structuredClone(window.quantityEntries)};
+    if(msg.type==='improved_shopping_list_dev/quantities/adjust'){
       if(window.failQuantities)throw new Error('No se pudo cambiar la cantidad');
       const item=data[msg.entity_id].find(item=>item.uid===msg.uid);
       const product=window.catalogProducts.find(product=>normalizeName(product.name)===normalizeName(item.summary));
@@ -178,27 +178,27 @@ const hass={
       if(quantity<=0)throw new Error('La cantidad debe ser positiva');
       (window.quantityEntries[msg.entity_id]??={})[msg.uid]={quantity,unit,step};window.emitQuantities();return {entries:structuredClone(window.quantityEntries)};
     }
-    if(msg.type==='improved_shopping_list/logs/get'){if(window.failLogs)throw new Error('Error al cargar logs');return structuredClone(window.logFixture);}
-    if(msg.type==='improved_shopping_list/icons/search'){
+    if(msg.type==='improved_shopping_list_dev/logs/get'){if(window.failLogs)throw new Error('Error al cargar logs');return structuredClone(window.logFixture);}
+    if(msg.type==='improved_shopping_list_dev/icons/search'){
       (window.iconCalls??=[]).push(msg);
       if(window.failIconSearch)throw new Error('Iconify sin conexión');
       if(msg.query==='slow')await new Promise(resolve=>{window.releaseIconSearch=resolve;});
       const query=msg.translate?({Leche:'Milk',Pan:'Bread',Arroz:'Rice'}[msg.query]??msg.query):msg.query;
       if(msg.translate&&msg.product_id){const product=window.catalogProducts.find(product=>product.id===msg.product_id);if(product){product.name_en=query;emitCatalog();}}
       const count=query==='few'?3:query==='paged'?(msg.start?3:32):12;
-      const icons=Array.from({length:count},(_,i)=>({id:'fluent-emoji-flat:milk-'+((msg.start??0)+i),label:query+' '+((msg.start??0)+i+1),collection:'Fluent Emoji Flat',author:'Microsoft',license:'MIT',preview_url:'/improved_shopping_list_icons/fixture.svg'}));
+      const icons=Array.from({length:count},(_,i)=>({id:'fluent-emoji-flat:milk-'+((msg.start??0)+i),label:query+' '+((msg.start??0)+i+1),collection:'Fluent Emoji Flat',author:'Microsoft',license:'MIT',preview_url:'/improved_shopping_list_dev_icons/fixture.svg'}));
       return {icons:['zzzz','Arroz','Leche'].includes(query)?[]:icons,next_start:(msg.start??0)+32,has_more:query==='paged'&&!msg.start,query};
     }
-    if(msg.type==='improved_shopping_list/icons/import'){
+    if(msg.type==='improved_shopping_list_dev/icons/import'){
       (window.iconImports??=[]).push(msg);
       if(window.failIconImport)throw new Error('No se ha podido guardar el icono');
       if(window.delayIconImport)await new Promise(resolve=>{window.releaseIconImport=resolve;});
-      const asset={id:msg.icon_id,url:'/improved_shopping_list_icons/fixture.svg',collection:'Tabler Icons',author:'Paweł Kuna',author_url:'https://github.com/tabler/tabler-icons',license:'MIT',license_url:'https://github.com/tabler/tabler-icons/blob/master/LICENSE',source_url:'https://icon-sets.iconify.design/tabler/milk/'};
+      const asset={id:msg.icon_id,url:'/improved_shopping_list_dev_icons/fixture.svg',collection:'Tabler Icons',author:'Paweł Kuna',author_url:'https://github.com/tabler/tabler-icons',license:'MIT',license_url:'https://github.com/tabler/tabler-icons/blob/master/LICENSE',source_url:'https://icon-sets.iconify.design/tabler/milk/'};
       localStorage.setItem('icon-asset-fixture',JSON.stringify(asset));return asset;
     }
-    if(msg.type==='improved_shopping_list/catalog/nutrition_details')return {records:structuredClone(window.nutritionDetailsFixture??[])};
-    if(msg.type==='improved_shopping_list/catalog/nutrition')return {status:'not_found'};
-    if(msg.type==='improved_shopping_list/catalog/nutrition_distribution'){
+    if(msg.type==='improved_shopping_list_dev/catalog/nutrition_details')return {records:structuredClone(window.nutritionDetailsFixture??[])};
+    if(msg.type==='improved_shopping_list_dev/catalog/nutrition')return {status:'not_found'};
+    if(msg.type==='improved_shopping_list_dev/catalog/nutrition_distribution'){
       if(window.failNutritionDistribution)throw new Error('Disconnected');
       const counts={a:0,b:0,c:0,d:0,e:0},product_ids={a:[],b:[],c:[],d:[],e:[]};
       for(const product of window.catalogProducts){
@@ -207,28 +207,28 @@ const hass={
       }
       return {counts,total:Object.values(counts).reduce((sum,count)=>sum+count,0),product_ids};
     }
-    if(msg.type==='improved_shopping_list/catalog/nutriscore'){
+    if(msg.type==='improved_shopping_list_dev/catalog/nutriscore'){
       (window.nutriCalls??=[]).push(msg.code);
       if(window.delayNutriCode===msg.code)await new Promise(resolve=>{window.releaseNutri=resolve;});
       if(window.failNutri||window.failNutriCode===msg.code)throw new Error('OFF sin conexión');
       return {code:msg.code,product_name:'Producto '+msg.code,nutriscore:window.nutriFixture?.[msg.code]??null,...(window.optionMetadata?.[msg.code]??{})};
     }
-    if(msg.type==='improved_shopping_list/community/status')return structuredClone(window.communityFixture??{sharing:false,connected:false,account:'',authorization:null});
-    if(msg.type==='improved_shopping_list/community/sharing'){
+    if(msg.type==='improved_shopping_list_dev/community/status')return structuredClone(window.communityFixture??{sharing:false,connected:false,account:'',authorization:null});
+    if(msg.type==='improved_shopping_list_dev/community/sharing'){
       window.communityFixture={sharing:msg.enabled,connected:false,account:'',authorization:msg.enabled?{user_code:'ABCD-EFGH',verification_uri:'https://github.com/login/device'}:null};
       return structuredClone(window.communityFixture);
     }
-    if(msg.type==='improved_shopping_list/community/export'){
+    if(msg.type==='improved_shopping_list_dev/community/export'){
       if(window.failCommunityExport)throw new Error('No se ha podido exportar el diccionario');
       return {data:'UEsFBgAAAAAAAAAAAAAAAAAAAAAAAA==',entries:2,images:1,skipped:0};
     }
-    if(msg.type==='improved_shopping_list/catalog/export'){
+    if(msg.type==='improved_shopping_list_dev/catalog/export'){
       if(window.failCatalogExport)throw new Error('Export failed');
       return {data:btoa(JSON.stringify({products:[{name:'Arroz',barcodes:['8410199023094']}]})),products:1};
     }
-    if(msg.type==='improved_shopping_list/icons/info')return JSON.parse(localStorage.getItem('icon-asset-fixture')??'null');
-    if(msg.type==='improved_shopping_list/readers/get')return structuredClone(window.readerFixture);
-    if(msg.type==='improved_shopping_list/readers/save'){
+    if(msg.type==='improved_shopping_list_dev/icons/info')return JSON.parse(localStorage.getItem('icon-asset-fixture')??'null');
+    if(msg.type==='improved_shopping_list_dev/readers/get')return structuredClone(window.readerFixture);
+    if(msg.type==='improved_shopping_list_dev/readers/save'){
       if(window.failReaders)throw new Error('No se ha podido guardar el lector');
       if('last' in msg.reader)throw new Error('Runtime state must not be sent as reader configuration');
       const old=window.readerFixture.readers.find(reader=>reader.id===msg.reader.id);
@@ -236,61 +236,61 @@ const hass={
       if(old?.last)reader.last=old.last;
       window.readerFixture.readers=window.readerFixture.readers.filter(item=>item.id!==reader.id);window.readerFixture.readers.push(reader);window.emitReaders();return reader;
     }
-    if(msg.type==='improved_shopping_list/readers/delete'){window.readerFixture.readers=window.readerFixture.readers.filter(reader=>reader.id!==msg.reader_id);window.emitReaders();return null;}
-    if(msg.type==='improved_shopping_list/readers/dismiss'){window.readerFixture.pending=window.readerFixture.pending.filter(item=>item.id!==msg.pending_id);window.emitReaders();return null;}
-    if(msg.type==='improved_shopping_list/stock/get')return {items:structuredClone(window.stockItems),receipt_stores:structuredClone(window.receiptStores)};
-    if(msg.type==='improved_shopping_list/attention/get')return structuredClone(window.attentionFixture);
-    if(msg.type==='improved_shopping_list/catalog/retrieve_option'){
+    if(msg.type==='improved_shopping_list_dev/readers/delete'){window.readerFixture.readers=window.readerFixture.readers.filter(reader=>reader.id!==msg.reader_id);window.emitReaders();return null;}
+    if(msg.type==='improved_shopping_list_dev/readers/dismiss'){window.readerFixture.pending=window.readerFixture.pending.filter(item=>item.id!==msg.pending_id);window.emitReaders();return null;}
+    if(msg.type==='improved_shopping_list_dev/stock/get')return {items:structuredClone(window.stockItems),receipt_stores:structuredClone(window.receiptStores)};
+    if(msg.type==='improved_shopping_list_dev/attention/get')return structuredClone(window.attentionFixture);
+    if(msg.type==='improved_shopping_list_dev/catalog/retrieve_option'){
       if(window.optionLookupGate)await window.optionLookupGate;
       if(window.failOptionLookup)throw new Error('La web ha rechazado la consulta (HTTP 403).');
       window.lastOptionLookup=structuredClone(msg);return structuredClone(window.optionLookupFixture);
     }
-    if(msg.type==='improved_shopping_list/receipts/get')return {receipts:structuredClone(window.receiptHistory),shops:structuredClone(window.listSettings.purchase_detection?.shops??[]),persons:window.listSettings.purchase_detection?.persons??[]};
-    if(msg.type==='improved_shopping_list/receipts/discard')return null;
-    if(msg.type==='improved_shopping_list/receipts/review_saved'){
+    if(msg.type==='improved_shopping_list_dev/receipts/get')return {receipts:structuredClone(window.receiptHistory),shops:structuredClone(window.listSettings.purchase_detection?.shops??[]),persons:window.listSettings.purchase_detection?.persons??[]};
+    if(msg.type==='improved_shopping_list_dev/receipts/discard')return null;
+    if(msg.type==='improved_shopping_list_dev/receipts/review_saved'){
       const receipt=structuredClone(window.receiptHistory.find(receipt=>receipt.id===msg.receipt_id));
       for(const line of receipt.lines)Object.assign(line,{matched:Boolean(line.product_id),replenish:false});
       return {token:'reprocess-ticket',receipt,...receiptOptions(),reprocess:true};
     }
-    if(msg.type==='improved_shopping_list/receipts/reprocess'){
+    if(msg.type==='improved_shopping_list_dev/receipts/reprocess'){
       window.lastReceiptReprocess=structuredClone(msg);return structuredClone(window.receiptHistory[0]);
     }
-    if(msg.type==='improved_shopping_list/receipts/options')return receiptOptions();
-    if(msg.type==='improved_shopping_list/receipts/lidl_metadata'){
+    if(msg.type==='improved_shopping_list_dev/receipts/options')return receiptOptions();
+    if(msg.type==='improved_shopping_list_dev/receipts/lidl_metadata'){
       (window.lidlMetadataCalls??=[]).push(structuredClone(msg));
       if(window.lidlMetadataWait)await window.lidlMetadataWait;
       return structuredClone(window.lidlMetadataResult??{reason:'Sin coincidencia pública'});
     }
-    if(msg.type==='improved_shopping_list/receipts/estimate_quantity'){
+    if(msg.type==='improved_shopping_list_dev/receipts/estimate_quantity'){
       (window.quantityCalls??=[]).push(structuredClone(msg));
       if(window.quantityWait)await window.quantityWait;
       return structuredClone(window.quantityResults?.[msg.line_id]??window.quantityResult??{quantity:null});
     }
-    if(msg.type==='improved_shopping_list/receipts/link'){
+    if(msg.type==='improved_shopping_list_dev/receipts/link'){
       if(window.receiptLinkWait)await window.receiptLinkWait;
       window.receiptLinks=structuredClone(msg.lines);return structuredClone(window.receiptOptionsOverride??receiptOptions());
     }
-    if(msg.type==='improved_shopping_list/analytics/comparison'){
+    if(msg.type==='improved_shopping_list_dev/analytics/comparison'){
       return structuredClone(window.comparisonFixture??{observations:[],purchases:[],stores:Object.keys(window.listSettings.stores??{}).filter(store=>window.listSettings.stores[store].enabled),historical_window_days:30});
     }
-    if(msg.type==='improved_shopping_list/alcampo/test_search'){
+    if(msg.type==='improved_shopping_list_dev/alcampo/test_search'){
       window.lastAlcampoSearch=structuredClone(msg);
       return {status:'candidates',message:'La búsqueda ha devuelto 1 candidatos. Su EAN todavía no se ha confirmado.',product_id:msg.product_id,term:'Producto comercial del ticket',eans:['8410199023094'],candidates:[{reference_id:'10739',url:'https://www.compraonline.alcampo.es/products/producto/10739'}],http_requests:1,http_status:200};
     }
-    if(msg.type.startsWith('improved_shopping_list/alcampo/')){
+    if(msg.type.startsWith('improved_shopping_list_dev/alcampo/')){
       window.calls.push({type:msg.type});
       window.alcampoStatus??={search_enabled:false,refresh_enabled:false,days:30};
       if(msg.type.endsWith('/options'))window.alcampoStatus=structuredClone(msg.options);
       return structuredClone(window.alcampoStatus);
     }
 
-    if(msg.type.startsWith('improved_shopping_list/dia/prices/')){
+    if(msg.type.startsWith('improved_shopping_list_dev/dia/prices/')){
       window.calls.push({type:msg.type});
       window.diaPricesStatus??={refresh_enabled:false,days:30};
       if(msg.type.endsWith('/options'))window.diaPricesStatus=structuredClone(msg.options);
       return structuredClone(window.diaPricesStatus);
     }
-    if(msg.type.startsWith('improved_shopping_list/dia_account/')){
+    if(msg.type.startsWith('improved_shopping_list_dev/dia_account/')){
       window.calls.push({type:msg.type,receipt_id:msg.receipt_id});
       window.diaStatus??={connected:false,credentials_saved:false,remembered_email:'',options:{history_enabled:false,auto_ticket:false}};
       const action=msg.type.split('/').at(-1);
@@ -303,7 +303,7 @@ const hass={
         const draft={token:'dia-preview',receipt:{id:'dia-ticket',store:'dia',store_name:'DIA',purchased_at:new Date().toISOString(),total:4.91,subtotal:4.91,discount:0,article_count:1,lines:[{id:'0',description:'PRODUCTO DIA',count:1,unit_price:4.91,amount:4.91,pack_quantity:null,pack_unit:'',product_id:'',matched:false,quantity:null,replenish:false,ean:'',reference_id:'123456'}]},...receiptOptions()};window.receiptDraft=structuredClone(draft.receipt);return draft;
       }
     }
-    if(msg.type.startsWith('improved_shopping_list/carrefour_account/')){
+    if(msg.type.startsWith('improved_shopping_list_dev/carrefour_account/')){
       window.calls.push({type:msg.type,receipt_id:msg.receipt_id});
       window.cfStatus??={connected:false,verification_required:false,destinations:[],verification_sent:false};
       const action=msg.type.split('/').at(-1);
@@ -317,7 +317,7 @@ const hass={
       if(action==='sync_history'){if(window.failCarrefourAccount)throw new Error('Carrefour ha rechazado el acceso (HTTP 403).');for(const [id,total] of [['summary-ticket',5.22],['summary-order',10]])if(!window.receiptHistory.some(r=>r.id===id))window.receiptHistory.push({id,store:'carrefour',store_name:'Carrefour',purchased_at:'2026-10-16T19:59:30',total,article_count:null,lines:[],summary_only:true,account_key:id,ticket_available:id==='summary-ticket'});localStorage.setItem('receipt-fixture',JSON.stringify(window.receiptHistory));return {added:2,available:2,complete:true};}
       if(action==='purchases'){if(window.failCarrefourAccount)throw new Error('Carrefour ha rechazado el acceso (HTTP 403).');return {purchases:[{id:'private-purchase-key',purchased_at:'2026-10-16T19:59:30',amount:5.22,store:'Carrefour de prueba',reviewable:true,kind:'Ticket'},...(msg.cursor?[]:[{id:'online-key',purchased_at:'2026-10-16T19:59:30',amount:10,store:'Carrefour online',reviewable:false,kind:'Pedido online · factura pendiente de soporte'}])],next_cursor:msg.cursor?null:{ticketOffset:10}};}
     }
-    if(msg.type==='improved_shopping_list/receipts/preview'||msg.type==='improved_shopping_list/carrefour_account/preview'||msg.type==='improved_shopping_list/carrefour_account/preview_saved'){
+    if(msg.type==='improved_shopping_list_dev/receipts/preview'||msg.type==='improved_shopping_list_dev/carrefour_account/preview'||msg.type==='improved_shopping_list_dev/carrefour_account/preview_saved'){
       if(window.receiptHistory.some(receipt=>!receipt.summary_only))throw new Error('Este ticket ya se ha importado.');
       const draft={token:'preview',receipt:{id:'ticket1',store:'carrefour',store_name:'Carrefour',purchased_at:'2026-10-16T19:59:30',total:5.22,subtotal:6.22,discount:1,article_count:4,
         lines:[{id:'0',description:'SEITAN 250 G',count:1,unit_price:2.65,amount:2.65,pack_quantity:250,pack_unit:'g',product_id:'cacao',matched:!window.receiptSuggestionOnly,quantity:250,replenish:false},
@@ -328,7 +328,7 @@ const hass={
       for(const line of draft.receipt.lines){const learned=window.receiptLinks.find(link=>link.id===line.id);if(learned)line.product_id=learned.product_id;}
       window.receiptDraft=structuredClone(draft.receipt);return draft;
     }
-    if(msg.type==='improved_shopping_list/receipts/confirm'){
+    if(msg.type==='improved_shopping_list_dev/receipts/confirm'){
       if(window.failReceipt)throw new Error('No se ha podido guardar el ticket.');
       window.lastReceiptConfirmation=structuredClone(msg);
       const receipt=structuredClone(window.receiptDraft);
@@ -340,7 +340,7 @@ const hass={
       window.emitStock();
       window.receiptHistory.push(receipt);localStorage.setItem('receipt-fixture',JSON.stringify(window.receiptHistory));return receipt;
     }
-    if(msg.type.startsWith('improved_shopping_list/stock/')){
+    if(msg.type.startsWith('improved_shopping_list_dev/stock/')){
       if(window.failStock)throw new Error('No se ha podido guardar el stock');
       if(msg.type.endsWith('/save')){
         const item=window.stockItems.find(item=>item.id===msg.item_id);
@@ -359,23 +359,23 @@ const hass={
       item.quantity=Math.max(0,item.quantity+(msg.delta??1));if((msg.delta??1)>0)item.full_quantity=item.quantity;item.revision++;window.emitStock();return structuredClone(item);
     }
     // Legacy scenarios intentionally exercise preserved store panels; the shipping-policy scenario below restricts this list.
-    if(msg.type==='improved_shopping_list/settings/get')return settingsSnapshot();
-    if(msg.type==='improved_shopping_list/settings/notifications'){
+    if(msg.type==='improved_shopping_list_dev/settings/get')return settingsSnapshot();
+    if(msg.type==='improved_shopping_list_dev/settings/notifications'){
       if(window.failSettings)throw new Error('No se han podido guardar las notificaciones');
       for(const rule of Object.values(msg.notifications))if(rule.enabled&&!rule.targets.length)throw new Error('Selecciona al menos un dispositivo');
       window.listSettings.notifications=structuredClone(msg.notifications);window.emitSettings();return structuredClone(window.listSettings);
     }
-    if(msg.type==='improved_shopping_list/settings/personalization'){
+    if(msg.type==='improved_shopping_list_dev/settings/personalization'){
       if(window.failSettings)throw new Error('No se ha podido guardar la personalización');
       window.listSettings.appearance=structuredClone(msg.appearance);window.emitSettings();return structuredClone(window.listSettings);
     }
-    if(msg.type==='improved_shopping_list/settings/store_products'){
+    if(msg.type==='improved_shopping_list_dev/settings/store_products'){
       (window.storeProductCalls??=[]).push(msg);
       if(!msg.force&&window.holdAutomaticStoreRefresh)await new Promise(resolve=>window.finishAutomaticStoreRefresh=resolve);
       if(msg.force&&window.holdStoreRefresh)await new Promise(resolve=>window.finishStoreRefresh=resolve);
       return {warehouse:'mad3',enabled:true,products:[{name:'Tomate',ean:'8430543025611',store_name:'Tomate rallado',store_product_id:'69938',price:msg.force?1.55:1.45,reference_price:5,reference_unit:'kg',checked_at:1800000000}],error:window.failStoreProducts?'Mercadona ha rechazado la consulta (HTTP 403)':'',automatic_refresh_blocked:!!window.failStoreProducts,remaining:window.failStoreProducts?20:0,processed:0,total:20,retry_at:window.failStoreProducts?Date.now()/1000+900:0};
     }
-    if(msg.type==='improved_shopping_list/settings/store_enabled'){
+    if(msg.type==='improved_shopping_list_dev/settings/store_enabled'){
       if(window.failSettings)throw new Error('No se ha podido guardar la tienda');
       (window.storePostalCalls??=[]).push(structuredClone(msg));
       const defaults={mercadona:{postal_code:'28024',warehouse:'mad1'},carrefour:{postal_code:'28024',sale_point:'005704'},alcampo:{postal_code:'28024',region_id:'deb03a69-3104-4451-9ffa-3a55dc156d9f'},consum:{postal_code:'46409',area_id:'301D',zone:'301'},lasirena:{postal_code:'28024',area_id:'lasirena259'},eroski:{postal_code:'48001',area_id:'f7e80707-fd7a-437c-b451-698301f2cf77',zone:'244'},dia:{postal_code:'28024',area_id:'28024',zone:'28024'}};
@@ -384,11 +384,11 @@ const hass={
       window.listSettingsPush?.(structuredClone(window.listSettings));
       return structuredClone(window.listSettings);
     }
-    if(msg.type==='improved_shopping_list/settings/resolve_store'){
+    if(msg.type==='improved_shopping_list_dev/settings/resolve_store'){
       if(msg.postal_code==='28024'&&msg.store==='consum')throw new Error('Consum no ofrece entrega para este código postal.');
       return {postal_code:msg.postal_code,areas:msg.store==='dia'?[{id:msg.postal_code,zone:msg.postal_code,name:'Código postal '+msg.postal_code}]:msg.store==='eroski'?[{id:'f7e80707-fd7a-437c-b451-698301f2cf77',zone:'244',name:'BIZKAIA - Eroski Deusto'}]:msg.store==='consum'?[{id:'301D',name:'Centro 301 · Cullera',zone:'301'}]:[{id:'lasirena102',name:'Centro 102'},{id:'lasirena259',name:'Centro 259'}]};
     }
-    if(msg.type==='improved_shopping_list/settings/store'){
+    if(msg.type==='improved_shopping_list_dev/settings/store'){
       if(window.failSettings)throw new Error('Mercadona no está disponible');
       if(['consum','lasirena','eroski','dia'].includes(msg.store)){
         const previous=window.listSettings.stores?.[msg.store]??{};
@@ -409,40 +409,40 @@ const hass={
       window.listSettings.favorite_store=msg.enabled?'mercadona':'';
       window.emitSettings();return structuredClone(window.listSettings);
     }
-    if(msg.type==='improved_shopping_list/settings/favorite_store'){
+    if(msg.type==='improved_shopping_list_dev/settings/favorite_store'){
       window.listSettings.favorite_store=msg.store;window.emitSettings();return structuredClone(window.listSettings);
     }
-    if(msg.type==='improved_shopping_list/settings/price_schedule'){
+    if(msg.type==='improved_shopping_list_dev/settings/price_schedule'){
       window.listSettings.price_update_time=msg.time;window.listSettings.price_updates_enabled=msg.enabled;window.listSettings.price_update_days=msg.days;window.emitSettings();return structuredClone(window.listSettings);
     }
-    if(msg.type==='improved_shopping_list/settings/refresh_all_prices'){
+    if(msg.type==='improved_shopping_list_dev/settings/refresh_all_prices'){
       window.calls.push(structuredClone(msg));
       if(window.delayManualRefresh)await new Promise(resolve=>{window.releaseManualRefresh=resolve;});
       if(window.failManualPriceRefresh)throw new Error('La tienda ha indicado una pausa.');
       if(window.manualResumeProgress)return {resumed:true,queued:5,errors:[],progress:structuredClone(window.manualResumeProgress)};
       return {queued:4,errors:window.manualPriceErrors??[]};
     }
-    if(msg.type==='improved_shopping_list/catalog/store_prices'){
+    if(msg.type==='improved_shopping_list_dev/catalog/store_prices'){
       (window.priceStoreRequests??=[]).push(msg.store??'');
       const products=window.storePriceFixture??((msg.codes??[]).includes('8431876279146')?[{store:'carrefour',store_name:'Alcaparras Carrefour',ean:'8431876279146',price:'1.35',currency:'EUR',url:'https://www.awin1.com/pclick.php?p=123&a=1535625&m=25399',checked_at:1792490400}]:[]);
       return {nightly:true,products:msg.store?products.filter(p=>p.store===msg.store):products,enabled:!!window.listSettings.stores?.[msg.store]?.enabled,warehouse:msg.store==='mercadona'?(window.listSettings.stores?.mercadona?.warehouse??''):'',update_time:window.listSettings.price_update_time??'01:00'};
     }
-    if(msg.type==='improved_shopping_list/settings/carrefour_products')return {
+    if(msg.type==='improved_shopping_list_dev/settings/carrefour_products')return {
       enabled:!!window.listSettings.stores?.carrefour?.enabled,version:'published',generated_at:'2026-10-20T12:00:00+00:00',error:'',stale:false,
       products:[{ean:'8431876279146',name:'Alcaparras Carrefour',price:'1.35',currency:'EUR',affiliate_url:'https://www.awin1.com/pclick.php?p=123&a=1535625&m=25399'}]
     };
-    if(msg.type==='improved_shopping_list/settings/gateway_save'){
+    if(msg.type==='improved_shopping_list_dev/settings/gateway_save'){
       if(window.failSettings)throw new Error('No se pudo guardar la pasarela');
       window.listSettings.gateway_lists=(window.listSettings.gateway_lists??[]).filter(item=>item.entity_id!==msg.entity_id);
       window.listSettings.gateway_lists.push({entity_id:msg.entity_id,target_entity:msg.target_entity,remove_after_transfer:msg.remove_after_transfer});
       window.listSettings.entities=window.listSettings.entities.filter(entity=>entity!==msg.entity_id);
       window.emitSettings();return structuredClone(window.listSettings);
     }
-    if(msg.type==='improved_shopping_list/settings/gateway_remove'){
+    if(msg.type==='improved_shopping_list_dev/settings/gateway_remove'){
       window.listSettings.gateway_lists=(window.listSettings.gateway_lists??[]).filter(item=>item.entity_id!==msg.entity_id);
       window.emitSettings();return structuredClone(window.listSettings);
     }
-    if(msg.type==='improved_shopping_list/settings/update'){
+    if(msg.type==='improved_shopping_list_dev/settings/update'){
       if(window.failSettings)throw new Error('No se han podido guardar los ajustes');
       if(msg.action==='add'&&!window.listSettings.entities.includes(msg.entity_id))window.listSettings.entities.push(msg.entity_id);
       if(msg.action==='remove')window.listSettings.entities=window.listSettings.entities.filter(entity=>entity!==msg.entity_id);
@@ -450,14 +450,14 @@ const hass={
       if(!window.listSettings.entities.includes(window.listSettings.primary_entity))window.listSettings.primary_entity=window.listSettings.entities[0]??'';
       window.emitSettings();return structuredClone(window.listSettings);
     }
-    if(msg.type==='improved_shopping_list/catalog/get')return snapshot();
-    if(msg.type==='improved_shopping_list/catalog/delete'){
+    if(msg.type==='improved_shopping_list_dev/catalog/get')return snapshot();
+    if(msg.type==='improved_shopping_list_dev/catalog/delete'){
       if(window.failDeleteProduct)throw new Error('No se ha podido eliminar el producto');
       const product=window.catalogProducts.find(item=>item.id===msg.product_id);
       if(!product||product.revision!==msg.revision)throw new Error('El producto ha cambiado');
       window.catalogProducts=window.catalogProducts.filter(item=>item.id!==msg.product_id);emitCatalog();return null;
     }
-    if(msg.type==='improved_shopping_list/catalog/suggestion'){
+    if(msg.type==='improved_shopping_list_dev/catalog/suggestion'){
       if(window.failCatalog)throw new Error('No se ha podido guardar el cambio');
       if(msg.action==='dismiss'){
         window.dismissedSuggestions=[...new Set([...window.dismissedSuggestions,normalizeName(msg.name)])];emitCatalog();return {};
@@ -467,7 +467,7 @@ const hass={
       const product={name:msg.name,category:'',tags:[],brand:'',barcode:'',format:'',price:null,currency:'EUR',image_url:'',icon:'',notes:'',id:crypto.randomUUID(),revision:1};
       window.catalogProducts.push(product);emitCatalog();return {product};
     }
-    if(msg.type==='improved_shopping_list/catalog/category/save'){
+    if(msg.type==='improved_shopping_list_dev/catalog/category/save'){
       if(window.failCategory)throw new Error('No se ha podido guardar la categoría');
       const old=window.catalogCategories.find(category=>category.id===msg.category.id);
       const category={...msg.category,id:old?.id??crypto.randomUUID(),revision:(old?.revision??0)+1};
@@ -475,28 +475,28 @@ const hass={
       window.catalogCategories=window.catalogCategories.filter(item=>item.id!==category.id);window.catalogCategories.push(category);
       emitCatalog();return {category};
     }
-    if(msg.type==='improved_shopping_list/catalog/category/delete'){
+    if(msg.type==='improved_shopping_list_dev/catalog/category/delete'){
       const category=window.catalogCategories.find(item=>item.id===msg.category_id);
       window.catalogProducts=window.catalogProducts.map(product=>product.category===category.name?{...product,category:'',revision:product.revision+1}:product);
       window.catalogCategories=window.catalogCategories.filter(item=>item.id!==category.id);emitCatalog();return {};
     }
-    if(msg.type==='improved_shopping_list/catalog/recipe/save'){
+    if(msg.type==='improved_shopping_list_dev/catalog/recipe/save'){
       if(window.failCatalog)throw new Error('No se ha podido guardar la receta');
       const previous=window.catalogRecipes.find(recipe=>recipe.id===msg.recipe.id);
       const recipe={...msg.recipe,id:previous?.id??crypto.randomUUID(),revision:(previous?.revision??0)+1,season_months:previous?.season_months??[]};
       window.catalogRecipes=window.catalogRecipes.filter(item=>item.id!==recipe.id);window.catalogRecipes.push(recipe);emitCatalog();return {recipe};
     }
-    if(msg.type==='improved_shopping_list/catalog/recipe/delete'){
+    if(msg.type==='improved_shopping_list_dev/catalog/recipe/delete'){
       window.catalogRecipes=window.catalogRecipes.filter(recipe=>recipe.id!==msg.recipe_id);
       for(const group of window.recommendationCategories)group.recipe_ids=(group.recipe_ids??[]).filter(id=>id!==msg.recipe_id);
       emitCatalog();return {};
     }
-    if(msg.type==='improved_shopping_list/catalog/recipe/season_months'){
+    if(msg.type==='improved_shopping_list_dev/catalog/recipe/season_months'){
       const recipe=window.catalogRecipes.find(recipe=>recipe.id===msg.recipe_id),months=new Set(recipe.season_months??[]);
       for(const month of msg.months)msg.enabled?months.add(month):months.delete(month);
       recipe.season_months=[...months];recipe.revision++;emitCatalog();return {recipe};
     }
-    if(msg.type==='improved_shopping_list/catalog/recipe/add'){
+    if(msg.type==='improved_shopping_list_dev/catalog/recipe/add'){
       const recipe=window.catalogRecipes.find(recipe=>recipe.id===msg.recipe_id);const applied=[];
       for(const ingredient of recipe.ingredients){
         const product=window.catalogProducts.find(product=>product.id===ingredient.product_id);
@@ -507,17 +507,17 @@ const hass={
       }
       window.emitQuantities();return {applied,error:''};
     }
-    if(msg.type==='improved_shopping_list/catalog/recommendation_category/save'){
+    if(msg.type==='improved_shopping_list_dev/catalog/recommendation_category/save'){
       if(window.failCatalog)throw new Error('No se ha podido guardar la categoría');
       const previous=window.recommendationCategories.find(group=>group.id===msg.category.id);
       const category={...msg.category,id:previous?.id??crypto.randomUUID(),revision:(previous?.revision??0)+1};
       window.recommendationCategories=window.recommendationCategories.filter(group=>group.id!==category.id);window.recommendationCategories.push(category);
       emitCatalog();return {category};
     }
-    if(msg.type==='improved_shopping_list/catalog/recommendation_category/delete'){
+    if(msg.type==='improved_shopping_list_dev/catalog/recommendation_category/delete'){
       window.recommendationCategories=window.recommendationCategories.filter(group=>group.id!==msg.category_id);emitCatalog();return {};
     }
-    if(msg.type==='improved_shopping_list/catalog/season_months'){
+    if(msg.type==='improved_shopping_list_dev/catalog/season_months'){
       if(window.failCatalog)throw new Error('No se ha podido guardar la temporada');
       const product=window.catalogProducts.find(product=>product.id===msg.product_id);
       if(!product)throw new Error('El producto ya no existe');
@@ -526,7 +526,7 @@ const hass={
       product.season_months=[...months].sort((a,b)=>a-b);product.revision++;
       emitCatalog();return {product:structuredClone(product)};
     }
-    if(msg.type==='improved_shopping_list/catalog/save'){
+    if(msg.type==='improved_shopping_list_dev/catalog/save'){
       if(window.failCatalog)throw new Error('No se ha podido guardar el catálogo');
       const old=window.catalogProducts.find(product=>product.id===msg.product.id);
       const product={...msg.product,season_months:old?.season_months??[],id:old?.id??crypto.randomUUID(),revision:(old?.revision??0)+1,price_updated_at:new Date().toISOString()};
@@ -628,12 +628,12 @@ async function checkReceiptStockRefresh(browser,url,errors){
  const page=await context.newPage();page.on('pageerror',error=>errors.push(error.message));await page.goto(url);
  await page.evaluate(()=>{window.stockItems=[{id:'pantry-pavo',catalog_product_id:'pavo',name:'Pavo',quantity:1,unit:'g',revision:1,mode:'manual',refill_quantity:2}];window.emitStock();});
  await page.getByRole('button',{name:'Stock',exact:true}).click();await page.locator('#stock-items .stock-amount').filter({hasText:'1 g'}).waitFor();
- await page.getByRole('button',{name:'Analítica',exact:true}).click();const purchases=page.locator('isl-purchases');await page.waitForFunction(()=>document.querySelector('improved-shopping-list-panel')?.shadowRoot.querySelector('isl-purchases')?._session?.loaded);
+ await page.getByRole('button',{name:'Analítica',exact:true}).click();const purchases=page.locator('isl-dev-purchases');await page.waitForFunction(()=>document.querySelector('improved-shopping-list-dev-panel')?.shadowRoot.querySelector('isl-dev-purchases')?._session?.loaded);
  await purchases.evaluate(el=>{
   const receipt={id:'stock-refresh-ticket',store:'carrefour',store_name:'Carrefour',currency:'EUR',purchased_at:new Date().toISOString(),total:2,lines:[{id:'line',description:'PAVO',count:1,unit_price:2,amount:2,product_id:'pavo',matched:true}]};
   window.receiptDraft=structuredClone(receipt);el.openPreview({token:'stock-refresh-ticket',receipt,products:[{id:'pavo',name:'Pavo',unit:'g',refill_quantity:2,stock_id:'pantry-pavo',commercial_references:[]}],purchases:[]});
   Object.assign(el._edits[0],{product_id:'pavo',replenish:true,quantity:2,unit:'g'});
-  const hass=el._hass,original=hass.callWS;window.historyGate=new Promise(resolve=>window.releaseHistory=resolve);hass.callWS=async message=>{if(message.type==='improved_shopping_list/receipts/get'){window.waitingHistory=true;await window.historyGate;}return original(message);};
+  const hass=el._hass,original=hass.callWS;window.historyGate=new Promise(resolve=>window.releaseHistory=resolve);hass.callWS=async message=>{if(message.type==='improved_shopping_list_dev/receipts/get'){window.waitingHistory=true;await window.historyGate;}return original(message);};
   void el._confirm(false);
  });
  await page.waitForFunction(()=>window.waitingHistory&&window.stockItems[0].quantity===3);
@@ -651,7 +651,7 @@ async function checkResponsiveListCatalog(browser,url,errors){
  await page.evaluate(()=>{const hass=window.testPanel._hass,original=hass.callService;window.completionGate=new Promise(resolve=>window.releaseCompletion=resolve);hass.callService=async(...args)=>{if(args[1]==='update_item'){await window.completionGate;throw new Error('Proveedor rechazado');}return original(...args);};});
  await cacao.click();await page.locator('#completed button[data-uid="cacao-1"]').waitFor({state:'attached'});
  await page.evaluate(()=>window.releaseCompletion());await cacao.waitFor();await page.getByRole('alert').filter({hasText:'Proveedor rechazado'}).waitFor();
- await page.getByRole('button',{name:'Catálogo',exact:true}).click();const catalog=page.locator('isl-catalog');await catalog.locator('#catalog-grid').waitFor({state:'attached'});await catalog.locator('#catalog-grid .product').nth(299).waitFor();
+ await page.getByRole('button',{name:'Catálogo',exact:true}).click();const catalog=page.locator('isl-dev-catalog');await catalog.locator('#catalog-grid').waitFor({state:'attached'});await catalog.locator('#catalog-grid .product').nth(299).waitFor();
  const built=await catalog.evaluate(async el=>{const original=el._productCard;let count=0;el._productCard=function(...args){count++;return original.apply(this,args);};el.canAdd=!el._canAdd;el.canComplete=!el._canComplete;el.pendingItems=[{summary:'Producto 1'}];el.listItems=[{uid:'new',summary:'Producto 1',status:'needs_action'}];el.quantityData={entries:{},loaded:true};await Promise.resolve();el._productCard=original;return count;});assert.equal(built,300);
  const grouped=await catalog.evaluate(async el=>{el._productOrder='categories';el._groupBy='category';el._renderProducts();await Promise.resolve();return {groups:el.shadowRoot.querySelectorAll('.category-group').length,cards:el.shadowRoot.querySelectorAll('#catalog-grid .product').length};});assert.deepEqual(grouped,{groups:3,cards:0});
  const first=catalog.locator('.category-group').first();await first.locator('summary').click();await first.locator('.product').nth(99).waitFor();assert.equal(await catalog.locator('#catalog-grid .product').count(),100);
@@ -660,7 +660,7 @@ async function checkResponsiveListCatalog(browser,url,errors){
 
 async function checkListRowsNoNutrition(browser,url,errors) {
   const context=await browser.newContext();await context.addInitScript(()=>{
-    localStorage.setItem('isl-list-layout','rows');
+    localStorage.setItem('isl-dev-list-layout','rows');
     localStorage.setItem('catalog-fixture',JSON.stringify(['Cacao','Arroz'].map((name,index)=>({id:'nutrition-'+index,name,barcode:'3017620422003',barcodes:['3017620422003'],commercial_references:[{store:'carrefour',ean:'3017620422003',active:true,nutriscore:{grade:'b'}}]}))));
   });
   const page=await context.newPage();page.on('pageerror',error=>errors.push(error.message));await page.goto(url);
@@ -673,7 +673,7 @@ async function checkListRowsNoNutrition(browser,url,errors) {
 
 async function checkCompactSettings(browser,url,errors) {
   const context=await browser.newContext({viewport:{width:1280,height:960}}),page=await context.newPage();page.on('pageerror',error=>errors.push(error.message));
-  await page.goto(url);await page.getByRole('button',{name:'Ajustes',exact:true}).click();const settings=page.locator('isl-settings');
+  await page.goto(url);await page.getByRole('button',{name:'Ajustes',exact:true}).click();const settings=page.locator('isl-dev-settings');
   await settings.getByRole('button',{name:'General',exact:true}).waitFor();
   assert.deepEqual(await settings.locator('.settings-tabs button').allTextContents(),['General','Tiendas','Información']);
   for(const id of ['lists','gateways','appearance','notifications']){
@@ -686,7 +686,7 @@ async function checkCompactSettings(browser,url,errors) {
     await settings.getByRole('button',{name:view,exact:true}).click();
     for(const width of [1280,390,320]){await page.setViewportSize({width,height:960});assert.ok(await settings.evaluate(el=>el.scrollWidth<=el.clientWidth+1));await page.screenshot({path:'test-results/compact-settings-'+view+'-'+width+'.png',fullPage:true});}
   }
-  await settings.getByRole('button',{name:'Información',exact:true}).click();const community=settings.locator('#settings-community>.settings-disclosure');await community.locator('summary').click();assert.equal(await settings.getByRole('button',{name:'Exportar mi catálogo',exact:true}).isVisible(),false);assert.equal(await settings.locator('isl-logs').isVisible(),true);await community.locator('summary').click();assert.equal(await settings.getByRole('button',{name:'Exportar mi catálogo',exact:true}).isVisible(),true);
+  await settings.getByRole('button',{name:'Información',exact:true}).click();const community=settings.locator('#settings-community>.settings-disclosure');await community.locator('summary').click();assert.equal(await settings.getByRole('button',{name:'Exportar mi catálogo',exact:true}).isVisible(),false);assert.equal(await settings.locator('isl-dev-logs').isVisible(),true);await community.locator('summary').click();assert.equal(await settings.getByRole('button',{name:'Exportar mi catálogo',exact:true}).isVisible(),true);
   await context.close();
 }
 
@@ -694,9 +694,9 @@ async function checkGeneralNotifications(browser,url,errors) {
     const notificationContext=await browser.newContext({viewport:{width:1280,height:960}});
     const notificationPage=await notificationContext.newPage();notificationPage.on('pageerror',error=>errors.push(error.message));
     await notificationPage.goto(url);await notificationPage.getByRole('button',{name:'Ajustes',exact:true}).click();
-    const notificationSettings=notificationPage.locator('isl-settings');
+    const notificationSettings=notificationPage.locator('isl-dev-settings');
     await notificationSettings.getByRole('button',{name:'General',exact:true}).click();
-    const notifications=notificationSettings.locator('isl-notification-settings'),listRule=notifications.locator('[data-rule=shopping_list]'),stockRule=notifications.locator('[data-rule=low_stock]');
+    const notifications=notificationSettings.locator('isl-dev-notification-settings'),listRule=notifications.locator('[data-rule=shopping_list]'),stockRule=notifications.locator('[data-rule=low_stock]');
     assert.equal(await notificationSettings.locator('#settings-view-notifications').count(),0);
     assert.equal(await notifications.locator('.rule').count(),2);
     assert.ok(await notificationSettings.evaluate(el=>el.shadowRoot.querySelector('#settings-appearance').compareDocumentPosition(el.shadowRoot.querySelector('#settings-notifications')) & Node.DOCUMENT_POSITION_FOLLOWING));
@@ -746,11 +746,11 @@ async function checkUniversalPurchaseSettings(browser,url,errors) {
   });
   const universalPage=await universalContext.newPage();universalPage.on('pageerror',error=>errors.push(error.message));
   await universalPage.goto(url);await universalPage.getByRole('button',{name:'Ajustes',exact:true}).click();
-  await universalPage.locator('isl-settings').getByRole('button',{name:'Tiendas',exact:true}).click();
-  const universalSettings=universalPage.locator('isl-settings');
+  await universalPage.locator('isl-dev-settings').getByRole('button',{name:'Tiendas',exact:true}).click();
+  const universalSettings=universalPage.locator('isl-dev-settings');
   await universalSettings.getByRole('heading',{name:'Cuentas',exact:true}).waitFor();
   await universalSettings.getByRole('heading',{name:'Usuarios',exact:true}).waitFor();
-  const places=universalSettings.locator('isl-shopping-places');
+  const places=universalSettings.locator('isl-dev-shopping-places');
   const addShop=places.getByRole('button',{name:'Añadir tienda',exact:true});
   const addShopBox=await addShop.boundingBox();assert.ok(Math.abs(addShopBox.width-addShopBox.height)<1);
   await addShop.click();
@@ -791,8 +791,8 @@ async function checkUniversalPurchaseSettings(browser,url,errors) {
   await universalPage.waitForFunction(()=>window.listSettings.purchase_detection.shops[0].zones.length===1);
   assert.deepEqual(await universalPage.evaluate(()=>window.listSettings.purchase_detection.shops[0].zones),['zone.shop_one']);
   await places.getByRole('button',{name:'Editar tienda Frutería',exact:true}).click();
-  await shopEditor.locator('isl-zone-map').evaluate(async map=>{while(!map._map)await new Promise(resolve=>setTimeout(resolve,20));});
-  assert.equal(await shopEditor.locator('isl-zone-map').evaluate(map=>map._data.zones.length),1);
+  await shopEditor.locator('isl-dev-zone-map').evaluate(async map=>{while(!map._map)await new Promise(resolve=>setTimeout(resolve,20));});
+  assert.equal(await shopEditor.locator('isl-dev-zone-map').evaluate(map=>map._data.zones.length),1);
   await universalPage.evaluate(()=>{const hass=window.testPanel._hass,original=hass.callWS;window.zoneCreations=[];window.failZoneRegistry=true;
     hass.callWS=async message=>{
       if(message.type==='zone/create'){window.zoneCreations.push(message);return {...message,id:'created-zone-id'};}
@@ -804,7 +804,7 @@ async function checkUniversalPurchaseSettings(browser,url,errors) {
   assert.equal(await shopEditor.getByRole('button',{name:'Guardar tienda',exact:true}).isDisabled(),true);
   await shopEditor.getByLabel('Nombre de la zona',{exact:true}).fill('Nueva sucursal');
   await shopEditor.getByLabel('Radio (metros)',{exact:true}).fill('125');
-  const zoneMap=shopEditor.locator('isl-zone-map');
+  const zoneMap=shopEditor.locator('isl-dev-zone-map');
   const initialLatitude=await shopEditor.getByLabel('Latitud',{exact:true}).inputValue();
   await zoneMap.locator('.leaflet-container').click({position:{x:70,y:70}});
   assert.notEqual(await shopEditor.getByLabel('Latitud',{exact:true}).inputValue(),initialLatitude);
@@ -860,7 +860,7 @@ async function checkUniversalPurchaseSettings(browser,url,errors) {
   await universalSettings.getByRole('button',{name:'Tiendas',exact:true}).click();
   assert.equal(await users.getByRole('checkbox',{name:'person.one',exact:true}).isChecked(),true);
   assert.equal(await users.getByRole('checkbox',{name:'person.two',exact:true}).isChecked(),true);
-  await universalPage.getByRole('button',{name:'Analítica',exact:true}).click();const universalPurchases=universalPage.locator('isl-purchases');
+  await universalPage.getByRole('button',{name:'Analítica',exact:true}).click();const universalPurchases=universalPage.locator('isl-dev-purchases');
   await universalPurchases.locator('#history .ticket').filter({hasText:'Frutería'}).waitFor();
   await universalPurchases.getByLabel('Filtrar por usuario',{exact:true}).selectOption('person.one');
   assert.equal(await universalPurchases.locator('#history .ticket').count(),1);
@@ -873,7 +873,7 @@ async function checkUniversalPurchaseSettings(browser,url,errors) {
   await legacyContext.addInitScript(()=>localStorage.setItem('settings-fixture',JSON.stringify({entities:['todo.bring'],primary_entity:'todo.bring',purchase_detection:{enabled:true,threshold:5,zone_assignment:false,persons:[],store_zones:{}}})));
   const legacyPage=await legacyContext.newPage();legacyPage.on('pageerror',error=>errors.push(error.message));
   await legacyPage.goto(url);await legacyPage.getByRole('button',{name:'Ajustes',exact:true}).click();
-  const legacySettings=legacyPage.locator('isl-settings');await legacySettings.getByRole('button',{name:'General',exact:true}).click();
+  const legacySettings=legacyPage.locator('isl-dev-settings');await legacySettings.getByRole('button',{name:'General',exact:true}).click();
   await legacyPage.evaluate(()=>{const panel=window.testPanel;panel.hass={...panel._hass,states:{...panel._hass.states,'person.ana':{entity_id:'person.ana',state:'home',attributes:{friendly_name:'Ana'}}}};});
   const legacyForm=legacySettings.locator('#purchase-detection-form');
   await legacyForm.getByRole('switch',{name:'Asignación de tienda basada en zona',exact:true}).check();
@@ -895,7 +895,7 @@ async function checkTwoLineNames(browser,url,errors) {
   });
   assert.deepEqual(await page.locator('#pending .summary').allTextContents(),['Leche de avena','Leche sin lactosa']);
   assert.equal(await page.locator('#pending .description:visible').count(),0);
-  await page.getByRole('button',{name:'Catálogo',exact:true}).click();const catalog=page.locator('isl-catalog');
+  await page.getByRole('button',{name:'Catálogo',exact:true}).click();const catalog=page.locator('isl-dev-catalog');
   const card=catalog.locator('#catalog-grid .product').filter({hasText:'Leche de avena'});
   await card.click();await page.waitForFunction(()=>window.listData['todo.bring'][0].status==='completed');
   await card.click();await page.waitForFunction(()=>window.listData['todo.bring'][0].status==='needs_action');
@@ -904,7 +904,7 @@ async function checkTwoLineNames(browser,url,errors) {
   await catalog.getByRole('button',{name:'Pendiente',exact:true}).click();
   assert.match(await catalog.locator('#list-suggestions').textContent(),/Leche sin lactosa/);
   assert.doesNotMatch(await catalog.locator('#list-suggestions').textContent(),/Leche de avena/);
-  await page.getByRole('button',{name:'Ajustes',exact:true}).click();const settings=page.locator('isl-settings');
+  await page.getByRole('button',{name:'Ajustes',exact:true}).click();const settings=page.locator('isl-dev-settings');
   const option=settings.locator('#configured-lists [data-entity-id="todo.bring"]').getByRole('checkbox',{name:'Usar la descripción como parte del nombre',exact:true});
   assert.equal(await option.isChecked(),true);await option.uncheck();
   await page.waitForFunction(()=>window.listSettings.description_as_name['todo.bring']===false);
@@ -926,10 +926,10 @@ async function checkLidlAccount(browser,url,errors){
   await context.route('https://accounts.lidl.com/**',route=>route.fulfill({status:200,contentType:'text/html',body:'Official login placeholder'}));
   const page=await context.newPage();page.on('pageerror',error=>errors.push(error.message));await page.goto(url);
   await page.evaluate(()=>{const original=window.testPanel._hass.callWS;const status={connected:false,email:'',options:{history_enabled:false,auto_ticket:false}};window.lidlCalls=[];
-    window.testPanel._hass.callWS=async message=>{if(!message.type.startsWith('improved_shopping_list/lidl_account/'))return original(message);window.lidlCalls.push(message);const action=message.type.split('/').pop();
+    window.testPanel._hass.callWS=async message=>{if(!message.type.startsWith('improved_shopping_list_dev/lidl_account/'))return original(message);window.lidlCalls.push(message);const action=message.type.split('/').pop();
       if(action==='begin')return {authorization_url:'https://accounts.lidl.com/connect/authorize?state=test-state&code_challenge=test-challenge'};
       if(action==='preview_saved'){
-        const draft=await original({...message,type:'improved_shopping_list/carrefour_account/preview_saved'});
+        const draft=await original({...message,type:'improved_shopping_list_dev/carrefour_account/preview_saved'});
         draft.receipt.store='lidl';draft.receipt.store_name='Lidl';return draft;
       }
       if(action==='finish')status.connected=true;
@@ -938,9 +938,9 @@ async function checkLidlAccount(browser,url,errors){
       return structuredClone(status);
     };
   });
-  await page.getByRole('button',{name:'Ajustes',exact:true}).click();const settings=page.locator('isl-settings');await settings.getByRole('button',{name:'Tiendas',exact:true}).click();
+  await page.getByRole('button',{name:'Ajustes',exact:true}).click();const settings=page.locator('isl-dev-settings');await settings.getByRole('button',{name:'Tiendas',exact:true}).click();
   await settings.locator('#lidl-row').waitFor();await settings.getByRole('button',{name:'Ajustes de Lidl',exact:true}).click();
-  const account=settings.locator('isl-lidl-account');assert.equal(await account.locator('#history-enabled').isDisabled(),true);
+  const account=settings.locator('isl-dev-lidl-account');assert.equal(await account.locator('#history-enabled').isDisabled(),true);
   await account.getByRole('button',{name:'Conectar cuenta',exact:true}).click();
   assert.equal(await account.locator('[data-step="1"]').isVisible(),true);
   assert.equal(await account.locator('#oauth-form').isVisible(),false);
@@ -981,11 +981,11 @@ async function checkLidlAccount(browser,url,errors){
   await account.getByRole('button',{name:'Desconectar cuenta',exact:true}).waitFor();
   assert.equal(await page.evaluate(()=>JSON.stringify(window.lidlCalls).includes('DO_NOT_SEND')),false);
   await settings.locator('#lidl-dialog').evaluate(dialog=>dialog.close());
-  await settings.locator('isl-shopping-places').getByRole('button',{name:'Añadir tienda',exact:true}).click();await settings.locator('isl-shopping-places #account').selectOption('lidl');
-  assert.equal(await settings.locator('isl-shopping-places #account').inputValue(),'lidl');
-  await settings.locator('isl-shopping-places').evaluate(el=>el.shadowRoot.querySelector('dialog').close());
+  await settings.locator('isl-dev-shopping-places').getByRole('button',{name:'Añadir tienda',exact:true}).click();await settings.locator('isl-dev-shopping-places #account').selectOption('lidl');
+  assert.equal(await settings.locator('isl-dev-shopping-places #account').inputValue(),'lidl');
+  await settings.locator('isl-dev-shopping-places').evaluate(el=>el.shadowRoot.querySelector('dialog').close());
   await page.getByRole('button',{name:'Analítica',exact:true}).click();await page.getByRole('tab',{name:'Compras',exact:true}).click();
-  const purchases=page.locator('isl-purchases');
+  const purchases=page.locator('isl-dev-purchases');
   await purchases.evaluate(el=>{
     const base={store:'lidl',store_name:'Lidl',purchased_at:new Date().toISOString(),total:8.94,article_count:null,lines:[],summary_only:true,account_key:'lidl-purchase',ticket_available:true};
     el._session.receipts=[{...base,id:'lidl-summary'},{...base,id:'lidl-no-ticket',ticket_available:false},{...base,id:'lidl-reviewed',summary_only:false,lines:[{description:'Producto Lidl',count:1,unit_price:8.94,amount:8.94}]}];el._session.loaded=true;el._session.loading=false;el._render();
@@ -1020,7 +1020,7 @@ async function checkAnalyticsDashboard(browser,url,errors){
  await page.getByRole('button',{name:'Analítica',exact:true}).click();
  assert.equal(await page.getByRole('tab',{name:'Compras',exact:true}).getAttribute('aria-selected'),'true');
  assert.deepEqual(await page.locator('#analytics-heading [role=tab]').allTextContents(),['Compras','Gastos','Comparativa','Nutrición']);
- await page.getByRole('tab',{name:'Gastos',exact:true}).click();const analytics=page.locator('isl-analytics'),expenses=analytics.locator('#expenses-insights');
+ await page.getByRole('tab',{name:'Gastos',exact:true}).click();const analytics=page.locator('isl-dev-analytics'),expenses=analytics.locator('#expenses-insights');
  await expenses.locator('.stat strong').first().filter({hasText:'15,00'}).waitFor();
  assert.deepEqual(await expenses.locator('.stat strong').allTextContents(),['15,00 €','2','7,50 €']);
  assert.equal(await expenses.getByLabel('Moneda',{exact:true}).count(),0);assert.equal(await expenses.getByLabel('Orden de productos',{exact:true}).count(),0);assert.equal(await expenses.getByText('Gasto clasificado',{exact:true}).count(),0);
@@ -1045,7 +1045,7 @@ async function checkAnalyticsDashboard(browser,url,errors){
  assert.equal(await nutrition.locator('#nutrition-total,.stats').count(),0);assert.equal(await nutrition.locator('.nutrition-group').count(),5);
  for(const label of ['Datos','Características','Buscar alimentos'])assert.equal(await nutrition.getByLabel(label,{exact:true}).count(),0);assert.equal(await nutrition.locator('.nutrition-table tbody tr').count(),2);assert.equal(await nutrition.locator('.filters').isVisible(),false);
  for(const width of [1280,390,320]){await page.setViewportSize({width,height:1000});assert.ok(await nutrition.evaluate(n=>n.scrollWidth<=n.clientWidth+1));await page.screenshot({path:'test-results/analytics-nutrition-dashboard-'+width+'.png',fullPage:true});}
- await page.getByRole('button',{name:'Lista',exact:true}).click();assert.equal(await page.evaluate(()=>[...window.testPanel.shadowRoot.querySelector('isl-analytics').shadowRoot.querySelectorAll('isl-analytics-insights')].some(el=>el.started)),false);
+ await page.getByRole('button',{name:'Lista',exact:true}).click();assert.equal(await page.evaluate(()=>[...window.testPanel.shadowRoot.querySelector('isl-dev-analytics').shadowRoot.querySelectorAll('isl-dev-analytics-insights')].some(el=>el.started)),false);
  await context.close();
 }
 
@@ -1061,7 +1061,7 @@ async function checkSpendingChart(browser,url,errors){
       localStorage.setItem('receipt-fixture',JSON.stringify(receipts.map(([id,store,store_name,purchased_at,total])=>({id,store,store_name,purchased_at,total,article_count:1,lines:[{description:'Producto '+id,count:1,unit_price:total,amount:total}]}))));
     });
     await spendingPage.goto(url);await spendingPage.getByRole('button',{name:'Stock',exact:true}).click();await spendingPage.getByRole('button',{name:'Analítica',exact:true}).click();await spendingPage.getByRole('tab',{name:'Compras',exact:true}).click();
-    const spending=spendingPage.locator('isl-purchases');await spending.locator('#history .ticket').first().waitFor();
+    const spending=spendingPage.locator('isl-dev-purchases');await spending.locator('#history .ticket').first().waitFor();
     assert.equal(await spending.locator('#history details,#history summary').count(),0);
     assert.deepEqual(await spending.locator('#history .ticket').evaluateAll(cards=>cards.map(card=>card.dataset.id)),['recent','start']);
     const firstPurchase=spending.locator('#history .ticket').first();
@@ -1147,19 +1147,19 @@ async function checkDetectedPurchaseRecovery(browser,url,errors){
   await page.evaluate(()=>{
     const hass=window.testPanel._hass,original=hass.callWS,subscribe=hass.connection.subscribeMessage;
     const accounts={carrefour:false,lidl:true};window.recoveryCalls=[];window.recoveryMode='none';
-    hass.connection.subscribeMessage=(callback,message)=>subscribe(data=>callback(message.type==='improved_shopping_list/receipts/subscribe'?{...data,ticket_accounts:accounts}:data),message);
+    hass.connection.subscribeMessage=(callback,message)=>subscribe(data=>callback(message.type==='improved_shopping_list_dev/receipts/subscribe'?{...data,ticket_accounts:accounts}:data),message);
     hass.callWS=async message=>{
-      if(message.type==='improved_shopping_list/receipts/get')return {...await original(message),ticket_accounts:accounts};
-      if(message.type==='improved_shopping_list/receipts/search_detection_ticket'){
+      if(message.type==='improved_shopping_list_dev/receipts/get')return {...await original(message),ticket_accounts:accounts};
+      if(message.type==='improved_shopping_list_dev/receipts/search_detection_ticket'){
         window.recoveryCalls.push(message);return {recovery_token:'manual-search',purchases:window.recoveryMode==='none'?[]:Array.from({length:window.recoveryMode==='many'?2:1},(_,index)=>({id:'candidate-'+index,purchased_at:new Date().toISOString(),amount:5.22+index}))};
       }
-      if(message.type==='improved_shopping_list/receipts/preview_detection_ticket'){
-        window.recoveryCalls.push(message);const draft=await original({type:'improved_shopping_list/carrefour_account/preview_saved',receipt_id:message.purchase_id});draft.receipt.store='lidl';draft.receipt.store_name='Lidl';draft.receipt.purchased_at=new Date().toISOString();const receipt={...draft.receipt,summary_only:true,pending_review:true,detection_id:'unknown-purchase'};window.receiptHistory=[receipt];localStorage.setItem('receipt-fixture',JSON.stringify(window.receiptHistory));return {receipt};
+      if(message.type==='improved_shopping_list_dev/receipts/preview_detection_ticket'){
+        window.recoveryCalls.push(message);const draft=await original({type:'improved_shopping_list_dev/carrefour_account/preview_saved',receipt_id:message.purchase_id});draft.receipt.store='lidl';draft.receipt.store_name='Lidl';draft.receipt.purchased_at=new Date().toISOString();const receipt={...draft.receipt,summary_only:true,pending_review:true,detection_id:'unknown-purchase'};window.receiptHistory=[receipt];localStorage.setItem('receipt-fixture',JSON.stringify(window.receiptHistory));return {receipt};
       }
       return original(message);
     };
   });
-  await page.getByRole('button',{name:'Analítica',exact:true}).click();await page.getByRole('tab',{name:'Compras',exact:true}).click();const purchases=page.locator('isl-purchases');
+  await page.getByRole('button',{name:'Analítica',exact:true}).click();await page.getByRole('tab',{name:'Compras',exact:true}).click();const purchases=page.locator('isl-dev-purchases');
   const edit=purchases.getByRole('button',{name:'Completar compra detectada',exact:true});await edit.click();
   const dialog=purchases.getByRole('dialog',{name:'Compra detectada',exact:true}),recover=dialog.getByRole('button',{name:'Recuperar compra',exact:true});
   assert.equal(await recover.isDisabled(),true);
@@ -1194,9 +1194,9 @@ async function checkDetectedPurchaseRecovery(browser,url,errors){
   await page.reload();
   await page.evaluate(()=>{
     const hass=window.testPanel._hass,original=hass.callWS,subscribe=hass.connection.subscribeMessage;
-    hass.connection.subscribeMessage=(callback,message)=>subscribe(data=>callback(message.type==='improved_shopping_list/receipts/subscribe'?{...data,ticket_accounts:{lidl:true}}:data),message);
+    hass.connection.subscribeMessage=(callback,message)=>subscribe(data=>callback(message.type==='improved_shopping_list_dev/receipts/subscribe'?{...data,ticket_accounts:{lidl:true}}:data),message);
     hass.callWS=async message=>{
-      if(message.type==='improved_shopping_list/receipts/get')return {...await original(message),ticket_accounts:{lidl:true}};
+      if(message.type==='improved_shopping_list_dev/receipts/get')return {...await original(message),ticket_accounts:{lidl:true}};
       if(message.type.endsWith('/search_detection_ticket'))return {recovery_token:'single',purchases:[{id:'one',purchased_at:new Date().toISOString(),amount:5}]};
       if(message.type.endsWith('/preview_detection_ticket')){window.receiptHistory=[{id:'recovered',store:'lidl',store_name:'Lidl',purchased_at:new Date().toISOString(),total:5,summary_only:true,pending_review:true,lines:[]}];return {receipt:window.receiptHistory[0]};}
       return original(message);
@@ -1221,7 +1221,7 @@ async function checkStockFullReference(browser,url,errors){
 async function checkMobileTicketAssociation(browser,url,errors){
   const context=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true}),page=await context.newPage();
   page.on('pageerror',error=>errors.push(error.message));await page.goto(url);await page.getByRole('button',{name:'Analítica',exact:true}).tap();
-  const purchases=page.locator('isl-purchases');await purchases.locator('#ticket-file').waitFor({state:'attached'});
+  const purchases=page.locator('isl-dev-purchases');await purchases.locator('#ticket-file').waitFor({state:'attached'});
   await purchases.evaluate(el=>{const products=[{id:'seitan',name:'Seitán'},{id:'milk',name:'Leche de avena'},{id:'rice',name:'Arroz'}];el.openPreview({token:'mobile-link',receipt:{store:'carrefour',store_name:'Carrefour',purchased_at:new Date().toISOString(),total:2,lines:[{id:'0',description:'SEITAN BIO',count:1,amount:2}]},products,purchases:[]});});
   const review=purchases.getByRole('dialog',{name:'Revisar ticket',exact:true});await review.getByRole('button',{name:'Vincular producto para SEITAN BIO',exact:true}).tap();
   const dialog=purchases.locator('#association-dialog'),search=dialog.getByRole('combobox',{name:'Producto del catálogo',exact:true});
@@ -1238,7 +1238,7 @@ async function checkMobileTicketAssociation(browser,url,errors){
 async function checkRepeatedReceiptProduct(browser,url,errors){
   const context=await browser.newContext({viewport:{width:390,height:844}}),page=await context.newPage();
   page.on('pageerror',error=>errors.push(error.message));await page.goto(url);
-  await page.getByRole('button',{name:'Analítica',exact:true}).click();const purchases=page.locator('isl-purchases');
+  await page.getByRole('button',{name:'Analítica',exact:true}).click();const purchases=page.locator('isl-dev-purchases');
   await purchases.locator('#ticket-file').waitFor({state:'attached'});
   await purchases.evaluate(el=>{
     const products=[{id:'pan',name:'Pan',unit:'uds',refill_quantity:1,stock_id:'',commercial_references:[]}];
@@ -1272,7 +1272,7 @@ async function checkRepeatedReceiptProduct(browser,url,errors){
 async function checkProductReplenishment(browser,url,errors){
   const context=await browser.newContext({viewport:{width:390,height:844}}),page=await context.newPage();
   page.on('pageerror',error=>errors.push(error.message));await page.goto(url);
-  await page.getByRole('button',{name:'Catálogo',exact:true}).click();const catalog=page.locator('isl-catalog');
+  await page.getByRole('button',{name:'Catálogo',exact:true}).click();const catalog=page.locator('isl-dev-catalog');
   await catalog.getByRole('button',{name:'Nuevo producto',exact:true}).click();
   const form=catalog.getByRole('dialog',{name:'Nuevo producto',exact:true});
   await form.getByLabel('Nombre del producto',{exact:true}).fill('Reposición de prueba');
@@ -1281,7 +1281,7 @@ async function checkProductReplenishment(browser,url,errors){
   assert.equal(await form.locator('[data-product-view="automation"] ha-icon').getAttribute('icon'),'mdi:reload');
   await form.locator('#product-replenishment > summary').click();
   const mode=form.getByRole('combobox',{name:'Reposición automática',exact:true});await mode.waitFor();
-  await page.waitForFunction(()=>!document.querySelector('improved-shopping-list-panel').shadowRoot.querySelector('isl-catalog').shadowRoot.querySelector('[data-replenishment="mode"]').disabled);
+  await page.waitForFunction(()=>!document.querySelector('improved-shopping-list-dev-panel').shadowRoot.querySelector('isl-dev-catalog').shadowRoot.querySelector('[data-replenishment="mode"]').disabled);
   assert.equal(await mode.inputValue(),'manual');await mode.selectOption('perishable');
   await form.getByLabel('Días de recurrencia',{exact:true}).fill('9');
   await form.getByLabel('Cantidad predeterminada de reposición',{exact:true}).fill('250');
@@ -1294,7 +1294,7 @@ async function checkProductReplenishment(browser,url,errors){
   const edit=catalog.getByRole('dialog',{name:'Editar producto',exact:true});await edit.getByRole('button',{name:'Reposición',exact:true}).click();
   await edit.locator('#product-replenishment > summary').click();
   const editMode=edit.getByRole('combobox',{name:'Reposición automática',exact:true});
-  await page.waitForFunction(()=>!document.querySelector('improved-shopping-list-panel').shadowRoot.querySelector('isl-catalog').shadowRoot.querySelector('[data-replenishment="mode"]').disabled);
+  await page.waitForFunction(()=>!document.querySelector('improved-shopping-list-dev-panel').shadowRoot.querySelector('isl-dev-catalog').shadowRoot.querySelector('[data-replenishment="mode"]').disabled);
   assert.equal(await editMode.inputValue(),'perishable');assert.equal(await edit.getByLabel('Días de recurrencia',{exact:true}).inputValue(),'9');
   await editMode.selectOption('usage');
   await edit.getByLabel('Entidad de consumo',{exact:true}).fill('sensor.lavadora');
@@ -1333,7 +1333,7 @@ async function checkReplenishmentLayout(browser,url,errors){
     localStorage.setItem('stock-fixture',JSON.stringify([{id:'pavo-stock',revision:1,config_revision:1,catalog_product_id:'pavo-layout',name:'Pavo',quantity:250,unit:'g',mode:'usage',days:7,refill_quantity:500,reorder_enabled:true,reorder_at:50,reorder_percent:0,usage_entity:'sensor.lavadora',usage_state:'fin',usage_amount:5,list_entity:'todo.bring',configured:true}]));
   });
   const page=await context.newPage();page.on('pageerror',error=>errors.push(error.message));await page.goto(url);
-  await page.getByRole('button',{name:'Catálogo',exact:true}).click();const catalog=page.locator('isl-catalog');await editCatalogProduct(catalog,'Editar Pavo');
+  await page.getByRole('button',{name:'Catálogo',exact:true}).click();const catalog=page.locator('isl-dev-catalog');await editCatalogProduct(catalog,'Editar Pavo');
   const form=catalog.getByRole('dialog',{name:'Editar producto',exact:true});await form.getByRole('button',{name:'Reposición',exact:true}).click();await form.locator('#product-replenishment > summary').click();
   const mode=form.getByRole('combobox',{name:'Reposición automática',exact:true});await mode.selectOption('usage');
   assert.equal(await form.getByLabel('Mínimo (%)',{exact:true}).inputValue(),'10');
@@ -1640,7 +1640,7 @@ async function checkShoppingReceipt(browser,url,errors){
     await receiptPage.getByRole('button',{name:'Analítica',exact:true}).click();
     assert.equal(await receiptPage.getByRole('tab',{name:'Compras',exact:true}).getAttribute('aria-selected'),'true');
     await receiptPage.getByRole('tab',{name:'Comparativa',exact:true}).click();
-    const analytics=receiptPage.locator('isl-analytics');
+    const analytics=receiptPage.locator('isl-dev-analytics');
     await analytics.locator('.rank-row').nth(1).waitFor();
     assert.equal(await analytics.locator('.rank-row').count(),2);
     assert.equal(await analytics.locator('tbody tr[data-product-id="not-in-list"]').count(),1);
@@ -1666,7 +1666,7 @@ async function checkCompactProductEditor(browser,url,errors){
     localStorage.setItem('catalog-fixture',JSON.stringify([{id:'pavo',revision:1,name:'Pavo',category:'Frescos',tags:[],price:null,currency:'EUR',barcode:'',barcodes:[],nfc_tags:[],reader_actions:{},image_url:'',icon:'mdi:food-drumstick',notes:'No borrar',store_links:{},commercial_references:[],recurrence:{enabled:false,days:7}}]));
   });
   const page=await context.newPage();page.on('pageerror',error=>errors.push(error.message));await page.goto(url);
-  await page.getByRole('button',{name:'Catálogo',exact:true}).click();const catalog=page.locator('isl-catalog');await editCatalogProduct(catalog,'Editar Pavo');
+  await page.getByRole('button',{name:'Catálogo',exact:true}).click();const catalog=page.locator('isl-dev-catalog');await editCatalogProduct(catalog,'Editar Pavo');
   const form=catalog.getByRole('dialog',{name:'Editar producto',exact:true});
   assert.equal(await form.locator('#product-heading-avatar ha-icon').getAttribute('icon'),'mdi:food-drumstick');
   assert.equal(await form.locator('#product-heading-name').textContent(),'Pavo');
@@ -1715,16 +1715,16 @@ async function checkMealRoutines(browser,url,errors){
   const context=await browser.newContext({viewport:{width:390,height:844}}),page=await context.newPage();
   await context.route('**/avatars/ana.svg',route=>route.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><circle cx="32" cy="32" r="32" fill="#267052"/></svg>'}));
   page.on('pageerror',error=>errors.push(error.message));await page.goto(url);
-  assert.equal(await page.evaluate(()=>(window.wsRequests??[]).includes('improved_shopping_list/routines/get')),false);
+  assert.equal(await page.evaluate(()=>(window.wsRequests??[]).includes('improved_shopping_list_dev/routines/get')),false);
   await page.evaluate(()=>{const panel=window.testPanel;panel.hass={...panel._hass,states:{...panel._hass.states,
     'person.one':{entity_id:'person.one',state:'home',attributes:{friendly_name:'Ana',entity_picture:'/avatars/ana.svg'}},
     'person.two':{entity_id:'person.two',state:'home',attributes:{friendly_name:'Luis'}}}};});
   await page.getByRole('button',{name:'Ajustes',exact:true}).click();
-  assert.equal(await page.locator('isl-settings').getByRole('button',{name:'Rutinas',exact:true}).count(),0);
+  assert.equal(await page.locator('isl-dev-settings').getByRole('button',{name:'Rutinas',exact:true}).count(),0);
   await page.getByRole('button',{name:'Stock',exact:true}).click();
   await page.getByRole('tab',{name:'Rutinas',exact:true}).click();
   await page.evaluate(()=>{window.savedRandomUUID=crypto.randomUUID;Object.defineProperty(crypto,'randomUUID',{value:undefined,configurable:true});});
-  const routines=page.locator('isl-meal-routines');await routines.getByRole('button',{name:'Nueva rutina',exact:true}).click();
+  const routines=page.locator('isl-dev-meal-routines');await routines.getByRole('button',{name:'Nueva rutina',exact:true}).click();
   const routine=routines.getByRole('dialog',{name:'Nueva rutina',exact:true});
   assert.equal(await routine.getByRole('checkbox',{name:'Rutina activada',exact:true}).count(),0);
   assert.equal(await routine.getByText('Comidas',{exact:true}).count(),0);
@@ -1793,12 +1793,12 @@ async function checkMealRoutines(browser,url,errors){
   assert.equal(await routine.getByRole('button',{name:'Eliminar rutina',exact:true}).count(),0);
   await routine.getByRole('button',{name:'Cerrar ventana',exact:true}).click();await routine.waitFor({state:'hidden'});
 
-  await page.getByRole('button',{name:'Catálogo',exact:true}).click();const catalog=page.locator('isl-catalog');
+  await page.getByRole('button',{name:'Catálogo',exact:true}).click();const catalog=page.locator('isl-dev-catalog');
   await catalog.getByRole('button',{name:'Nuevo producto',exact:true}).click();
   const product=catalog.getByRole('dialog',{name:'Nuevo producto',exact:true});await product.getByLabel('Nombre del producto',{exact:true}).fill('Chocolate de comidas');
   await product.getByRole('button',{name:'Reposición',exact:true}).click();await product.locator('#product-replenishment > summary').click();
   await product.getByRole('combobox',{name:'Reposición automática',exact:true}).selectOption('meals');
-  const meals=product.locator('isl-meal-consumption');await meals.getByText('Comidas en casa',{exact:true}).waitFor();
+  const meals=product.locator('isl-dev-meal-consumption');await meals.getByText('Comidas en casa',{exact:true}).waitFor();
   await meals.getByRole('checkbox',{name:'Comidas en casa · Franja horaria',exact:true}).check();
   const breakfast=meals.locator('.meal').first();
   await breakfast.getByText('Cantidades distintas por persona',{exact:true}).click();
@@ -1812,7 +1812,7 @@ async function checkMealRoutines(browser,url,errors){
   await page.getByRole('button',{name:'Configurar stock de Chocolate de comidas',exact:true}).click();
   const stock=page.getByRole('dialog',{name:'Chocolate de comidas · Stock',exact:true});
   assert.equal(await stock.getByLabel('Control del stock',{exact:true}).inputValue(),'meals');
-  const stockMeals=stock.locator('isl-meal-consumption');await stockMeals.getByText('Comidas en casa',{exact:true}).waitFor();
+  const stockMeals=stock.locator('isl-dev-meal-consumption');await stockMeals.getByText('Comidas en casa',{exact:true}).waitFor();
   assert.equal(await stockMeals.locator('#rows > details').first().evaluate(el=>el.open),false);
   await stockMeals.locator('#rows > details > summary').first().click();
   assert.equal(await stockMeals.locator('#rows > details').first().evaluate(el=>el.open),true);
@@ -1821,7 +1821,7 @@ async function checkMealRoutines(browser,url,errors){
   await stock.getByRole('button',{name:'Guardar',exact:true}).click();await stock.waitFor({state:'hidden'});
   await page.getByRole('button',{name:'Catálogo',exact:true}).click();await editCatalogProduct(catalog,'Editar Chocolate de comidas');
   const edit=catalog.getByRole('dialog',{name:'Editar producto',exact:true});await edit.getByRole('button',{name:'Reposición',exact:true}).click();await edit.locator('#product-replenishment > summary').click();
-  const editedMeals=edit.locator('isl-meal-consumption');await editedMeals.getByText('Comidas en casa',{exact:true}).waitFor();
+  const editedMeals=edit.locator('isl-dev-meal-consumption');await editedMeals.getByText('Comidas en casa',{exact:true}).waitFor();
   assert.equal(await editedMeals.getByLabel('Cantidad por persona en Comidas en casa · Franja horaria',{exact:true}).inputValue(),'3');
   await page.screenshot({path:'test-results/meal-product-mobile.png',fullPage:true});
   await edit.getByRole('button',{name:'Cerrar ventana',exact:true}).click();await edit.waitFor({state:'hidden'});
@@ -1852,12 +1852,12 @@ async function checkReferenceLogDescriptions(browser,url,errors){
   await page.evaluate(()=>{window.logFixture.entries=[{id:'fuet',time:new Date().toISOString(),kind:'catalog.products.updated',source:'integration',message:'Producto modificado: Fuet',product:'Fuet',changed_fields:['commercial_references'],reference_changes:[{id:'new-id',store:'carrefour',ean:'8410762005014',action:'updated',added_fields:['reference_id','url'],updated_fields:[],removed_fields:[]}]}];});
   await page.getByRole('button',{name:'Ajustes',exact:true}).click();
   await page.getByRole('button',{name:'Información',exact:true}).click();
-  const settings=page.locator('isl-settings');
+  const settings=page.locator('isl-dev-settings');
   assert.equal(await settings.locator('#settings-view-community').count(),0);
   assert.equal(await settings.getByRole('heading',{name:'Comunidad',exact:true}).isVisible(),true);
-  assert.ok(await settings.evaluate(el=>el.shadowRoot.querySelector('#settings-community').compareDocumentPosition(el.shadowRoot.querySelector('isl-logs')) & Node.DOCUMENT_POSITION_FOLLOWING));
+  assert.ok(await settings.evaluate(el=>el.shadowRoot.querySelector('#settings-community').compareDocumentPosition(el.shadowRoot.querySelector('isl-dev-logs')) & Node.DOCUMENT_POSITION_FOLLOWING));
   assert.equal(await settings.getByRole('button',{name:'Exportar mi catálogo',exact:true}).isVisible(),true);
-  const logs=page.locator('isl-logs');
+  const logs=page.locator('isl-dev-logs');
   await logs.getByText('Alternativa actualizada: Carrefour · EAN 8410762005014 · Añadidos: referencia de la tienda, URL',{exact:true}).waitFor();
   assert.equal(await logs.getByText(/Alternativa retirada|Nueva alternativa|Eliminados:/).count(),0);
   await page.screenshot({path:'test-results/reference-enrichment-log-mobile.png',fullPage:true});
@@ -1869,7 +1869,7 @@ async function checkReceiptPackageFormats(browser,url,errors){
   page.on('pageerror',error=>errors.push(error.message));
   await page.goto(url);
   await page.getByRole('button',{name:'Analítica',exact:true}).click();
-  const purchases=page.locator('isl-purchases');await purchases.locator('#ticket-file').waitFor({state:'attached'});
+  const purchases=page.locator('isl-dev-purchases');await purchases.locator('#ticket-file').waitFor({state:'attached'});
   await purchases.evaluate(el=>{
     const products=[{id:'coffee',name:'Café',unit:'uds',refill_quantity:1,stock_id:'',commercial_references:[]},{id:'drink',name:'Bebida',unit:'uds',refill_quantity:1,stock_id:'',commercial_references:[]}];
     window.catalogProducts=products;window.optionMetadata={'3017620422003':{content_quantity:500,content_unit:'g'}};
@@ -1899,7 +1899,7 @@ async function checkReceiptPackageFormats(browser,url,errors){
   assert.equal(await page.evaluate(()=>window.lastReceiptReprocess.lines[0].pack_quantity),450);
   assert.equal(await page.evaluate(()=>window.receiptHistory.length),1);
   assert.deepEqual(await page.evaluate(()=>window.lastReceiptConfirmation),saved);
-  await page.waitForFunction(()=>!document.querySelector('improved-shopping-list-panel').shadowRoot.querySelector('isl-purchases')._busy);
+  await page.waitForFunction(()=>!document.querySelector('improved-shopping-list-dev-panel').shadowRoot.querySelector('isl-dev-purchases')._busy);
   await purchases.evaluate(el=>{
     const products=[{id:'cacao',name:'Seitán',unit:'g',refill_quantity:1000,stock_id:'s1',revision:1,commercial_references:[]}];
     window.catalogProducts=products;
@@ -2005,7 +2005,7 @@ async function checkReceiptPackageFormats(browser,url,errors){
   assert.equal(await page.evaluate(()=>window.lastReceiptConfirmation.lines[0].save_price),true);
   assert.equal(await page.evaluate(()=>window.receiptDraft.lines[0].amount),2.5);
   assert.equal(await page.evaluate(()=>window.receiptDraft.lines[0].purchased_quantity),.5);
-  await page.waitForFunction(()=>!document.querySelector('improved-shopping-list-panel').shadowRoot.querySelector('isl-purchases')._busy);
+  await page.waitForFunction(()=>!document.querySelector('improved-shopping-list-dev-panel').shadowRoot.querySelector('isl-dev-purchases')._busy);
   await purchases.evaluate(el=>el.openPreview({token:'manual-kg-reprocess',receipt:structuredClone(window.receiptDraft),...window.receiptOptionsOverride,reprocess:true}));
   const reprocessRate=purchases.getByRole('dialog',{name:'Reprocesar ticket',exact:true});
   await reprocessRate.getByRole('spinbutton',{name:'Precio por kg de Seitán',exact:true}).fill('7');
@@ -2013,7 +2013,7 @@ async function checkReceiptPackageFormats(browser,url,errors){
   assert.equal(await page.evaluate(()=>window.lastReceiptReprocess.lines[0].manual_measure_price),7);
   await page.evaluate(()=>{window.receiptOptionsOverride=null;});
   // Reopened receipt proposals arrive with saved links, avoiding quantity calls.
-  await page.waitForFunction(()=>!document.querySelector('improved-shopping-list-panel').shadowRoot.querySelector('isl-purchases')._busy);
+  await page.waitForFunction(()=>!document.querySelector('improved-shopping-list-dev-panel').shadowRoot.querySelector('isl-dev-purchases')._busy);
   await purchases.evaluate(el=>{
     const products=[{id:'cacao',name:'Seitán',unit:'g',refill_quantity:1000,stock_id:'s1',revision:1,commercial_references:[{id:'kg',store:'carrefour',reference_id:'R-weight',content_quantity:null,content_unit:'kg',content_confirmed:true,measure_price:{price:5,quantity:1,unit:'kg',currency:'EUR'}}]}];
     const receipt={id:'cached-quantity',store:'carrefour',store_name:'Carrefour',purchased_at:new Date().toISOString(),total:2.5,lines:[{id:'0',description:'PESO RECUPERADO',reference_id:'R-weight',count:1,unit_price:2.5,amount:2.5,product_id:'cacao',matched:true}]};
@@ -2071,7 +2071,7 @@ async function checkReferenceFormats(browser,url,errors){
   });
   const page=await context.newPage();page.on('pageerror',error=>errors.push(error.message));await page.goto(url);
   await page.getByRole('button',{name:'Catálogo',exact:true}).click();
-  const catalog=page.locator('isl-catalog');
+  const catalog=page.locator('isl-dev-catalog');
   await catalog.getByRole('button',{name:'Cambiar a vista de filas',exact:true}).click();
   assert.deepEqual(await catalog.locator('#catalog-grid .product .title').allTextContents(),['Huevos','Pan']);
   await catalog.getByRole('button',{name:'Editar Huevos',exact:true}).click();
@@ -2167,8 +2167,8 @@ async function checkReferenceFormats(browser,url,errors){
 async function checkLidlReprocessLines(browser,url,errors){
   const context=await browser.newContext({viewport:{width:390,height:844}}),page=await context.newPage();
   page.on('pageerror',error=>errors.push(error.message));await page.goto(url);
-  await page.getByRole('button',{name:'Analítica',exact:true}).click();const purchases=page.locator('isl-purchases');
-  await page.waitForFunction(()=>Boolean(document.querySelector('improved-shopping-list-panel').shadowRoot.querySelector('isl-purchases')?._session));
+  await page.getByRole('button',{name:'Analítica',exact:true}).click();const purchases=page.locator('isl-dev-purchases');
+  await page.waitForFunction(()=>Boolean(document.querySelector('improved-shopping-list-dev-panel').shadowRoot.querySelector('isl-dev-purchases')?._session));
   await purchases.evaluate(el=>{
     const products=[{id:'cacao',name:'Pan',unit:'uds',refill_quantity:1,stock_id:'',commercial_references:[]},{id:'tomato',name:'Tomate',unit:'g',refill_quantity:500,stock_id:'',commercial_references:[]}];
     const receipt={id:'all-lines',store:'lidl',store_name:'Lidl',purchased_at:new Date().toISOString(),total:2.83,lines:[
@@ -2177,7 +2177,7 @@ async function checkLidlReprocessLines(browser,url,errors){
     el.openPreview({token:'all-lines',receipt,products,purchases:[],reprocess:true});
   });
   const dialog=purchases.getByRole('dialog',{name:'Reprocesar ticket',exact:true});
-  await dialog.waitFor();await page.waitForFunction(()=>!document.querySelector('improved-shopping-list-panel').shadowRoot.querySelector('isl-purchases')._busy);
+  await dialog.waitFor();await page.waitForFunction(()=>!document.querySelector('improved-shopping-list-dev-panel').shadowRoot.querySelector('isl-dev-purchases')._busy);
   assert.equal(await dialog.locator('.review-line').count(),2);
   assert.equal(await dialog.getByRole('button',{name:'Crear producto para TOMATE SWEET',exact:true}).count(),1);
   await dialog.getByRole('button',{name:'Vincular producto para TOMATE SWEET',exact:true}).click();
@@ -2195,8 +2195,8 @@ async function checkLidlReprocessLines(browser,url,errors){
 async function checkLidlMetadata(browser,url,errors){
   const context=await browser.newContext({viewport:{width:390,height:844}}),page=await context.newPage();
   page.on('pageerror',error=>errors.push(error.message));await page.goto(url);
-  await page.getByRole('button',{name:'Analítica',exact:true}).click();const purchases=page.locator('isl-purchases');
-  await page.waitForFunction(()=>Boolean(document.querySelector('improved-shopping-list-panel').shadowRoot.querySelector('isl-purchases')?._session));
+  await page.getByRole('button',{name:'Analítica',exact:true}).click();const purchases=page.locator('isl-dev-purchases');
+  await page.waitForFunction(()=>Boolean(document.querySelector('improved-shopping-list-dev-panel').shadowRoot.querySelector('isl-dev-purchases')?._session));
   await purchases.evaluate(el=>{
     const products=[{id:'cacao',name:'Yogur',unit:'g',refill_quantity:1000,stock_id:'s1',revision:1,commercial_references:[]}];
     const receipt={id:'lidl-web-format',store:'lidl',store_name:'Lidl',purchased_at:new Date().toISOString(),total:1.89,lines:[{id:'0',description:'GRIEGO LIGHT',count:1,unit_price:1.89,amount:1.89,reference_id:'5720480',product_id:'cacao',matched:true,pack_quantity:null,pack_unit:''}]};
@@ -2230,7 +2230,7 @@ async function checkBulkOptionLookup(browser,url,errors){
     window.optionLookupFixture={store:'carrefour',reference_id:'R-532601619',url:'https://www.carrefour.es/supermercado/pimiento-rojo-granel-1-kg-aprox/R-532601619/p',name:base.name,ean,sale_mode:'weight',content_quantity:null,content_unit:'kg',price:2.79,currency:'EUR',checked_at:1800000000,measure_price:{price:2.79,quantity:1,unit:'kg',currency:'EUR',source:'web',checked_at:1800000000}};
   });
   const page=await context.newPage();page.on('pageerror',error=>errors.push(error.message));await page.goto(url);
-  await page.getByRole('button',{name:'Catálogo',exact:true}).click();const catalog=page.locator('isl-catalog');await editCatalogProduct(catalog,'Editar Pimiento');
+  await page.getByRole('button',{name:'Catálogo',exact:true}).click();const catalog=page.locator('isl-dev-catalog');await editCatalogProduct(catalog,'Editar Pimiento');
   const form=catalog.getByRole('dialog',{name:'Editar producto',exact:true});await form.getByRole('button',{name:'Alternativas',exact:true}).click();
   const common=form.locator('.product-ean-group > .reference-common-fields'),store=form.locator('.product-option[data-store="carrefour"]');
   await openStoreOption(store);assert.equal(await common.getByLabel('Tipo de venta',{exact:true}).inputValue(),'package');
@@ -2373,7 +2373,7 @@ async function checkReaderEditor(browser,url,errors){
     await readerPage.evaluate(()=>{const reader=window.readerFixture.readers[0];window.readerFixture.pending=[{id:'scan-1',kind:'barcode',code:'0012345678905',reader_id:reader.id,reader_name:reader.name,time:new Date().toISOString()}];window.emitReaders();});
     await readerPage.screenshot({path:"test-results/readers-desktop.png",fullPage:true});
     await readerPage.getByRole("button",{name:"Catálogo",exact:true}).click();
-    const readerCatalog=readerPage.locator("isl-catalog");
+    const readerCatalog=readerPage.locator("isl-dev-catalog");
     await readerCatalog.getByRole("button",{name:"Pendiente",exact:true}).click();
     assert.equal(await readerCatalog.locator("#list-suggestions-group").evaluate(node => node.open),false);
     assert.equal(await readerCatalog.locator("#scan-suggestions-group").evaluate(node => node.open),false);
@@ -2509,7 +2509,7 @@ async function checkReaderEditor(browser,url,errors){
     const localCacao = await readerPage.evaluate(async()=>{
       const product=structuredClone(window.catalogProducts[0]);
       delete product.id;delete product.revision;
-      const result=await window.testPanel._hass.callWS({type:'improved_shopping_list/catalog/save',product:{...product,name:'Cacao',brand:'Marca local',format:'250 g',barcode:'',barcodes:[],nfc_tags:[],reader_actions:{}}});
+      const result=await window.testPanel._hass.callWS({type:'improved_shopping_list_dev/catalog/save',product:{...product,name:'Cacao',brand:'Marca local',format:'250 g',barcode:'',barcodes:[],nfc_tags:[],reader_actions:{}}});
       window.readerFixture.pending=[{id:'scan-off',kind:'barcode',code:'8410109115543',reader_name:'Cocina',identification:{status:'found',name:'Cacao soluble',product_name:'Cacao soluble comercial',brand:'Marca externa',quantity:'500 g'}}];
       window.emitReaders();
       return result.product.id;
@@ -2607,7 +2607,7 @@ async function checkPurchaseQuantities(browser,url,errors){
     await pavoRow.locator('.row-quantity').filter({hasText:'250 g'}).waitFor();
     assert.equal(await pavoRow.locator('.row-quantity button').count(),0);
     await quantityPage.getByRole('button',{name:'Catálogo',exact:true}).click();
-    const quantityCatalog=quantityPage.locator('isl-catalog');
+    const quantityCatalog=quantityPage.locator('isl-dev-catalog');
     assert.equal(await quantityCatalog.getByRole('group',{name:'Cantidad de Pavo',exact:true}).count(),0);
     await quantityCatalog.locator('#toggle-catalog-layout').click();
     const quantityBadge=quantityCatalog.getByRole('group',{name:'Cantidad de Pavo',exact:true});
@@ -2658,7 +2658,7 @@ async function checkPurchaseQuantities(browser,url,errors){
     await quantityBadge.getByRole('button',{name:'Aumentar cantidad: Pavo',exact:true}).isDisabled().then(value=>assert.equal(value,true));
     await quantityPage.evaluate(()=>{window.listData['todo.bring'].push({uid:'pavo-entry',summary:'Pavo',status:'needs_action'});window.emit('todo.bring');});
     await quantityPage.getByRole('button',{name:'Ajustes',exact:true}).click();
-    const quantitySettings=quantityPage.locator('isl-settings');
+    const quantitySettings=quantityPage.locator('isl-dev-settings');
     await quantitySettings.getByRole('button',{name:'General',exact:true}).click();
     assert.equal(await quantitySettings.getByLabel('Color del indicador de cantidad',{exact:true}).count(),0);
     await quantitySettings.getByRole('button',{name:'Guardar personalización',exact:true}).click();
@@ -2673,7 +2673,7 @@ async function checkRemovedTicketAlternative(browser,url,errors){
   const context=await browser.newContext({viewport:{width:390,height:844}});
   await context.addInitScript(()=>localStorage.setItem('catalog-fixture',JSON.stringify([{id:'ham',revision:1,name:'Jamón',category:'',tags:[],nfc_tags:[],barcode:'',currency:'EUR',image_url:'',icon:'',barcodes:['8410422111086'],store_links:{},commercial_references:['lidl','carrefour'].map(store=>({id:store,store,ean:'8410422111086',name:'Jamón de teruel',reference_id:'ham-'+store,url:'',content_quantity:100,content_unit:'g',content_confirmed:true}))}])));
   const page=await context.newPage();page.on('pageerror',error=>errors.push(error.message));await page.goto(url);
-  await page.getByRole('button',{name:'Catálogo',exact:true}).click();const catalog=page.locator('isl-catalog');
+  await page.getByRole('button',{name:'Catálogo',exact:true}).click();const catalog=page.locator('isl-dev-catalog');
   await catalog.evaluate(el=>{el.receiptStores={ham:['lidl','carrefour']};});
   await editCatalogProduct(catalog,'Editar Jamón');const form=catalog.getByRole('dialog',{name:'Editar producto',exact:true});
   await form.getByRole('button',{name:'Alternativas',exact:true}).click();
@@ -2703,7 +2703,7 @@ async function checkDifferentOptionEAN(browser,url,errors){
         ean:'3017620422003',name:'Otro envase 500 g',brand:'Otra marca',content_quantity:500,content_unit:'g',price:2.5,currency:'EUR',checked_at:1800000000};
     },previouslySavedWrongLink);
     const page=await context.newPage();page.on('pageerror',error=>errors.push(error.message));await page.goto(url);
-    await page.getByRole('button',{name:'Catálogo',exact:true}).click();const catalog=page.locator('isl-catalog');
+    await page.getByRole('button',{name:'Catálogo',exact:true}).click();const catalog=page.locator('isl-dev-catalog');
     await catalog.getByRole('button',{name:'Cambiar a vista de filas',exact:true}).click();
     await catalog.getByRole('button',{name:'Editar Producto',exact:true}).click();
     const form=catalog.getByRole('dialog',{name:'Editar producto',exact:true});await form.getByRole('button',{name:'Alternativas',exact:true}).click();
@@ -2748,7 +2748,7 @@ async function checkStagedOptionURL(browser,url,errors){
       {id:'original',store:'carrefour',name:'Envase original',ean:'8410422111086',reference_id:'R-old',url:'https://www.carrefour.es/supermercado/producto/R-old/p',brand:'Marca',content_quantity:70,content_unit:'ml',content_confirmed:true}]}]));
   });
   const page=await context.newPage();page.on('pageerror',error=>errors.push(error.message));await page.goto(url);
-  await page.getByRole('button',{name:'Catálogo',exact:true}).click();const catalog=page.locator('isl-catalog');
+  await page.getByRole('button',{name:'Catálogo',exact:true}).click();const catalog=page.locator('isl-dev-catalog');
   await catalog.getByRole('button',{name:'Cambiar a vista de filas',exact:true}).click();
   await catalog.getByRole('button',{name:'Editar Producto',exact:true}).click();
   const form=catalog.getByRole('dialog',{name:'Editar producto',exact:true});await form.getByRole('button',{name:'Alternativas',exact:true}).click();
@@ -2796,7 +2796,7 @@ async function checkSavedOptionURL(browser,url,errors){
     const page=await context.newPage();page.on('pageerror',error=>errors.push(error.message));await page.goto(url);
     const open=async()=>{
       await page.getByRole('button',{name:'Catálogo',exact:true}).click();
-      const catalog=page.locator('isl-catalog');
+      const catalog=page.locator('isl-dev-catalog');
       await catalog.locator('#toggle-catalog-layout').waitFor();
       const rows=catalog.getByRole('button',{name:'Cambiar a vista de filas',exact:true});
       if(await rows.isVisible())await rows.click();
@@ -2841,7 +2841,7 @@ async function checkMercadonaLocalReferences(browser,url,errors){
     localStorage.setItem('catalog-fixture',JSON.stringify([{id:'avocado',revision:1,name:'Aguacate',category:'',tags:[],image_url:'',icon:'',store_links:{lidl:original.url},barcodes:[original.ean],commercial_references:[original]}]));
   });
   const page=await context.newPage();page.on('pageerror',error=>errors.push(error.message));await page.goto(url);
-  await page.getByRole('button',{name:'Catálogo',exact:true}).click();const catalog=page.locator('isl-catalog');
+  await page.getByRole('button',{name:'Catálogo',exact:true}).click();const catalog=page.locator('isl-dev-catalog');
   await catalog.getByRole('button',{name:'Cambiar a vista de filas',exact:true}).click();
   await catalog.getByRole('button',{name:'Editar Aguacate',exact:true}).click();
   const form=catalog.getByRole('dialog',{name:'Editar producto',exact:true});await form.getByRole('button',{name:'Alternativas',exact:true}).click();
@@ -2874,7 +2874,7 @@ async function checkAppearanceInLists(browser,url,errors){
   const context=await browser.newContext({viewport:{width:1280,height:960}}),page=await context.newPage();
   page.on('pageerror',error=>errors.push(error.message));await page.goto(url);
   await page.getByRole('button',{name:'Ajustes',exact:true}).click();
-  const settings=page.locator('isl-settings'),appearance=settings.locator('#settings-appearance');
+  const settings=page.locator('isl-dev-settings'),appearance=settings.locator('#settings-appearance');
   await appearance.waitFor();
   assert.equal(await settings.getByRole('button',{name:'Personalización',exact:true}).count(),0);
   assert.equal(await settings.locator('#recipe-gradient-start, #recipe-gradient-end, #recipe-appearance-preview').count(),0);
@@ -2908,7 +2908,7 @@ async function checkMobileSpacing(browser,url,errors){
     localStorage.setItem('category-fixture',JSON.stringify([{id:'despensa',name:'Despensa',color:'#f9a825',icon:'mdi:food'}]));
   });
   const page=await context.newPage();page.on('pageerror',error=>errors.push(error.message));await page.goto(url);
-  const catalog=page.locator('isl-catalog');
+  const catalog=page.locator('isl-dev-catalog');
   for(const width of [320,390,650]){
     await page.setViewportSize({width,height:844});
     for(const view of ['catalog','stock','analytics','settings','shopping']){
@@ -2927,7 +2927,7 @@ async function checkMobileSpacing(browser,url,errors){
         assert.ok(await page.locator('#stock-heading').evaluate(n=>n.scrollWidth<=n.clientWidth+1));
         await page.screenshot({path:'test-results/mobile-stock-spacing-'+width+'.png',fullPage:true});
       }
-      if(view==='settings')assert.ok(await page.locator('isl-settings .settings-tabs').evaluate(nav=>parseFloat(getComputedStyle(nav).gap)>=10));
+      if(view==='settings')assert.ok(await page.locator('isl-dev-settings .settings-tabs').evaluate(nav=>parseFloat(getComputedStyle(nav).gap)>=10));
     }
     assert.equal(await page.locator('main').evaluate(n=>n.getBoundingClientRect().right<=innerWidth+1),true);
   }
@@ -2938,9 +2938,9 @@ async function checkStockReaders(browser,url,errors){
   const context=await browser.newContext({viewport:{width:1280,height:960}}),page=await context.newPage();
   page.on('pageerror',error=>errors.push(error.message));await page.goto(url);
   await page.getByRole('button',{name:'Ajustes',exact:true}).click();
-  const settings=page.locator('isl-settings');await settings.locator('#settings-view-lists').waitFor();
+  const settings=page.locator('isl-dev-settings');await settings.locator('#settings-view-lists').waitFor();
   assert.equal(await settings.getByRole('button',{name:'Lectores',exact:true}).count(),0);
-  assert.equal(await settings.locator('isl-readers').count(),0);
+  assert.equal(await settings.locator('isl-dev-readers').count(),0);
   await page.getByRole('button',{name:'Stock',exact:true}).click();
   await page.locator('#stock-add-submit').waitFor({state:'attached'});
   for(const width of [1280,390,320]){
@@ -2973,7 +2973,7 @@ async function checkGroupedCatalogBadges(browser,url,errors){
     localStorage.setItem('category-fixture',JSON.stringify([{id:'meat',name:'Embutido',color:'#e6a8d7',icon:'mdi:food-drumstick'}]));
   });
   const page=await context.newPage();page.on('pageerror',error=>errors.push(error.message));await page.goto(url);
-  await page.getByRole('button',{name:'Catálogo',exact:true}).click();const catalog=page.locator('isl-catalog');
+  await page.getByRole('button',{name:'Catálogo',exact:true}).click();const catalog=page.locator('isl-dev-catalog');
   await catalog.getByRole('button',{name:'Cambiar a vista de filas',exact:true}).click();
   await catalog.getByRole('button',{name:'Agrupar por categorías',exact:true}).click();
   const group=catalog.locator('.category-group').first();await group.locator('summary').click();
@@ -2994,7 +2994,7 @@ async function checkCatalogViews(browser,url,errors){
     localStorage.setItem('recommendation-fixture',JSON.stringify([{id:'kept-group',name:'Grupo guardado',product_ids:[]}]));
   });
   const page=await context.newPage();page.on('pageerror',error=>{errors.push(error.message);if(process.env.DEBUG_UI_ERRORS)console.error(error.stack);});await page.goto(url);
-  await page.getByRole('button',{name:'Catálogo',exact:true}).click();const catalog=page.locator('isl-catalog');
+  await page.getByRole('button',{name:'Catálogo',exact:true}).click();const catalog=page.locator('isl-dev-catalog');
   await catalog.locator('#view-products').waitFor();
   assert.deepEqual(await catalog.locator('.catalog-tabs .tab-label').allTextContents(),['Productos','Categorías','Pendiente']);
   assert.equal(await catalog.locator('#view-recipes,#view-recommendations').count(),0);
@@ -3034,7 +3034,7 @@ async function checkCatalogViews(browser,url,errors){
   const information=catalog.locator('#pending-information-group');
   assert.equal(await catalog.locator('#pending-information-title').textContent(),'Productos pendientes de información (1)');
   assert.equal(await information.locator('.pending-information-row').count(),0); // Rows are built only on expansion.
-  assert.equal(await information.locator('isl-pending-information-refresh').count(),0);
+  assert.equal(await information.locator('isl-dev-pending-information-refresh').count(),0);
   assert.deepEqual(await catalog.locator('#suggestions-list > details > summary > ha-icon').evaluateAll(nodes=>nodes.map(node=>node.getAttribute('icon'))),['mdi:cart-outline','mdi:barcode-scan','mdi:text-box-edit-outline']);
   assert.equal(await catalog.locator('#suggestions-list > details > summary').evaluateAll(nodes=>new Set(nodes.map(node=>getComputedStyle(node).padding)).size),1);
   await information.locator('summary').click();
@@ -3057,12 +3057,12 @@ async function checkLidlCatalogPrices(browser,url,errors){
     localStorage.setItem('catalog-fixture',JSON.stringify([{id:'yogurt',revision:1,name:'Yogur',category:'',tags:[],store_links:{},commercial_references:[
       {id:'lidl-option',store:'lidl',name:'GRIEGO NATURAL LIGHT',reference_id:'11139074',ticket_reference_id:'5720480',ean:'',url:''},
       {id:'carrefour-option',store:'carrefour',name:'YOGUR',reference_id:'R-prod123',ean:'',url:''}]}]));
-    localStorage.setItem('isl-catalog-layout','rows');localStorage.setItem('isl-catalog-order','categories');localStorage.setItem('isl-catalog-grouping','store');
+    localStorage.setItem('isl-dev-catalog-layout','rows');localStorage.setItem('isl-dev-catalog-order','categories');localStorage.setItem('isl-dev-catalog-grouping','store');
     window.storePriceFixture=[{catalog_product_id:'yogurt',store:'lidl',price:1.39,currency:'EUR',source:'receipt',reference_id:'5720480',commercial_reference_id:'lidl-option'},
       {catalog_product_id:'yogurt',store:'carrefour',price:2.99,currency:'EUR',source:'receipt',commercial_reference_id:'carrefour-option'}];
   });
   const page=await context.newPage();page.on('pageerror',error=>errors.push(error.message));await page.goto(url);
-  await page.getByRole('button',{name:'Catálogo',exact:true}).click();const catalog=page.locator('isl-catalog');
+  await page.getByRole('button',{name:'Catálogo',exact:true}).click();const catalog=page.locator('isl-dev-catalog');
   const lidl=catalog.locator('.category-group[data-group-key="store:lidl"]'),carrefour=catalog.locator('.category-group[data-group-key="store:carrefour"]');
   await lidl.locator('summary').click();await carrefour.locator('summary').click();
   await lidl.locator('.row-price').waitFor();assert.match(await lidl.locator('.row-price').textContent(),/1,39/);
@@ -3094,7 +3094,7 @@ async function checkCatalogComparison(browser,url,errors){
   });
   await page.getByRole('button',{name:'Analítica',exact:true}).click();
   await page.getByRole('tab',{name:'Comparativa',exact:true}).click();
-  const analytics=page.locator('isl-analytics');await analytics.locator('tbody tr').first().waitFor();
+  const analytics=page.locator('isl-dev-analytics');await analytics.locator('tbody tr').first().waitFor();
   assert.equal(await analytics.locator('tbody tr').count(),1);
   assert.equal(await analytics.locator('tbody tr[data-product-id="compared"]').count(),1);
   assert.equal(await analytics.locator('tbody tr[data-product-id="unknown"]').count(),0);
@@ -3127,8 +3127,8 @@ async function checkCatalogSources(browser,url,errors){
   page.on('pageerror',error=>errors.push(error.message));await page.goto(url);
   assert.equal(await page.evaluate(()=>window.catalogSourceSubscriptions??0),0);
   await page.getByRole('button',{name:'Ajustes',exact:true}).click();
-  const settings=page.locator('isl-settings');await settings.getByRole('button',{name:'Tiendas',exact:true}).click();
-  const source=settings.locator('isl-catalog-sources'),toggle=source.getByRole('switch',{name:'Completar productos con Alcampo'});
+  const settings=page.locator('isl-dev-settings');await settings.getByRole('button',{name:'Tiendas',exact:true}).click();
+  const source=settings.locator('isl-dev-catalog-sources'),toggle=source.getByRole('switch',{name:'Completar productos con Alcampo'});
   await toggle.waitFor();assert.equal(await toggle.isChecked(),false);
   await source.getByRole('button',{name:'Configurar catálogo de Alcampo',exact:true}).click();
   const options=source.locator('#catalog-options-dialog'),visible=options.getByRole('switch',{name:'Mostrar tienda en el catálogo',exact:true});
@@ -3145,7 +3145,7 @@ async function checkCatalogSources(browser,url,errors){
   assert.ok(await popup.evaluate(el=>el.scrollWidth<=el.clientWidth+1));
   await page.screenshot({path:'test-results/catalog-source-progress-mobile.png',fullPage:true});
   await popup.getByRole('button',{name:'Cerrar ventana',exact:true}).click();await toggle.uncheck();
-  const mercadona=source.locator('isl-mercadona-catalog'),mercadonaToggle=mercadona.getByRole('switch',{name:'Completar productos con Mercadona',exact:true});
+  const mercadona=source.locator('isl-dev-mercadona-catalog'),mercadonaToggle=mercadona.getByRole('switch',{name:'Completar productos con Mercadona',exact:true});
   assert.equal(await mercadonaToggle.isChecked(),false);
   await mercadona.getByRole('button',{name:'Configurar catálogo de Mercadona',exact:true}).click();
   const mercadonaOptions=mercadona.locator('#catalog-options-dialog');
@@ -3170,7 +3170,7 @@ async function checkCatalogSources(browser,url,errors){
   assert.ok(await page.evaluate(()=>window.catalogStatusReads>0));
   await mercadonaPopup.getByRole('button',{name:'Cerrar ventana',exact:true}).click();await mercadonaToggle.uncheck();
   for(const [key,name] of [['masymas','Masymas'],['bm','BM'],['consum','Consum'],['lasirena','La Sirena'],['eroski','Eroski']]){
-    const tile=source.locator(`isl-${key}-catalog`),enabled=tile.getByRole('switch',{name:`Completar productos con ${name}`,exact:true});
+    const tile=source.locator(`isl-dev-${key}-catalog`),enabled=tile.getByRole('switch',{name:`Completar productos con ${name}`,exact:true});
     assert.equal(await enabled.isChecked(),false);
     await tile.getByRole('button',{name:`Configurar catálogo de ${name}`,exact:true}).click();
     const options=tile.getByRole('dialog',{name:`Catálogo de ${name}`,exact:true});
@@ -3181,7 +3181,7 @@ async function checkCatalogSources(browser,url,errors){
     await progress.getByText('100 %',{exact:true}).waitFor();
     await progress.getByRole('button',{name:'Cerrar ventana',exact:true}).click();await enabled.uncheck();
   }
-  assert.equal(await source.locator('isl-eci-catalog').count(),0);
+  assert.equal(await source.locator('isl-dev-eci-catalog').count(),0);
   assert.equal(await source.getByRole('switch',{name:'Completar productos con El Corte Inglés',exact:true}).count(),0);
   await settings.getByRole('button',{name:'General',exact:true}).click();
   assert.equal(await page.evaluate(()=>window.catalogSourceSubscriptions),0);
@@ -3192,7 +3192,7 @@ async function checkCatalogSources(browser,url,errors){
     {id:'b',store:'alcampo',ean:'08410199023094',name:'Producto de marca',url:'',reference_id:'b'},
     {id:'c',store:'carrefour',ean:'8410422111086',name:'Otro formato',url:'',reference_id:'c'}]}])));
   const p=await grouped.newPage();p.on('pageerror',error=>errors.push(error.message));await p.goto(url);
-  await p.getByRole('button',{name:'Catálogo',exact:true}).click();const catalog=p.locator('isl-catalog');
+  await p.getByRole('button',{name:'Catálogo',exact:true}).click();const catalog=p.locator('isl-dev-catalog');
   await catalog.getByRole('button',{name:'Cambiar a vista de filas',exact:true}).click();await catalog.getByRole('button',{name:'Editar Producto',exact:true}).click();
   const form=catalog.getByRole('dialog',{name:'Editar producto',exact:true});await form.getByRole('button',{name:'Alternativas',exact:true}).click();
   assert.equal(await form.locator('.product-ean-group').count(),1);assert.equal(await form.locator('.product-ean-group[open]').count(),0);
@@ -3363,32 +3363,32 @@ async function checkLazySections(browser,url,errors){
   const heavy=['/stock-panel.js','/catalog-panel.js','/settings-panel.js','/analytics-panel.js','/purchases-panel.js','/vendor/leaflet/leaflet.js'];
   assert.deepEqual(requests.filter(path=>heavy.includes(path)),[]);
   assert.equal(await page.evaluate(()=>window.wsRequests.some(type=>/\/(stock|readers|receipts)\//.test(type))),false);
-  assert.equal(await page.evaluate(()=>document.querySelector('improved-shopping-list-panel').shadowRoot.querySelector('isl-catalog').shadowRoot),null);
-  await page.getByRole('button',{name:'Catálogo',exact:true}).click();await page.locator('isl-catalog #catalog-grid').waitFor({state:'attached'});
+  assert.equal(await page.evaluate(()=>document.querySelector('improved-shopping-list-dev-panel').shadowRoot.querySelector('isl-dev-catalog').shadowRoot),null);
+  await page.getByRole('button',{name:'Catálogo',exact:true}).click();await page.locator('isl-dev-catalog #catalog-grid').waitFor({state:'attached'});
   assert.ok(requests.includes('/catalog-panel.js'));assert.ok(!requests.includes('/settings-panel.js'));assert.ok(!requests.includes('/vendor/leaflet/leaflet.js'));
-  assert.equal(await page.evaluate(()=>document.querySelector('improved-shopping-list-panel')._catalog===document.querySelector('improved-shopping-list-panel').shadowRoot.querySelector('isl-catalog')._catalog),true);
-  const catalogGets=await page.evaluate(()=>window.wsRequests.filter(type=>type==='improved_shopping_list/catalog/get').length);
+  assert.equal(await page.evaluate(()=>document.querySelector('improved-shopping-list-dev-panel')._catalog===document.querySelector('improved-shopping-list-dev-panel').shadowRoot.querySelector('isl-dev-catalog')._catalog),true);
+  const catalogGets=await page.evaluate(()=>window.wsRequests.filter(type=>type==='improved_shopping_list_dev/catalog/get').length);
   await page.getByRole('button',{name:'Lista',exact:true}).click();await page.locator('#pending').getByText('Cacao',{exact:true}).waitFor();
-  await page.getByRole('button',{name:'Catálogo',exact:true}).click();await page.locator('isl-catalog #catalog-grid').waitFor({state:'attached'});
-  assert.equal(await page.evaluate(()=>window.wsRequests.filter(type=>type==='improved_shopping_list/catalog/get').length),catalogGets);
-  await page.getByRole('button',{name:'Analítica',exact:true}).click();await page.locator('isl-purchases #history').waitFor({state:'attached'});
+  await page.getByRole('button',{name:'Catálogo',exact:true}).click();await page.locator('isl-dev-catalog #catalog-grid').waitFor({state:'attached'});
+  assert.equal(await page.evaluate(()=>window.wsRequests.filter(type=>type==='improved_shopping_list_dev/catalog/get').length),catalogGets);
+  await page.getByRole('button',{name:'Analítica',exact:true}).click();await page.locator('isl-dev-purchases #history').waitFor({state:'attached'});
   assert.ok(requests.includes('/purchases-panel.js'));assert.ok(!requests.includes('/analytics-panel.js'));
-  await page.getByRole('tab',{name:'Comparativa',exact:true}).click();await page.locator('isl-analytics #comparison').waitFor({state:'attached'});
+  await page.getByRole('tab',{name:'Comparativa',exact:true}).click();await page.locator('isl-dev-analytics #comparison').waitFor({state:'attached'});
   assert.ok(requests.includes('/analytics-panel.js'));
-  await page.getByRole('button',{name:'Ajustes',exact:true}).click();await page.locator('isl-settings #settings-view-lists').waitFor();assert.ok(requests.includes('/settings-panel.js'));
+  await page.getByRole('button',{name:'Ajustes',exact:true}).click();await page.locator('isl-dev-settings #settings-view-lists').waitFor();assert.ok(requests.includes('/settings-panel.js'));
   await page.getByRole('button',{name:'Lista',exact:true}).click();await page.locator('#pending').getByText('Cacao',{exact:true}).waitFor();
   assert.equal(await page.evaluate(()=>window.listenerCount()),5);
   await page.evaluate(()=>{
-    const old=window.testPanel,fresh=document.createElement('improved-shopping-list-panel');
+    const old=window.testPanel,fresh=document.createElement('improved-shopping-list-dev-panel');
     fresh.hass=old._hass;fresh.panel=old._panel;old.replaceWith(fresh);window.testPanel=fresh;
   });
   await page.locator('#pending').getByText('Cacao',{exact:true}).waitFor();
-  assert.equal(await page.locator('isl-catalog dialog').count(),0);
-  assert.equal(await page.locator('isl-settings dialog').count(),0);
+  assert.equal(await page.locator('isl-dev-catalog dialog').count(),0);
+  assert.equal(await page.locator('isl-dev-settings dialog').count(),0);
   assert.equal(await page.locator('#stock-editor-dialog').count(),0);
   assert.equal(await page.evaluate(()=>window.listenerCount()),5);
   await page.getByRole('button',{name:'Stock',exact:true}).click();await page.locator('#stock-editor-dialog').waitFor({state:'attached'});
-  await page.getByRole('button',{name:'Catálogo',exact:true}).click();await page.locator('isl-catalog #catalog-grid').waitFor({state:'attached'});
+  await page.getByRole('button',{name:'Catálogo',exact:true}).click();await page.locator('isl-dev-catalog #catalog-grid').waitFor({state:'attached'});
   await page.evaluate(()=>window.testPanel.remove());assert.equal(await page.evaluate(()=>window.listenerCount()),0);
   console.log('Lazy sections: no hidden views, stock/readers/history requests or map at startup; shared catalog and navigation verified.');
   await context.close();
@@ -3409,7 +3409,7 @@ async function checkAttentionIndicators(browser,url,errors){
     assert.equal(await page.locator('header').evaluate(header=>header.scrollWidth>innerWidth),false);
   }
   await page.getByRole('button',{name:'Catálogo',exact:true}).click();
-  const catalog=page.locator('isl-catalog');await catalog.locator('#view-suggestions[data-attention=true]').waitFor();
+  const catalog=page.locator('isl-dev-catalog');await catalog.locator('#view-suggestions[data-attention=true]').waitFor();
   assert.match(await catalog.locator('#view-suggestions').getAttribute('aria-description'),/2$/);
   await page.getByRole('button',{name:'Analítica',exact:true}).click();
   await page.locator('#purchases-tab[data-attention=true]').waitFor();
@@ -3430,7 +3430,7 @@ async function main() {
   await fs.mkdir("test-results", { recursive: true });
   const server = http.createServer(async (req, res) => {
     const pathname = new URL(req.url, "http://localhost").pathname;
-    if (pathname === "/improved_shopping_list_icons/fixture.svg") {
+    if (pathname === "/improved_shopping_list_dev_icons/fixture.svg") {
       res.setHeader("content-type", "image/svg+xml");
       res.end('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="#267052" d="M4 4h16v16H4z"/></svg>');
       return;
@@ -3539,7 +3539,7 @@ async function main() {
         root.querySelectorAll("*").forEach(element => { if (element.shadowRoot) visit(element.shadowRoot); });
       };
       visit(document);
-      return dialogs.filter(dialog => dialog.querySelectorAll(".isl-dialog-close[aria-label='Cerrar ventana']").length === 1).length;
+      return dialogs.filter(dialog => dialog.querySelectorAll(".isl-dev-dialog-close[aria-label='Cerrar ventana']").length === 1).length;
     }), 1);
     await page.getByRole("button", { name: "Seleccionar lista", exact: true }).click();
     const listDialog = page.getByRole("dialog", { name: "Seleccionar lista", exact: true });
@@ -3617,7 +3617,7 @@ async function main() {
     await page.goto(url);
     await page.locator("#pending").getByText("Cacao", { exact: true }).waitFor();
     await page.getByRole("button", { name: "Catálogo", exact: true }).click();
-    const catalog = page.locator("isl-catalog");
+    const catalog = page.locator("isl-dev-catalog");
     const categories = catalog.locator("#catalog-categories");
     assert.equal(await catalog.locator(".heading #new-product").count(), 0);
     assert.equal(await catalog.locator(".catalog-product-controls #new-product ha-icon").getAttribute("icon"), "mdi:plus-thick");
@@ -3666,7 +3666,7 @@ async function main() {
     // Existing manual prices remain readable after removing their edit controls.
     await page.evaluate(async()=>{
       const product=structuredClone(window.catalogProducts[0]);
-      await window.testPanel._hass.callWS({type:'improved_shopping_list/catalog/save',product:{...product,price:2.59,currency:'EUR'}});
+      await window.testPanel._hass.callWS({type:'improved_shopping_list_dev/catalog/save',product:{...product,price:2.59,currency:'EUR'}});
     });
     const productCard = catalog.locator("#catalog-grid article").first();
     const callsBeforeProductControls = await page.evaluate(()=>window.calls.length);
@@ -3698,8 +3698,8 @@ async function main() {
       const sizes = [];
       for (const columns of width > 650 ? [1,3,6] : [1,2,4]) {
         await catalog.evaluate((node,columns) => {
-          node.style.setProperty("--isl-columns", columns);
-          node.style.setProperty("--isl-mobile-columns", columns);
+          node.style.setProperty("--isl-dev-columns", columns);
+          node.style.setProperty("--isl-dev-mobile-columns", columns);
         }, columns);
         await assertCatalogBadge();
         assert.ok(await productCard.evaluate(card => {
@@ -3717,7 +3717,7 @@ async function main() {
       assert.ok(sizes[0].icon > sizes.at(-1).icon);
       assert.ok(sizes[0].image > sizes.at(-1).image);
     }
-    await catalog.evaluate(node => { node.style.removeProperty("--isl-columns"); node.style.removeProperty("--isl-mobile-columns"); });
+    await catalog.evaluate(node => { node.style.removeProperty("--isl-dev-columns"); node.style.removeProperty("--isl-dev-mobile-columns"); });
     await page.setViewportSize({width:1280,height:960});
     assert.equal(await productCard.locator(".product-controls button").first().textContent(), "");
     assert.equal(await productCard.locator(".product-controls button").count(), 1);
@@ -3738,7 +3738,7 @@ async function main() {
     // Tags are no longer editable; legacy metadata survives unrelated product edits.
     await page.evaluate(async()=>{
       const product=window.catalogProducts[0];
-      await window.testPanel._hass.callWS({type:'improved_shopping_list/catalog/save',product:{...product,icon:'mdi:view-grid',tags:['Danóne','Carrefour','Desayuno'],notes:'Existing note'}});
+      await window.testPanel._hass.callWS({type:'improved_shopping_list_dev/catalog/save',product:{...product,icon:'mdi:view-grid',tags:['Danóne','Carrefour','Desayuno'],notes:'Existing note'}});
     });
     await editCatalogProduct(catalog,"Editar Yogur natural");
     assert.equal(await catalog.locator("#product-main").isVisible(),true);
@@ -3779,8 +3779,8 @@ async function main() {
       await page.setViewportSize({width,height:960});
       for (const columns of width > 650 ? [1,3,6] : [1,2,4]) {
         await categories.evaluate((node,columns) => {
-          node.style.setProperty("--isl-columns",columns);
-          node.style.setProperty("--isl-mobile-columns",columns);
+          node.style.setProperty("--isl-dev-columns",columns);
+          node.style.setProperty("--isl-dev-mobile-columns",columns);
         },columns);
         assert.equal(await categories.locator("#category-grid").evaluate(grid=>getComputedStyle(grid).gridTemplateColumns.split(" ").length),Math.min(columns,width>650?5:2));
         assert.ok(await categories.locator("#category-grid article").evaluateAll(cards=>cards.every(card=>{
@@ -3804,7 +3804,7 @@ async function main() {
       }
       await page.screenshot({path:`test-results/categories-square-${width}.png`,fullPage:true});
     }
-    await categories.evaluate(node => { node.categories=node._testOriginalCategories;delete node._testOriginalCategories;node.style.removeProperty("--isl-columns"); node.style.removeProperty("--isl-mobile-columns"); });
+    await categories.evaluate(node => { node.categories=node._testOriginalCategories;delete node._testOriginalCategories;node.style.removeProperty("--isl-dev-columns"); node.style.removeProperty("--isl-dev-mobile-columns"); });
     await page.setViewportSize({width:1280,height:960});
     await page.screenshot({ path: "test-results/categories-desktop.png", fullPage: true });
     await catalog.getByRole("button", { name: "Productos", exact: true }).click();
@@ -4099,7 +4099,7 @@ async function main() {
     await suggestionPage.goto(url);
     await suggestionPage.locator("#pending").getByText("Cacao", { exact: true }).waitFor();
     await suggestionPage.getByRole("button", { name: "Catálogo", exact: true }).click();
-    const suggestionCatalog = suggestionPage.locator("isl-catalog");
+    const suggestionCatalog = suggestionPage.locator("isl-dev-catalog");
     await suggestionCatalog.getByRole("button", { name:"Categorías", exact:true }).click();
     const suggestionCategories = suggestionCatalog.locator("#catalog-categories");
     await suggestionCatalog.getByRole("button", { name:"Nueva categoría", exact:true }).click();
@@ -4282,7 +4282,7 @@ async function main() {
     const resumePage=await resumeContext.newPage();
     resumePage.on('pageerror',error=>errors.push(error.message));
     await resumePage.goto(url);
-    const resumeSettings=resumePage.locator('isl-settings');
+    const resumeSettings=resumePage.locator('isl-dev-settings');
     const resumeDialog=resumeSettings.getByRole('dialog',{name:'Actualización de precios',exact:true});
     for(let reload=0;reload<2;reload++){
       if(reload)await resumePage.reload();
@@ -4292,25 +4292,25 @@ async function main() {
       await resumeDialog.waitFor();
       assert.equal(await resumeDialog.locator('#prices-progress-percentage').textContent(),'17 %');
       assert.match(await resumeDialog.locator('#prices-progress-status').textContent(),/1 de 6 referencias/);
-      assert.equal(await resumePage.evaluate(()=>window.calls.filter(call=>call.type==='improved_shopping_list/settings/refresh_all_prices').length),0);
+      assert.equal(await resumePage.evaluate(()=>window.calls.filter(call=>call.type==='improved_shopping_list_dev/settings/refresh_all_prices').length),0);
       await resumeDialog.getByRole('button',{name:'Cerrar',exact:true}).click();
     }
     // A reconnect can leave the local cache empty before the initial subscription arrives.
     await resumePage.evaluate(()=>{
-      window.testPanel.shadowRoot.querySelector('isl-settings')._latestPriceProgress=null;
+      window.testPanel.shadowRoot.querySelector('isl-dev-settings')._latestPriceProgress=null;
       window.manualResumeProgress=JSON.parse(localStorage.getItem('price-progress-fixture'));
     });
     await resumeSettings.locator('#refresh-all-prices').click();
     await resumeDialog.locator('#prices-progress-percentage').filter({hasText:'17 %'}).waitFor();
-    assert.equal(await resumePage.evaluate(()=>window.testPanel.shadowRoot.querySelector('isl-settings')._latestPriceProgress.batch_id),'background-batch');
+    assert.equal(await resumePage.evaluate(()=>window.testPanel.shadowRoot.querySelector('isl-dev-settings')._latestPriceProgress.batch_id),'background-batch');
     await resumeDialog.getByRole('button',{name:'Cerrar',exact:true}).click();
-    await resumePage.evaluate(()=>{window.delayManualRefresh=true;window.testPanel.shadowRoot.querySelector('isl-settings')._latestPriceProgress=null;});
+    await resumePage.evaluate(()=>{window.delayManualRefresh=true;window.testPanel.shadowRoot.querySelector('isl-dev-settings')._latestPriceProgress=null;});
     await resumeSettings.locator('#refresh-all-prices').click();
     await resumePage.waitForFunction(()=>typeof window.releaseManualRefresh==='function');
     await resumeDialog.getByRole('button',{name:'Cerrar',exact:true}).click();
     await resumeSettings.locator('#refresh-all-prices').click();
     assert.equal(await resumeDialog.isVisible(),true);
-    assert.equal(await resumePage.evaluate(()=>window.calls.filter(call=>call.type==='improved_shopping_list/settings/refresh_all_prices').length),2);
+    assert.equal(await resumePage.evaluate(()=>window.calls.filter(call=>call.type==='improved_shopping_list_dev/settings/refresh_all_prices').length),2);
     await resumePage.evaluate(()=>{window.delayManualRefresh=false;window.releaseManualRefresh();});
     await resumeDialog.locator('#prices-progress-percentage').filter({hasText:'17 %'}).waitFor();
     await resumeContext.close();
@@ -4322,7 +4322,7 @@ async function main() {
     await settingsPage.goto(url);
     await settingsPage.locator("#pending").getByText("Cacao", { exact: true }).waitFor();
     assert.equal(await settingsPage.locator("#nav-settings ha-icon").getAttribute("icon"), "mdi:cog");
-    const settingsView = settingsPage.locator("isl-settings");
+    const settingsView = settingsPage.locator("isl-dev-settings");
     await settingsPage.getByRole("button", { name: "Ajustes", exact: true }).click();
     await settingsView.getByRole("button",{name:"Tiendas",exact:true}).click();
     assert.equal(await settingsView.locator("#settings-view-stores ha-icon").getAttribute("icon"), "mdi:store");
@@ -4360,7 +4360,7 @@ async function main() {
     assert.equal(await updateAll.textContent(),'');
     assert.equal(await updateAll.locator('ha-icon').getAttribute('icon'),'mdi:refresh');
     await settingsPage.evaluate(()=>{
-      document.querySelector('improved-shopping-list-panel').shadowRoot.querySelector('isl-settings')._data.hass.config={time_zone:'Europe/Madrid'};
+      document.querySelector('improved-shopping-list-dev-panel').shadowRoot.querySelector('isl-dev-settings')._data.hass.config={time_zone:'Europe/Madrid'};
       window.lastPriceUpdateFixture=Date.parse('2026-10-20T18:35:00Z')/1000;
       for(const callback of window.storeProgressListeners)callback({running:false,last_updated:window.lastPriceUpdateFixture});
     });
@@ -4368,20 +4368,20 @@ async function main() {
     const allPricesDialog=settingsView.getByRole('dialog',{name:'Actualización de precios',exact:true});
     await allPricesDialog.waitFor();
     await settingsView.locator('#refresh-all-prices:not([disabled])').waitFor();
-    assert.equal(await settingsPage.evaluate(()=>window.calls.filter(call=>call.type==='improved_shopping_list/settings/refresh_all_prices').length),1);
+    assert.equal(await settingsPage.evaluate(()=>window.calls.filter(call=>call.type==='improved_shopping_list_dev/settings/refresh_all_prices').length),1);
     assert.equal(await settingsView.locator('#stores-refresh-error').isVisible(),false);
     await settingsPage.evaluate(()=>{for(const callback of window.storeProgressListeners)callback({running:true,total:4,processed:1,estimated_seconds:900,errors:{},last_updated:window.lastPriceUpdateFixture});});
     assert.equal(await allPricesDialog.locator('#prices-progress-bar').evaluate(node=>node.value),1);
     assert.equal(await allPricesDialog.locator('#prices-progress-percentage').textContent(),'25 %');
     await allPricesDialog.getByRole('button',{name:'Cerrar',exact:true}).click();
     await updateAll.click();
-    assert.equal(await settingsPage.evaluate(()=>window.calls.filter(call=>call.type==='improved_shopping_list/settings/refresh_all_prices').length),1);
+    assert.equal(await settingsPage.evaluate(()=>window.calls.filter(call=>call.type==='improved_shopping_list_dev/settings/refresh_all_prices').length),1);
     assert.equal(await allPricesDialog.locator('#prices-progress-percentage').textContent(),'25 %');
     await settingsPage.screenshot({path:'test-results/all-prices-progress-mobile.png',fullPage:true});
     await settingsPage.evaluate(()=>{for(const callback of window.storeProgressListeners)callback({running:false,total:4,processed:4,estimated_seconds:0,errors:{},last_updated:window.lastPriceUpdateFixture});});
     assert.equal(await allPricesDialog.locator('#prices-progress-percentage').textContent(),'100 %');
     await settingsPage.evaluate(()=>{
-      const view=window.testPanel.shadowRoot.querySelector('isl-settings');
+      const view=window.testPanel.shadowRoot.querySelector('isl-dev-settings');
       view._manualQueued=null;view._refreshStartErrors=[];
       for(const callback of window.storeProgressListeners)callback({running:false,total:4,processed:4,batch_id:'finished-batch',finished_at:1792520000,log_pending:true,errors:{},last_updated:window.lastPriceUpdateFixture});
     });
@@ -4396,7 +4396,7 @@ async function main() {
     await updateAll.click();
     await settingsView.locator('#stores-refresh-error').filter({hasText:'pausa'}).waitFor();
     await allPricesDialog.getByRole('button',{name:'Cerrar',exact:true}).click();
-    await settingsPage.evaluate(()=>{window.failManualPriceRefresh=false;document.querySelector('improved-shopping-list-panel').shadowRoot.querySelector('isl-catalog').dispatchEvent(new CustomEvent('catalog-change',{detail:{products:window.catalogProducts,categories:window.catalogCategories}}));});
+    await settingsPage.evaluate(()=>{window.failManualPriceRefresh=false;document.querySelector('improved-shopping-list-dev-panel').shadowRoot.querySelector('isl-dev-catalog').dispatchEvent(new CustomEvent('catalog-change',{detail:{products:window.catalogProducts,categories:window.catalogCategories}}));});
     await settingsPage.evaluate(()=>{window.manualPriceErrors=[{store:'consum',error:'Consum: Consum: Consum no ofrece entrega para el código postal 28024.'}];});
     await updateAll.click();
     assert.equal(await settingsView.locator('#stores-refresh-error').textContent(),'Consum: no ofrece entrega para el código postal 28024.');
@@ -4439,7 +4439,7 @@ async function main() {
       await settingsPage.screenshot({path:`test-results/community-${width}.png`,fullPage:true});
     }
     assert.equal(await settingsView.locator('#community-sharing, #community-connection, #community-authorization').count(),0);
-    assert.equal(await settingsPage.evaluate(()=>window.calls.some(call=>call.type==='improved_shopping_list/community/status'||call.type==='improved_shopping_list/community/sharing')),false);
+    assert.equal(await settingsPage.evaluate(()=>window.calls.some(call=>call.type==='improved_shopping_list_dev/community/status'||call.type==='improved_shopping_list_dev/community/sharing')),false);
     const catalogDownload=settingsPage.waitForEvent('download');
     await settingsView.getByRole('button',{name:'Exportar mi catálogo',exact:true}).click();
     const exportedCatalog=await catalogDownload;
@@ -4451,7 +4451,7 @@ async function main() {
     await settingsView.locator('#catalog-export-error').waitFor();
     assert.equal(await settingsView.getByRole('button',{name:'Exportar mi catálogo',exact:true}).isEnabled(),true);
     await settingsPage.evaluate(()=>window.failCatalogExport=false);
-    assert.equal(await settingsPage.evaluate(()=>window.calls.some(call=>call.type==='improved_shopping_list/community/export')),false);
+    assert.equal(await settingsPage.evaluate(()=>window.calls.some(call=>call.type==='improved_shopping_list_dev/community/export')),false);
     await settingsView.getByRole("button",{name:"General",exact:true}).click();
     const configured = settingsView.locator("#configured-lists article");
     assert.equal(await configured.count(), 3);
@@ -4543,7 +4543,7 @@ async function main() {
     await settingsView.getByRole("button", { name: "Guardar personalización", exact: true }).click();
     await settingsView.getByRole("status").filter({ hasText: "Personalización guardada" }).waitFor();
     assert.equal(await settingsPage.evaluate(()=>window.listSettings.appearance.stock_gradient_start),'#ffcc80');
-    assert.equal(await settingsPage.evaluate(()=>window.testPanel.style.getPropertyValue('--isl-stock-gradient-end')),'#ef6c00');
+    assert.equal(await settingsPage.evaluate(()=>window.testPanel.style.getPropertyValue('--isl-dev-stock-gradient-end')),'#ef6c00');
     for(const width of [390,1280]) {
       await settingsPage.setViewportSize({width,height:960});
       const positions=await settingsView.evaluate(node=>{
@@ -4559,7 +4559,7 @@ async function main() {
     await settingsPage.getByRole("button", { name: "Lista", exact: true }).click();
     assert.equal(await settingsPage.locator("#pending").evaluate(node => getComputedStyle(node).gridTemplateColumns.split(" ").length), 2);
     await settingsPage.getByRole("button", { name:"Catálogo", exact:true }).click();
-    const settingsCatalog = settingsPage.locator("isl-catalog");
+    const settingsCatalog = settingsPage.locator("isl-dev-catalog");
     assert.equal(await settingsCatalog.locator("#catalog-grid").evaluate(node => getComputedStyle(node).gridTemplateColumns.split(" ").length), 2);
     await settingsCatalog.getByRole("button", { name:"Categorías", exact:true }).click();
     assert.equal(await settingsCatalog.locator("#catalog-categories #category-grid").evaluate(node => getComputedStyle(node).gridTemplateColumns.split(" ").length), 2);
@@ -4582,8 +4582,8 @@ async function main() {
     await settingsPage.setViewportSize({ width:320,height:844 });
     await settingsPage.evaluate(async () => {
       window.listSettings.appearance.mobile_columns=4;window.emitSettings();
-      await window.testPanel._hass.callWS({type:'improved_shopping_list/catalog/category/save',category:{name:'Desayuno',icon:'mdi:food',color:'#64748b'}});
-      await window.testPanel._hass.callWS({type:'improved_shopping_list/catalog/save',product:{name:'Cacao',category:'Desayuno',tags:['a'.repeat(40)],brand:'Marca larga',format:'250 g',barcode:'',image_url:'/logo.png',icon:'',notes:'',price:null,currency:'EUR'}});
+      await window.testPanel._hass.callWS({type:'improved_shopping_list_dev/catalog/category/save',category:{name:'Desayuno',icon:'mdi:food',color:'#64748b'}});
+      await window.testPanel._hass.callWS({type:'improved_shopping_list_dev/catalog/save',product:{name:'Cacao',category:'Desayuno',tags:['a'.repeat(40)],brand:'Marca larga',format:'250 g',barcode:'',image_url:'/logo.png',icon:'',notes:'',price:null,currency:'EUR'}});
     });
     assert.equal(await settingsPage.locator("#pending").evaluate(node => getComputedStyle(node).gridTemplateColumns.split(" ").length), 4);
     assert.equal(await settingsPage.locator("#items-card").evaluate(node => node.scrollWidth > innerWidth), false);
@@ -4605,7 +4605,7 @@ async function main() {
     assert.equal(await settingsPage.locator("#pending").evaluate(node => getComputedStyle(node).gridTemplateColumns.split(" ").length), 4);
     const listGradient = await settingsPage.locator("#pending .item").first().evaluate(node => getComputedStyle(node).backgroundImage);
     await settingsPage.getByRole("button", { name:"Catálogo", exact:true }).click();
-    assert.equal(await settingsPage.locator("isl-catalog #catalog-grid .product.in-list").first().evaluate(node => getComputedStyle(node).backgroundImage), listGradient);
+    assert.equal(await settingsPage.locator("isl-dev-catalog #catalog-grid .product.in-list").first().evaluate(node => getComputedStyle(node).backgroundImage), listGradient);
     assert.equal(await settingsCatalog.locator("#catalog-grid").evaluate(node => getComputedStyle(node).gridTemplateColumns.split(" ").length), 4);
     await settingsCatalog.getByRole("button", { name:"Categorías", exact:true }).click();
     assert.equal(await settingsCatalog.locator("#catalog-categories #category-grid").evaluate(node => getComputedStyle(node).gridTemplateColumns.split(" ").length), 4);
@@ -4691,7 +4691,7 @@ async function main() {
     gatewayPage.on('pageerror',error=>errors.push(error.message));
     await gatewayPage.goto(url);
     await gatewayPage.getByRole('button',{name:'Ajustes',exact:true}).click();
-    const gatewaySettings=gatewayPage.locator('isl-settings');
+    const gatewaySettings=gatewayPage.locator('isl-dev-settings');
     await gatewaySettings.locator('#gateway-entity').selectOption('todo.local');
     assert.equal(await gatewaySettings.locator('#gateway-target').inputValue(),'todo.bring');
     await gatewaySettings.locator('#gateway-remove').check();
@@ -4812,7 +4812,7 @@ async function main() {
     nutriPage.on('pageerror',error=>errors.push(error.message));
     await nutriPage.goto(url);
     await nutriPage.getByRole('button',{name:'Catálogo',exact:true}).click();
-    const nutriCatalog=nutriPage.locator('isl-catalog');
+    const nutriCatalog=nutriPage.locator('isl-dev-catalog');
     const nutriForm=nutriCatalog.locator('#product-form');
     await nutriCatalog.getByRole('button',{name:'Nuevo producto',exact:true}).click();
     assert.equal(await nutriPage.evaluate(()=>window.nutriCalls?.length??0),0);
@@ -4822,7 +4822,7 @@ async function main() {
     for(const code of ['8410109115543','08410109115543','3017620422003','https://private.test/qr','3017620422004'])await captureProductCode(nutriPage,nutriForm,'barcode',code);
     await captureProductCode(nutriPage,nutriForm,'nfc','AA:BB:CC:DD');
     await nutriForm.getByRole('button',{name:'Alternativas',exact:true}).click();
-    await nutriPage.waitForFunction(()=>document.querySelector('improved-shopping-list-panel').shadowRoot.querySelector('isl-catalog')._commercialReferences.some(ref=>ref.nutriscore?.grade==='d'));
+    await nutriPage.waitForFunction(()=>document.querySelector('improved-shopping-list-dev-panel').shadowRoot.querySelector('isl-dev-catalog')._commercialReferences.some(ref=>ref.nutriscore?.grade==='d'));
     assert.equal(await nutriForm.locator('.option-nutriscore').count(),0);
     assert.equal(await nutriForm.locator('#product-nutriscore').count(),0);
     assert.deepEqual(await nutriPage.evaluate(()=>window.nutriCalls),['8410109115543','3017620422003']);
@@ -4898,7 +4898,7 @@ async function main() {
     await purchasePage.route('**/local/receipt-seitan.svg',route=>route.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"><circle cx="16" cy="16" r="15" fill="green"/></svg>'}));
     await purchasePage.goto(url);await purchasePage.getByRole('button',{name:'Stock',exact:true}).click();
     await purchasePage.getByRole('button',{name:'Analítica',exact:true}).click();await purchasePage.getByRole('tab',{name:'Compras',exact:true}).click();
-    const purchases=purchasePage.locator('isl-purchases');
+    const purchases=purchasePage.locator('isl-dev-purchases');
     await purchases.getByText('Todavía no has subido ningún ticket.',{exact:true}).waitFor();
     assert.equal(await purchasePage.locator('#list-controls').isVisible(),false);
     assert.equal(await purchasePage.getByRole('button',{name:'Subir ticket',exact:true}).isVisible(),true);
@@ -4950,18 +4950,18 @@ async function main() {
     const ticketProductName=await suggestedLine.locator('.association-name strong').textContent();
     assert.notEqual(ticketProductName,'Seitán');
     await suggestedLine.locator('.create').click();
-    const suggestedProduct=purchasePage.locator('isl-catalog').getByRole('dialog',{name:'Nuevo producto',exact:true});
+    const suggestedProduct=purchasePage.locator('isl-dev-catalog').getByRole('dialog',{name:'Nuevo producto',exact:true});
     assert.equal(await suggestedProduct.getByLabel('Nombre del producto',{exact:true}).inputValue(),ticketProductName);
     await suggestedProduct.getByRole('button',{name:'Cerrar ventana',exact:true}).click();
-    await purchasePage.waitForFunction(()=>!window.testPanel.shadowRoot.querySelector('isl-purchases')._busy);
+    await purchasePage.waitForFunction(()=>!window.testPanel.shadowRoot.querySelector('isl-dev-purchases')._busy);
     await cerealLine.getByRole('button',{name:'Crear producto para FLAUTIN CEREALES',exact:true}).click();
-    const receiptProduct=purchasePage.locator('isl-catalog').getByRole('dialog',{name:'Nuevo producto',exact:true});
+    const receiptProduct=purchasePage.locator('isl-dev-catalog').getByRole('dialog',{name:'Nuevo producto',exact:true});
     assert.equal(await receiptProduct.getByLabel('Nombre del producto',{exact:true}).inputValue(),'FLAUTIN CEREALES');
     await receiptProduct.getByLabel('Nombre del producto',{exact:true}).fill('Flautines');
     await receiptProduct.getByRole('button',{name:'Guardar producto',exact:true}).click();
     await receiptProduct.waitFor({state:'hidden'});
     // Closing the catalog dialog precedes the receipt's asynchronous options refresh.
-    await purchasePage.waitForFunction(()=>window.testPanel.shadowRoot.querySelector('isl-purchases')
+    await purchasePage.waitForFunction(()=>window.testPanel.shadowRoot.querySelector('isl-dev-purchases')
       ?.shadowRoot.querySelector('[data-line-id="1"] .linked-name')?.textContent==='→ Flautines');
     assert.equal(await cerealLine.locator('.linked-name').textContent(),'→ Flautines');
     assert.equal(await review.locator('.ignore').count(),0);
@@ -5110,7 +5110,7 @@ async function main() {
     const stockOnlyPage=await stockOnlyContext.newPage();stockOnlyPage.on('pageerror',error=>errors.push(error.message));
     await stockOnlyPage.goto(url);await stockOnlyPage.getByRole('button',{name:'Stock',exact:true}).click();
     await stockOnlyPage.getByRole('button',{name:'Analítica',exact:true}).click();await stockOnlyPage.getByRole('tab',{name:'Compras',exact:true}).click();
-    const stockOnlyPurchases=stockOnlyPage.locator('isl-purchases');
+    const stockOnlyPurchases=stockOnlyPage.locator('isl-dev-purchases');
     await stockOnlyPurchases.locator('#ticket-file').setInputFiles(ticketFile);
     const stockOnlyReview=stockOnlyPurchases.getByRole('dialog',{name:'Revisar ticket',exact:true});await stockOnlyReview.waitFor();
     await stockOnlyReview.getByRole('button',{name:'Continuar',exact:true}).click();
@@ -5140,7 +5140,7 @@ async function main() {
     linksPage.on('pageerror',error=>errors.push(error.message));
     await linksPage.goto(url);
     await linksPage.getByRole('button',{name:'Catálogo',exact:true}).click();
-    const linksCatalog=linksPage.locator('isl-catalog');
+    const linksCatalog=linksPage.locator('isl-dev-catalog');
     await linksCatalog.getByRole('button',{name:'Nuevo producto',exact:true}).click();
     const linksForm=linksCatalog.locator('#product-form');
     await linksForm.getByLabel('Nombre del producto',{exact:true}).fill('Arroz vinculado');
@@ -5175,7 +5175,7 @@ async function main() {
     await linksForm.getByRole('button',{name:'Guardar producto',exact:true}).click();
     assert.equal(await linksPage.evaluate(()=>window.catalogProducts[0].store_links.mercadona),undefined);
     await linksPage.getByRole('button',{name:'Ajustes',exact:true}).click();
-    const linkedSettings=linksPage.locator('isl-settings');
+    const linkedSettings=linksPage.locator('isl-dev-settings');
     await linkedSettings.getByRole('button',{name:'Tiendas',exact:true}).click();
     await linkedSettings.getByRole('button',{name:'Actualización de precios',exact:true}).click();
     const priceScheduleDialog=linkedSettings.getByRole('dialog',{name:'Actualización de precios',exact:true});
@@ -5252,9 +5252,9 @@ async function main() {
     await iconPage.route("https://api.iconify.design/**", route => route.fulfill({contentType:"image/svg+xml",body:'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="#267052" d="M4 4h16v16H4z"/></svg>'}));
     await iconPage.goto(url);
     await iconPage.getByRole("button",{name:"Catálogo",exact:true}).click();
-    const iconCatalog = iconPage.locator("isl-catalog");
+    const iconCatalog = iconPage.locator("isl-dev-catalog");
     const iconForm = iconCatalog.getByRole("dialog",{name:"Nuevo producto",exact:true});
-    const picker = iconCatalog.locator("isl-icon-picker");
+    const picker = iconCatalog.locator("isl-dev-icon-picker");
     const pickerDialog = picker;
     await iconCatalog.getByRole("button",{name:"Nuevo producto",exact:true}).click();
     await iconForm.getByLabel("Nombre del producto",{exact:true}).fill("Leche");
@@ -5302,7 +5302,7 @@ async function main() {
     await pickerDialog.getByRole("button",{name:"Elegir Milk 1 (Fluent Emoji Flat)",exact:true}).click();
     await picker.getByRole("link",{name:"Tabler Icons",exact:true}).waitFor();
     assert.equal(await picker.locator("button.option").count(),6);
-    assert.equal(await iconForm.getByLabel("URL Imagen/Icono",{exact:true}).inputValue(),"/improved_shopping_list_icons/fixture.svg");
+    assert.equal(await iconForm.getByLabel("URL Imagen/Icono",{exact:true}).inputValue(),"/improved_shopping_list_dev_icons/fixture.svg");
     await picker.getByRole("link",{name:"Tabler Icons",exact:true}).waitFor();
     assert.equal(await iconPage.evaluate(()=>window.catalogProducts.length),0);
     await iconForm.getByRole("button",{name:"Guardar producto",exact:true}).click();
@@ -5310,7 +5310,7 @@ async function main() {
     const savedIconProduct = await iconPage.evaluate(()=>structuredClone(window.catalogProducts[0]));
     assert.equal(savedIconProduct.name,"Leche");
     assert.equal(savedIconProduct.name_en,"Milk");
-    assert.equal(savedIconProduct.image_url,"/improved_shopping_list_icons/fixture.svg");
+    assert.equal(savedIconProduct.image_url,"/improved_shopping_list_dev_icons/fixture.svg");
     await iconCatalog.locator(".product img").evaluate(image=>image.decode());
     // The chosen file and its attribution survive a panel reload without accessing the provider.
     await iconPage.reload();
@@ -5381,14 +5381,14 @@ async function main() {
     await oldIconPage.route('https://api.iconify.design/**',route=>route.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="#f9a825" d="M2 2h20v20H2z"/></svg>'}));
     await oldIconPage.goto(url);
     await oldIconPage.getByRole('button',{name:'Catálogo',exact:true}).click();
-    const oldCatalog=oldIconPage.locator('isl-catalog');
+    const oldCatalog=oldIconPage.locator('isl-dev-catalog');
     await oldCatalog.getByRole('button',{name:'Nuevo producto',exact:true}).click();
     await oldCatalog.locator('#product-form').getByLabel('Nombre del producto',{exact:true}).fill('Arroz');
     await oldCatalog.locator('#product-form').getByRole('button',{name:'Guardar producto',exact:true}).click();
     await oldCatalog.getByRole('heading',{name:'Arroz',exact:true}).waitFor();
     assert.equal(await oldIconPage.evaluate(()=>window.catalogProducts[0].name_en),'');
     await editCatalogProduct(oldCatalog,'Editar Arroz');
-    const oldPicker=oldCatalog.locator('isl-icon-picker');
+    const oldPicker=oldCatalog.locator('isl-dev-icon-picker');
     await oldPicker.getByRole('button',{name:'Elegir Rice 1 (Fluent Emoji Flat)',exact:true}).waitFor();
     assert.equal(await oldPicker.getByLabel('Buscar iconos',{exact:true}).count(),0);
     assert.equal(await oldIconPage.evaluate(()=>window.catalogProducts[0].name_en),'Rice');
@@ -5432,7 +5432,7 @@ async function main() {
       window.emit('todo.bring');
     });
     await renamePage.getByRole("button",{name:"Catálogo",exact:true}).click();
-    const renameCatalog=renamePage.locator("isl-catalog");
+    const renameCatalog=renamePage.locator("isl-dev-catalog");
     await renameCatalog.getByRole("button",{name:"Pendiente",exact:true}).click();
     await renameCatalog.locator("#list-suggestions-summary").click();
     const renameSuggestions=renameCatalog.locator("#list-suggestions");
@@ -5508,7 +5508,7 @@ async function main() {
     await storeGroupingPage.goto(url);
     await storeGroupingPage.evaluate(()=>{window.listSettings.stores={alcampo:{enabled:true},carrefour:{enabled:true},mercadona:{enabled:true},dia:{enabled:false}};window.emitSettings();});
     await storeGroupingPage.getByRole('button',{name:'Catálogo',exact:true}).click();
-    const storeCatalog=storeGroupingPage.locator('isl-catalog');
+    const storeCatalog=storeGroupingPage.locator('isl-dev-catalog');
     await storeCatalog.getByRole('button',{name:'Agrupar por categorías',exact:true}).click();
     await storeCatalog.getByRole('button',{name:'Cambiar criterio de agrupación',exact:true}).click();
     await storeCatalog.getByRole('dialog',{name:'Agrupar productos por',exact:true}).getByRole('button',{name:'Tienda',exact:true}).click();
@@ -5569,7 +5569,7 @@ async function main() {
         const bounds=name=>form.elements[name].getBoundingClientRect();
         const name=bounds('name'),category=bounds('category');
         const quantityFieldsAbsent=['purchase_unit','unit_quantity','quantity_step'].every(key=>!form.elements[key]);
-        return {top:[name.bottom,category.bottom],stacked:category.top>=name.bottom,tagsAbsent:!form.elements.tags,quantityFieldsAbsent,order:form.querySelector('[name="image_url"]').getBoundingClientRect().bottom<=form.querySelector('isl-icon-picker').getBoundingClientRect().top,overflow:form.scrollWidth>form.clientWidth};
+        return {top:[name.bottom,category.bottom],stacked:category.top>=name.bottom,tagsAbsent:!form.elements.tags,quantityFieldsAbsent,order:form.querySelector('[name="image_url"]').getBoundingClientRect().bottom<=form.querySelector('isl-dev-icon-picker').getBoundingClientRect().top,overflow:form.scrollWidth>form.clientWidth};
       });
       if(width>550)assert.ok(Math.max(...layout.top)-Math.min(...layout.top)<=1);else assert.equal(layout.stacked,true);
       assert.equal(layout.quantityFieldsAbsent,true);
@@ -5607,7 +5607,7 @@ async function main() {
     });
     await groupingPage.goto(url);
     await groupingPage.getByRole('button',{name:'Catálogo',exact:true}).click();
-    const groupedCatalog=groupingPage.locator('isl-catalog');
+    const groupedCatalog=groupingPage.locator('isl-dev-catalog');
     const productNames=()=>groupedCatalog.locator('#catalog-grid .product .title').allTextContents();
     await groupedCatalog.locator('#catalog-grid .product').nth(4).waitFor();
     assert.deepEqual(await productNames(),['Agua','Arroz','Azúcar','Patatas','Zanahoria']);
@@ -5672,7 +5672,7 @@ async function main() {
         const product=structuredClone(window.catalogProducts.find(product=>product.id===id));
         product.barcode=code;
         if(id==='r')product.barcodes=[code.padStart(14,'0'),'https://example.test/qr'];
-        await window.testPanel._hass.callWS({type:'improved_shopping_list/catalog/save',product});
+        await window.testPanel._hass.callWS({type:'improved_shopping_list_dev/catalog/save',product});
       }
     });
     assert.equal(await groupingPage.evaluate(()=>window.nutriCalls?.length??0),0);
@@ -5685,7 +5685,7 @@ async function main() {
     await groupingDialog.getByRole('button',{name:'Cerrar ventana',exact:true}).click();
     await groupedCatalog.getByRole('button',{name:'Cambiar a vista de filas',exact:true}).click();
     await groupingPage.getByRole('button',{name:'Analítica',exact:true}).click();
-    const nutritionSettings=groupingPage.locator('isl-analytics');
+    const nutritionSettings=groupingPage.locator('isl-dev-analytics');
     await groupingPage.getByRole('tab',{name:'Nutrición',exact:true}).click();
     await nutritionSettings.locator('.nutrition-value').first().filter({hasText:'1 (33,3 %)'}).waitFor();
     assert.deepEqual(await nutritionSettings.locator('.nutrition-value').allTextContents(),['1 (33,3 %)','1 (33,3 %)','0 (0 %)','0 (0 %)','1 (33,3 %)']);
@@ -5715,7 +5715,7 @@ async function main() {
     await groupingPage.getByRole('tab',{name:'Comparativa',exact:true}).click();
     await groupingPage.getByRole('tab',{name:'Nutrición',exact:true}).click();
     await nutritionSettings.locator('#nutrition-status').filter({hasText:'No se ha podido cargar'}).waitFor();
-    await groupingPage.evaluate(()=>{window.failNutritionDistribution=false;localStorage.setItem('isl-catalog-grouping','nutriscore');});
+    await groupingPage.evaluate(()=>{window.failNutritionDistribution=false;localStorage.setItem('isl-dev-catalog-grouping','nutriscore');});
     await groupingPage.reload();
     await groupingPage.getByRole('button',{name:'Catálogo',exact:true}).click();
     await groupedCatalog.locator('.category-group').nth(2).waitFor();
@@ -5725,7 +5725,7 @@ async function main() {
     await groupingDialog.getByRole('button',{name:'Cerrar ventana',exact:true}).click();
     await groupingPage.setViewportSize({width:390,height:844});
     // Removed grouping preferences fall back to categories after reloading.
-    await groupingPage.evaluate(()=>localStorage.setItem('isl-catalog-grouping','linked'));
+    await groupingPage.evaluate(()=>localStorage.setItem('isl-dev-catalog-grouping','linked'));
     await groupingPage.reload();
     await groupingPage.getByRole('button',{name:'Catálogo',exact:true}).click();
     await groupedCatalog.locator('.category-group').nth(2).waitFor();
@@ -5744,7 +5744,7 @@ async function main() {
     await invoicePage.addInitScript(()=>{window.receiptInvoice=true;});
     await invoicePage.goto(url);await invoicePage.getByRole('button',{name:'Stock',exact:true}).click();
     await invoicePage.getByRole('button',{name:'Analítica',exact:true}).click();await invoicePage.getByRole('tab',{name:'Compras',exact:true}).click();
-    const invoicePurchases=invoicePage.locator('isl-purchases');
+    const invoicePurchases=invoicePage.locator('isl-dev-purchases');
     await invoicePurchases.locator('#ticket-file').setInputFiles({name:'factura.pdf',mimeType:'application/pdf',buffer:Buffer.from('%PDF-fixture')});
     const invoiceReview=invoicePurchases.getByRole('dialog',{name:'Revisar ticket',exact:true});await invoiceReview.waitFor();
     assert.match(await invoiceReview.locator('#review-summary').textContent(),/Factura/);
@@ -5770,7 +5770,7 @@ async function main() {
     await suggestionReceiptPage.addInitScript(()=>{window.receiptSuggestionOnly=true;});
     await suggestionReceiptPage.goto(url);await suggestionReceiptPage.getByRole('button',{name:'Stock',exact:true}).click();
     await suggestionReceiptPage.getByRole('button',{name:'Analítica',exact:true}).click();await suggestionReceiptPage.getByRole('tab',{name:'Compras',exact:true}).click();
-    const suggestionPurchase=suggestionReceiptPage.locator('isl-purchases');
+    const suggestionPurchase=suggestionReceiptPage.locator('isl-dev-purchases');
     await suggestionPurchase.locator('#ticket-file').setInputFiles({name:'ticket.pdf',mimeType:'application/pdf',buffer:Buffer.from('%PDF-fixture')});
     const suggestionReview=suggestionPurchase.getByRole('dialog',{name:'Revisar ticket',exact:true});await suggestionReview.waitFor();
     assert.equal(await suggestionReview.locator('[data-line-id="0"] .linked-name').count(),0);
@@ -5791,10 +5791,10 @@ async function main() {
     const alcampoPage=await alcampoContext.newPage();alcampoPage.on('pageerror',error=>errors.push(error.message));
     await alcampoPage.addInitScript(()=>localStorage.setItem('catalog-fixture',JSON.stringify([{id:'test-alcampo-product',name:'Patatas',revision:1,category:'',tags:[],store_links:{alcampo:{id:'10739',url:'https://www.compraonline.alcampo.es/products/producto/10739'}},barcodes:['8410199023094']}])));
     await alcampoPage.goto(url);await alcampoPage.getByRole('button',{name:'Ajustes',exact:true}).click();
-    const alcampoSettings=alcampoPage.locator('isl-settings');
+    const alcampoSettings=alcampoPage.locator('isl-dev-settings');
     await alcampoSettings.getByRole('button',{name:'Tiendas',exact:true}).click();
     await alcampoSettings.getByRole('button',{name:'Ajustes de Alcampo',exact:true}).click();
-    const alcampoOptions=alcampoSettings.locator('isl-alcampo-settings');
+    const alcampoOptions=alcampoSettings.locator('isl-dev-alcampo-settings');
     await alcampoOptions.getByRole('switch',{name:'Buscar coincidencias de productos en su catálogo',exact:true}).waitFor();
     assert.equal(await alcampoOptions.locator('#days').inputValue(),'30');
     assert.equal(await alcampoSettings.locator('#alcampo-enabled').evaluate(toggle=>toggle.closest('.store-row').querySelector('.store-linked-count').textContent),'1 producto');
@@ -5818,9 +5818,9 @@ async function main() {
     const accountContext=await browser.newContext({viewport:{width:390,height:844}});
     const accountPage=await accountContext.newPage();accountPage.on('pageerror',error=>errors.push(error.message));
     await accountPage.goto(url);await accountPage.getByRole('button',{name:'Ajustes',exact:true}).click();
-    const accountSettings=accountPage.locator('isl-settings');await accountSettings.getByRole('button',{name:'Tiendas',exact:true}).click();
+    const accountSettings=accountPage.locator('isl-dev-settings');await accountSettings.getByRole('button',{name:'Tiendas',exact:true}).click();
     await accountSettings.getByRole('button',{name:'Ajustes de Carrefour',exact:true}).click();
-    const account=accountSettings.locator('isl-carrefour-account');
+    const account=accountSettings.locator('isl-dev-carrefour-account');
     await account.getByRole('button',{name:'Conectar cuenta',exact:true}).waitFor();
     assert.equal(await account.getByRole('button',{name:'Consultar compras',exact:true}).count(),0);
     assert.equal(await accountPage.evaluate(()=>window.calls.filter(call=>/carrefour_account\/(login|purchases|preview)/.test(call.type??'')).length),0);
@@ -5833,7 +5833,7 @@ async function main() {
     await login.getByRole('button',{name:'Conectar',exact:true}).click();
     await login.getByRole('button',{name:'Enviar código',exact:true}).waitFor();
     assert.equal(await login.getByLabel('Contraseña',{exact:true}).inputValue(),'');
-    assert.equal(await accountPage.evaluate(()=>window.calls.filter(call=>call.type==='improved_shopping_list/carrefour_account/send_code').length),0);
+    assert.equal(await accountPage.evaluate(()=>window.calls.filter(call=>call.type==='improved_shopping_list_dev/carrefour_account/send_code').length),0);
     await login.getByRole('button',{name:'Enviar código',exact:true}).click();
     await login.getByLabel('Código de verificación',{exact:true}).fill('123456');
     await login.getByRole('button',{name:'Verificar',exact:true}).click();
@@ -5849,7 +5849,7 @@ async function main() {
     assert.equal(await account.getByRole('switch',{name:'Actualizar precios públicos en el catálogo',exact:true}).count(),0);
     await accountSettings.locator('#carrefour-dialog').getByRole('button',{name:'Cerrar ventana',exact:true}).click();
     await accountPage.getByRole('button',{name:'Stock',exact:true}).click();
-    const accountHistory=accountPage.locator('isl-purchases');
+    const accountHistory=accountPage.locator('isl-dev-purchases');
     await accountPage.getByRole('button',{name:'Analítica',exact:true}).click();await accountPage.getByRole('tab',{name:'Compras',exact:true}).click();
     await accountHistory.locator('#history .ticket').nth(1).waitFor();
     assert.equal(await accountHistory.locator('#history .ticket').count(),2);
@@ -5858,7 +5858,7 @@ async function main() {
     assert.equal(await accountHistory.locator('.month-column[data-month="2026-10"]').getAttribute('data-total'),'15.22');
     await accountHistory.locator('#history .ticket-open').click();
     const accountReview=accountHistory.getByRole('dialog',{name:'Revisar ticket',exact:true});await accountReview.waitFor();
-    assert.equal(await accountPage.evaluate(()=>window.calls.filter(call=>call.type==='improved_shopping_list/carrefour_account/preview_saved').length),1);
+    assert.equal(await accountPage.evaluate(()=>window.calls.filter(call=>call.type==='improved_shopping_list_dev/carrefour_account/preview_saved').length),1);
     assert.equal(await accountPage.evaluate(()=>window.receiptHistory.length),2);
     assert.equal(await accountPage.evaluate(()=>window.stockItems.length),0);
     await accountPage.screenshot({path:'test-results/carrefour-account-purchases-mobile.png',fullPage:true});
@@ -5924,22 +5924,22 @@ async function main() {
     await archivedContext.addInitScript(()=>localStorage.setItem('settings-fixture',JSON.stringify({entities:['todo.bring'],primary_entity:'todo.bring',available_stores:['mercadona','carrefour','consum','lasirena','eroski'],stores:{carrefour:{enabled:true},alcampo:{enabled:false},dia:{enabled:false}}})));
     const archivedPage=await archivedContext.newPage();archivedPage.on('pageerror',error=>errors.push(error.message));
     await archivedPage.goto(url);await archivedPage.getByRole('button',{name:'Ajustes',exact:true}).click();
-    await archivedPage.locator('isl-settings').getByRole('button',{name:'Tiendas',exact:true}).click();
-    assert.deepEqual(await archivedPage.locator('isl-settings .store-row:visible h3').allTextContents(),['Carrefour','Consum','Eroski','La Sirena','Mercadona']);
+    await archivedPage.locator('isl-dev-settings').getByRole('button',{name:'Tiendas',exact:true}).click();
+    assert.deepEqual(await archivedPage.locator('isl-dev-settings .store-row:visible h3').allTextContents(),['Carrefour','Consum','Eroski','La Sirena','Mercadona']);
     assert.equal(await archivedPage.getByRole('button',{name:'Ajustes de Alcampo',exact:true}).isVisible(),false);
     assert.equal(await archivedPage.getByRole('button',{name:'Ajustes de DIA',exact:true}).isVisible(),false);
     assert.equal(await archivedPage.evaluate(()=>window.calls.some(call=>/\/(?:alcampo|dia\/prices)\//.test(call.type))),false);
     await archivedPage.getByRole('button',{name:'Ajustes de Carrefour',exact:true}).click();
-    await archivedPage.locator('isl-carrefour-account').getByRole('button',{name:'Conectar cuenta',exact:true}).waitFor();
+    await archivedPage.locator('isl-dev-carrefour-account').getByRole('button',{name:'Conectar cuenta',exact:true}).waitFor();
     await archivedContext.close();
 
     // DIA uses manual references and opt-in public refreshes, without account login.
     const diaContext=await browser.newContext({viewport:{width:390,height:844}});
     const diaPage=await diaContext.newPage();diaPage.on('pageerror',error=>errors.push(error.message));
     await diaPage.goto(url);await diaPage.getByRole('button',{name:'Ajustes',exact:true}).click();
-    await diaPage.locator('isl-settings').getByRole('button',{name:'Tiendas',exact:true}).click();
+    await diaPage.locator('isl-dev-settings').getByRole('button',{name:'Tiendas',exact:true}).click();
     await diaPage.getByRole('button',{name:'Ajustes de DIA',exact:true}).click();
-    const diaOptions=diaPage.locator('isl-dia-prices-settings'),diaDialog=diaPage.locator('isl-settings #dia-dialog');
+    const diaOptions=diaPage.locator('isl-dev-dia-prices-settings'),diaDialog=diaPage.locator('isl-dev-settings #dia-dialog');
     assert.equal(await diaOptions.getByRole('button',{name:'Conectar cuenta',exact:true}).count(),0);
     assert.equal(await diaOptions.getByRole('switch',{name:'Buscar coincidencias de productos en su catálogo',exact:true}).count(),0);
     const diaRefresh=diaOptions.getByRole('switch',{name:'Actualizar precios periódicamente',exact:true});
@@ -5949,7 +5949,7 @@ async function main() {
     await diaOptions.getByLabel('Periodo de actualización de DIA en días').fill('45');
     await diaOptions.getByLabel('Periodo de actualización de DIA en días').press('Tab');
     await diaPage.waitForFunction(()=>window.diaPricesStatus.days===45);
-    assert.equal(await diaPage.evaluate(()=>window.calls.some(call=>call.type.startsWith('improved_shopping_list/dia_account/'))),false);
+    assert.equal(await diaPage.evaluate(()=>window.calls.some(call=>call.type.startsWith('improved_shopping_list_dev/dia_account/'))),false);
     for(const width of [1280,390,320]){await diaPage.setViewportSize({width,height:844});assert.ok(await diaDialog.evaluate(d=>d.scrollWidth<=d.clientWidth+1));}
     await diaPage.screenshot({path:'test-results/dia-prices-mobile.png',fullPage:true});
     await diaDialog.getByRole('button',{name:'Cerrar ventana',exact:true}).click();
@@ -5977,7 +5977,7 @@ async function main() {
     await detectionForm.getByRole('checkbox',{name:'Ana',exact:true}).check();
     await detectionForm.getByRole('button',{name:'Guardar',exact:true}).click();
     await detectedPage.waitForFunction(()=>window.listSettings.purchase_detection?.zone_assignment===true);
-    await detectedPage.locator('isl-settings').getByRole('button',{name:'Tiendas',exact:true}).click();
+    await detectedPage.locator('isl-dev-settings').getByRole('button',{name:'Tiendas',exact:true}).click();
     for(const [store,name] of [['carrefour','Carrefour'],['alcampo','Alcampo'],['mercadona','Mercadona'],['consum','Consum'],['lasirena','La Sirena'],['eroski','Eroski'],['dia','DIA']]){
       await detectedPage.getByRole('button',{name:'Ajustes de '+name,exact:true}).click();
       const section=detectedPage.locator('.zone-settings[data-store="'+store+'"]');
@@ -5989,7 +5989,7 @@ async function main() {
     }
 
     await detectedPage.getByRole('button',{name:'Analítica',exact:true}).click();await detectedPage.getByRole('tab',{name:'Compras',exact:true}).click();
-    const detectedPurchases=detectedPage.locator('isl-purchases');
+    const detectedPurchases=detectedPage.locator('isl-dev-purchases');
     await detectedPurchases.locator('#history .needs-details').waitFor();
     assert.equal(await detectedPurchases.locator('#history .total').textContent(),'Importe pendiente');
     assert.equal(await detectedPurchases.locator('.store-segment').count(),0);
@@ -6028,16 +6028,16 @@ async function main() {
     await page.getByRole('button',{name:'Ajustes',exact:true}).click();
     assert.equal(await page.locator('#nav-logs').count(),0);
     await page.getByRole('button',{name:'Información',exact:true}).click();
-    const logs=page.locator('isl-logs');
+    const logs=page.locator('isl-dev-logs');
     await logs.locator('#entries > li').nth(2).waitFor();
-    assert.equal(await page.locator('isl-settings #settings-view-logs ha-icon').getAttribute('icon'),'mdi:information-outline');
+    assert.equal(await page.locator('isl-dev-settings #settings-view-logs ha-icon').getAttribute('icon'),'mdi:information-outline');
     assert.equal(await logs.locator('#entries img').count(),0);
-    assert.equal(await page.locator('isl-settings #settings-view-logs').getAttribute('aria-pressed'),'true');
+    assert.equal(await page.locator('isl-dev-settings #settings-view-logs').getAttribute('aria-pressed'),'true');
     assert.equal(await page.evaluate(()=>window.logListenerCount()),1);
-    await page.locator('isl-settings').getByRole('button',{name:'Tiendas',exact:true}).click();
+    await page.locator('isl-dev-settings').getByRole('button',{name:'Tiendas',exact:true}).click();
     assert.equal(await logs.isVisible(),false);
     assert.equal(await page.evaluate(()=>window.logListenerCount()),0);
-    await page.locator('isl-settings').getByRole('button',{name:'Información',exact:true}).click();
+    await page.locator('isl-dev-settings').getByRole('button',{name:'Información',exact:true}).click();
     await logs.locator('#entries > li').nth(2).waitFor();
     assert.equal(await page.evaluate(()=>window.logListenerCount()),1);
 

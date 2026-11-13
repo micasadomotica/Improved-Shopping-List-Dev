@@ -5,7 +5,7 @@ import sys
 import types
 import unittest
 
-ROOT=Path(__file__).parents[1]/"custom_components/improved_shopping_list"
+ROOT=Path(__file__).parents[1]/"custom_components/improved_shopping_list_dev"
 PACKAGE="_reference_tests"
 package=types.ModuleType(PACKAGE);package.__path__=[str(ROOT)];sys.modules[PACKAGE]=package
 spec=importlib.util.spec_from_file_location(PACKAGE+".product_references",ROOT/"product_references.py")

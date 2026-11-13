@@ -15,7 +15,7 @@ from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
 ROOT=Path(__file__).resolve().parents[1]
-sys.path.insert(0,str(ROOT/'custom_components/improved_shopping_list'))
+sys.path.insert(0,str(ROOT/'custom_components/improved_shopping_list_dev'))
 from ean_common import validate_nutrition, NUTRITION_TTL
 spec=importlib.util.spec_from_file_location('ean_common_builder',ROOT/'scripts/build-ean-common.py')
 builder=importlib.util.module_from_spec(spec);spec.loader.exec_module(builder)

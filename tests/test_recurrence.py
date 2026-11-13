@@ -10,11 +10,11 @@ import pytest
 from homeassistant.core import SupportsResponse
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.improved_shopping_list import catalog as catalog_module, recurrence as module
-from custom_components.improved_shopping_list.catalog import Catalog, CatalogError, FIELDS, normalize_product
-from custom_components.improved_shopping_list.const import CONF_TODO_ENTITY, DOMAIN
-from custom_components.improved_shopping_list.list_settings import ListSettings
-from custom_components.improved_shopping_list.recurrence import DAY, RecurrenceManager
+from custom_components.improved_shopping_list_dev import catalog as catalog_module, recurrence as module
+from custom_components.improved_shopping_list_dev.catalog import Catalog, CatalogError, FIELDS, normalize_product
+from custom_components.improved_shopping_list_dev.const import CONF_TODO_ENTITY, DOMAIN
+from custom_components.improved_shopping_list_dev.list_settings import ListSettings
+from custom_components.improved_shopping_list_dev.recurrence import DAY, RecurrenceManager
 
 
 @pytest.fixture

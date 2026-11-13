@@ -5,12 +5,12 @@ from unittest.mock import AsyncMock
 import time
 
 import pytest
-from custom_components.improved_shopping_list.catalog import Catalog
-from custom_components.improved_shopping_list.catalog_sources import CatalogSources
-from custom_components.improved_shopping_list.eci_catalog import ECICatalog
-from custom_components.improved_shopping_list.ean_links import EANLinks
-from custom_components.improved_shopping_list.product_references import gtin
-from custom_components.improved_shopping_list.store_links import normalize_link
+from custom_components.improved_shopping_list_dev.catalog import Catalog
+from custom_components.improved_shopping_list_dev.catalog_sources import CatalogSources
+from custom_components.improved_shopping_list_dev.eci_catalog import ECICatalog
+from custom_components.improved_shopping_list_dev.ean_links import EANLinks
+from custom_components.improved_shopping_list_dev.product_references import gtin
+from custom_components.improved_shopping_list_dev.store_links import normalize_link
 
 EAN="8410199023094"
 URLS={"alcampo":"https://www.compraonline.alcampo.es/products/patatas/10739",

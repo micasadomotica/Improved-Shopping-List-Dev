@@ -6,14 +6,14 @@ import time
 
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.improved_shopping_list.catalog import Catalog
-from custom_components.improved_shopping_list.catalog_sources import CatalogSources, INTERVAL
-from custom_components.improved_shopping_list import catalog_sources as module
-from custom_components.improved_shopping_list.const import DOMAIN, CONF_TODO_ENTITY
-from custom_components.improved_shopping_list.ean_links import EANLinks
-from custom_components.improved_shopping_list.product_references import gtin, reference_from_line
-from custom_components.improved_shopping_list.store_links import normalize_link
-from custom_components.improved_shopping_list.price_sources import PriceError
+from custom_components.improved_shopping_list_dev.catalog import Catalog
+from custom_components.improved_shopping_list_dev.catalog_sources import CatalogSources, INTERVAL
+from custom_components.improved_shopping_list_dev import catalog_sources as module
+from custom_components.improved_shopping_list_dev.const import DOMAIN, CONF_TODO_ENTITY
+from custom_components.improved_shopping_list_dev.ean_links import EANLinks
+from custom_components.improved_shopping_list_dev.product_references import gtin, reference_from_line
+from custom_components.improved_shopping_list_dev.store_links import normalize_link
+from custom_components.improved_shopping_list_dev.price_sources import PriceError
 
 EAN = '8410422111086'
 OTHER = '8410199023094'

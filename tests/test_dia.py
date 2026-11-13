@@ -10,12 +10,12 @@ from urllib.error import HTTPError
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.improved_shopping_list import dia as module
-from custom_components.improved_shopping_list.const import CONF_TODO_ENTITY, DOMAIN
-from custom_components.improved_shopping_list.dia import DiaClient, DiaError, NoRedirect, product_offer, request_json
-from custom_components.improved_shopping_list.regional_stores import async_resolve_areas
-from custom_components.improved_shopping_list.price_sources import PriceSources, PriceError
-from custom_components.improved_shopping_list.store_links import normalize_link
+from custom_components.improved_shopping_list_dev import dia as module
+from custom_components.improved_shopping_list_dev.const import CONF_TODO_ENTITY, DOMAIN
+from custom_components.improved_shopping_list_dev.dia import DiaClient, DiaError, NoRedirect, product_offer, request_json
+from custom_components.improved_shopping_list_dev.regional_stores import async_resolve_areas
+from custom_components.improved_shopping_list_dev.price_sources import PriceSources, PriceError
+from custom_components.improved_shopping_list_dev.store_links import normalize_link
 
 CONFIG={"postal_code":"28024","area_id":"28024","zone":"28024"}
 URL="https://www.dia.es/aperitivos-y-frutos-secos/patatas-fritas/p/84892"
@@ -144,7 +144,7 @@ async def test_dia_ws_postal_save_and_read_only_cannot_trigger_network(hass,hass
     assert await hass.config_entries.async_setup(entry.entry_id)
     calls=[]
     def resolve(postal):calls.append(postal);return {"postal_code":postal,"areas":[{"id":postal,"zone":postal,"name":"Zona postal"}]}
-    monkeypatch.setattr("custom_components.improved_shopping_list.regional_stores.resolve_dia_postal",resolve)
+    monkeypatch.setattr("custom_components.improved_shopping_list_dev.regional_stores.resolve_dia_postal",resolve)
     client=await hass_ws_client(hass)
     await client.send_json({"id":1,"type":f"{DOMAIN}/settings/store","store":"dia","enabled":False,"postal_code":"28024","area_id":"28024","verify":True})
     assert (await client.receive_json())["result"]["stores"]["dia"]["zone"]=="28024"

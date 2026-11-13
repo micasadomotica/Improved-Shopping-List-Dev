@@ -5,13 +5,13 @@ from types import SimpleNamespace
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.improved_shopping_list.alcampo import AlcampoManager
-from custom_components.improved_shopping_list.catalog import Catalog
-from custom_components.improved_shopping_list.const import CONF_TODO_ENTITY, DOMAIN
-from custom_components.improved_shopping_list.dia_prices import DiaPriceManager
-from custom_components.improved_shopping_list.list_settings import ListSettings
-from custom_components.improved_shopping_list.store_availability import AVAILABLE_STORES
-from custom_components.improved_shopping_list.stores import StoreError
+from custom_components.improved_shopping_list_dev.alcampo import AlcampoManager
+from custom_components.improved_shopping_list_dev.catalog import Catalog
+from custom_components.improved_shopping_list_dev.const import CONF_TODO_ENTITY, DOMAIN
+from custom_components.improved_shopping_list_dev.dia_prices import DiaPriceManager
+from custom_components.improved_shopping_list_dev.list_settings import ListSettings
+from custom_components.improved_shopping_list_dev.store_availability import AVAILABLE_STORES
+from custom_components.improved_shopping_list_dev.stores import StoreError
 
 
 async def test_archived_activations_and_favorite_masked_without_erasing_options(hass):

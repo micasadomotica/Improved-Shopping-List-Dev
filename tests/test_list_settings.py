@@ -3,11 +3,11 @@
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.improved_shopping_list.const import CONF_TODO_ENTITIES, CONF_TODO_ENTITY, DOMAIN
-from custom_components.improved_shopping_list.list_settings import DEFAULT_APPEARANCE, DEFAULT_STORES, DEFAULT_PURCHASE_DETECTION, ListSettings, ListSettingsError, normalize_appearance
-from custom_components.improved_shopping_list import list_settings as settings_module
-from custom_components.improved_shopping_list.stores import StoreError
-from custom_components.improved_shopping_list.notification_settings import DEFAULT_NOTIFICATIONS
+from custom_components.improved_shopping_list_dev.const import CONF_TODO_ENTITIES, CONF_TODO_ENTITY, DOMAIN
+from custom_components.improved_shopping_list_dev.list_settings import DEFAULT_APPEARANCE, DEFAULT_STORES, DEFAULT_PURCHASE_DETECTION, ListSettings, ListSettingsError, normalize_appearance
+from custom_components.improved_shopping_list_dev import list_settings as settings_module
+from custom_components.improved_shopping_list_dev.stores import StoreError
+from custom_components.improved_shopping_list_dev.notification_settings import DEFAULT_NOTIFICATIONS
 
 
 async def test_bring_name_policy_uses_registry_and_persists_explicit_overrides(hass):
@@ -46,14 +46,15 @@ async def test_price_preferences_random_once_and_persisted(hass,monkeypatch):
     assert another.snapshot["price_update_time"] == "00:00"
 
 
-async def test_settings_migrate_persist_remove_and_restore(hass):
+async def test_settings_select_only_primary_persist_remove_and_restore(hass):
     hass.states.async_set("todo.bring", "1")
     hass.states.async_set("todo.local", "unavailable")
     entry = MockConfigEntry(domain=DOMAIN, data={CONF_TODO_ENTITY: "todo.bring"}, options={"unrelated": True,"price_update_time":"01:00","price_updates_enabled":True,"price_update_days":1})
     entry.add_to_hass(hass)
     settings = ListSettings(hass)
     settings.attach(entry)
-    assert settings.snapshot == {"entities": ["todo.bring", "todo.local"], "primary_entity": "todo.bring", "gateway_lists": [], "purchase_detection":DEFAULT_PURCHASE_DETECTION, "notifications": DEFAULT_NOTIFICATIONS, "appearance": DEFAULT_APPEARANCE, "stores": DEFAULT_STORES, "favorite_store": "", "price_update_time":"01:00","price_updates_enabled":True,"price_update_days":1}
+    assert settings.snapshot == {"entities": ["todo.bring"], "primary_entity": "todo.bring", "gateway_lists": [], "purchase_detection":DEFAULT_PURCHASE_DETECTION, "notifications": DEFAULT_NOTIFICATIONS, "appearance": DEFAULT_APPEARANCE, "stores": DEFAULT_STORES, "favorite_store": "", "price_update_time":"01:00","price_updates_enabled":True,"price_update_days":1}
+    settings.update("add", "todo.local")
     settings.update("primary", "todo.local")
     settings.update("remove", "todo.bring")
     assert hass.states.get("todo.bring").state == "1"
@@ -93,7 +94,8 @@ async def test_settings_validate_and_snapshot_isolated(hass):
 async def test_settings_websocket_admin_push_and_unload(hass, hass_ws_client):
     hass.states.async_set("todo.bring", "1")
     hass.states.async_set("todo.local", "0")
-    entry = MockConfigEntry(domain=DOMAIN, data={CONF_TODO_ENTITY: "todo.bring"})
+    entry = MockConfigEntry(domain=DOMAIN, data={CONF_TODO_ENTITY: "todo.bring"},
+                            options={CONF_TODO_ENTITIES: ["todo.bring", "todo.local"]})
     entry.add_to_hass(hass)
     assert await hass.config_entries.async_setup(entry.entry_id)
     client = await hass_ws_client(hass)

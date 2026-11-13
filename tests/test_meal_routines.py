@@ -6,10 +6,10 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock
 import pytest
 
-from custom_components.improved_shopping_list.catalog import Catalog, CatalogError
-from custom_components.improved_shopping_list.stock import StockManager, DEFAULT_CONFIG
-from custom_components.improved_shopping_list import stock as stock_module, meal_routines as module
-from custom_components.improved_shopping_list.meal_routines import MealRoutines, normalize_rules, normalize_routine
+from custom_components.improved_shopping_list_dev.catalog import Catalog, CatalogError
+from custom_components.improved_shopping_list_dev.stock import StockManager, DEFAULT_CONFIG
+from custom_components.improved_shopping_list_dev import stock as stock_module, meal_routines as module
+from custom_components.improved_shopping_list_dev.meal_routines import MealRoutines, normalize_rules, normalize_routine
 
 
 def routine(**changes):
@@ -203,7 +203,7 @@ def test_invalid_meal_quantities(rules):
 
 async def test_routine_api_permissions_and_restart(hass,hass_ws_client,hass_read_only_user):
     from pytest_homeassistant_custom_component.common import MockConfigEntry
-    from custom_components.improved_shopping_list.const import DOMAIN, CONF_TODO_ENTITY
+    from custom_components.improved_shopping_list_dev.const import DOMAIN, CONF_TODO_ENTITY
     entry=MockConfigEntry(domain=DOMAIN,data={CONF_TODO_ENTITY:'todo.bring'})
     entry.add_to_hass(hass);assert await hass.config_entries.async_setup(entry.entry_id)
     client=await hass_ws_client(hass)

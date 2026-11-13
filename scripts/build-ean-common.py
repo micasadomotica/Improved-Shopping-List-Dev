@@ -9,7 +9,7 @@ import re
 import sys
 
 ROOT=Path(__file__).resolve().parents[1]
-sys.path.insert(0,str(ROOT/'custom_components/improved_shopping_list'))
+sys.path.insert(0,str(ROOT/'custom_components/improved_shopping_list_dev'))
 from ean_common import brand, brand_key, content_key, validate, validate_nutrition
 
 

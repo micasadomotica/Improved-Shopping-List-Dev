@@ -9,8 +9,8 @@ from homeassistant.components.todo import DATA_COMPONENT, TodoItem
 from homeassistant.core import Context
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.improved_shopping_list.activity import ActivityLog, MAX_ENTRIES
-from custom_components.improved_shopping_list.const import CONF_TODO_ENTITY, DOMAIN
+from custom_components.improved_shopping_list_dev.activity import ActivityLog, MAX_ENTRIES
+from custom_components.improved_shopping_list_dev.const import CONF_TODO_ENTITY, DOMAIN
 
 
 class Source:

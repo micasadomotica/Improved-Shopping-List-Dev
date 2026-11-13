@@ -7,7 +7,7 @@ import types
 import unittest
 from unittest.mock import patch
 
-ROOT=Path(__file__).parents[1]/'custom_components/improved_shopping_list'
+ROOT=Path(__file__).parents[1]/'custom_components/improved_shopping_list_dev'
 package=types.ModuleType('_estimate_tests');package.__path__=[str(ROOT)];sys.modules[package.__name__]=package
 spec=importlib.util.spec_from_file_location('_estimate_tests.receipt_estimates',ROOT/'receipt_estimates.py')
 cache=importlib.util.module_from_spec(spec);spec.loader.exec_module(cache)

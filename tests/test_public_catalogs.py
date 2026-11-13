@@ -7,14 +7,14 @@ from urllib.parse import urlencode
 
 import pytest
 
-from custom_components.improved_shopping_list.catalog import Catalog
-from custom_components.improved_shopping_list.ean_links import EANLinks
-from custom_components.improved_shopping_list.option_lookup import OptionLookup
-from custom_components.improved_shopping_list.product_lookup import ProductLookup, FIELDS
-from custom_components.improved_shopping_list.product_references import gtin
-from custom_components.improved_shopping_list.public_catalogs import CatalogDiscovery, PublicCatalogSource, PUBLIC_SHOPS, RequestGate, shop_product, commercial_terms
-from custom_components.improved_shopping_list import public_catalogs as module
-from custom_components.improved_shopping_list.store_links import normalize_link
+from custom_components.improved_shopping_list_dev.catalog import Catalog
+from custom_components.improved_shopping_list_dev.ean_links import EANLinks
+from custom_components.improved_shopping_list_dev.option_lookup import OptionLookup
+from custom_components.improved_shopping_list_dev.product_lookup import ProductLookup, FIELDS
+from custom_components.improved_shopping_list_dev.product_references import gtin
+from custom_components.improved_shopping_list_dev.public_catalogs import CatalogDiscovery, PublicCatalogSource, PUBLIC_SHOPS, RequestGate, shop_product, commercial_terms
+from custom_components.improved_shopping_list_dev import public_catalogs as module
+from custom_components.improved_shopping_list_dev.store_links import normalize_link
 
 EAN='8410199023094'
 CODE=gtin(EAN)

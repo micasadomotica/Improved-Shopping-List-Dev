@@ -9,16 +9,16 @@ import time
 import pytest
 from homeassistant.util import dt as dt_util
 from pytest_homeassistant_custom_component.common import MockConfigEntry
-from custom_components.improved_shopping_list.const import DOMAIN, CONF_TODO_ENTITY
+from custom_components.improved_shopping_list_dev.const import DOMAIN, CONF_TODO_ENTITY
 
-from custom_components.improved_shopping_list.catalog import Catalog, CatalogError
-from custom_components.improved_shopping_list.stock import StockManager
-from custom_components.improved_shopping_list.receipts import ReceiptManager, converted_quantity
-from custom_components.improved_shopping_list.receipt_quantities import measure_price, estimated_quantity
-from custom_components.improved_shopping_list.product_references import reference_from_line
-from custom_components.improved_shopping_list.receipt_parser import parse_carrefour
-from custom_components.improved_shopping_list.option_lookup import OptionLookup, page_product
-from custom_components.improved_shopping_list.price_sources import PriceError
+from custom_components.improved_shopping_list_dev.catalog import Catalog, CatalogError
+from custom_components.improved_shopping_list_dev.stock import StockManager
+from custom_components.improved_shopping_list_dev.receipts import ReceiptManager, converted_quantity
+from custom_components.improved_shopping_list_dev.receipt_quantities import measure_price, estimated_quantity
+from custom_components.improved_shopping_list_dev.product_references import reference_from_line
+from custom_components.improved_shopping_list_dev.receipt_parser import parse_carrefour
+from custom_components.improved_shopping_list_dev.option_lookup import OptionLookup, page_product
+from custom_components.improved_shopping_list_dev.price_sources import PriceError
 
 URL="https://www.carrefour.es/supermercado/zanahorias/R-prod1/p"
 

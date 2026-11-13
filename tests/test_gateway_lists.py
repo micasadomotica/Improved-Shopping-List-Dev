@@ -10,9 +10,9 @@ from homeassistant.core import SupportsResponse
 from homeassistant.exceptions import HomeAssistantError
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.improved_shopping_list.const import CONF_TODO_ENTITY, DOMAIN
-from custom_components.improved_shopping_list.gateway_lists import GatewayLists
-from custom_components.improved_shopping_list.list_settings import ListSettings, ListSettingsError
+from custom_components.improved_shopping_list_dev.const import CONF_TODO_ENTITY, DOMAIN
+from custom_components.improved_shopping_list_dev.gateway_lists import GatewayLists
+from custom_components.improved_shopping_list_dev.list_settings import ListSettings, ListSettingsError
 
 
 class Todo:

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { matchCatalogProducts } from "../custom_components/improved_shopping_list/frontend/product-matching.js";
+import { matchCatalogProducts } from "../custom_components/improved_shopping_list_dev/frontend/product-matching.js";
 
 test("ranks exact and generic whole-word names without treating similarity as an association", () => {
   const products = [{id:"generic",name:"Cacao"},{id:"exact",name:"Cacao soluble"},{id:"other",name:"Café"}];

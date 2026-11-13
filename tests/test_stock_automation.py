@@ -10,13 +10,13 @@ import pytest
 from homeassistant.components.todo import DATA_COMPONENT, TodoItem, TodoItemStatus, serialize_todo_item
 from homeassistant.core import SupportsResponse
 
-from custom_components.improved_shopping_list.catalog import Catalog, CatalogError
-from custom_components.improved_shopping_list.stock import StockManager, DEFAULT_CONFIG, DAY
-from custom_components.improved_shopping_list.stock_automation import StockAutomation
-from custom_components.improved_shopping_list import stock as stock_module, stock_automation as module
-from custom_components.improved_shopping_list import catalog as catalog_module, recurrence as recurrence_module
-from custom_components.improved_shopping_list.catalog import FIELDS
-from custom_components.improved_shopping_list.recurrence import RecurrenceManager
+from custom_components.improved_shopping_list_dev.catalog import Catalog, CatalogError
+from custom_components.improved_shopping_list_dev.stock import StockManager, DEFAULT_CONFIG, DAY
+from custom_components.improved_shopping_list_dev.stock_automation import StockAutomation
+from custom_components.improved_shopping_list_dev import stock as stock_module, stock_automation as module
+from custom_components.improved_shopping_list_dev import catalog as catalog_module, recurrence as recurrence_module
+from custom_components.improved_shopping_list_dev.catalog import FIELDS
+from custom_components.improved_shopping_list_dev.recurrence import RecurrenceManager
 
 
 class Todo:
@@ -347,7 +347,7 @@ async def test_catalog_perishable_editor_creates_zero_stock_and_preserves_expiry
 
 
 async def test_catalog_replenishment_validates_before_saving_product(env,shared):
-    from custom_components.improved_shopping_list.catalog import CatalogError
+    from custom_components.improved_shopping_list_dev.catalog import CatalogError
     product=env.stock.catalog.products[0];data={k:v for k,v in product.items() if k in FIELDS}
     item=env.stock.item_for(product)
     for payload in [replenishment_payload(item,mode="usage",usage_entity="",usage_state=""),
@@ -359,7 +359,7 @@ async def test_catalog_replenishment_validates_before_saving_product(env,shared)
 
 @pytest.mark.parametrize('mode',['usage','meals'])
 async def test_percentage_minimum_survives_catalog_stock_and_restart(env,shared,mode):
-    from custom_components.improved_shopping_list.stock import stock_needs_reorder
+    from custom_components.improved_shopping_list_dev.stock import stock_needs_reorder
     product=env.stock.catalog.products[0];item=env.stock.item_for(product)
     item=await env.stock.async_save(item["id"],item["revision"],config(item,quantity=10,unit="uds"))
     extras={'usage_entity':'sensor.washer','usage_state':'finished'} if mode=='usage' else {

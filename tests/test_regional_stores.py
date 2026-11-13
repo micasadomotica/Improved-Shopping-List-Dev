@@ -7,12 +7,12 @@ from unittest.mock import AsyncMock
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.improved_shopping_list.const import CONF_TODO_ENTITY, DOMAIN
-from custom_components.improved_shopping_list.list_settings import ListSettings
-from custom_components.improved_shopping_list.regional_stores import async_resolve_areas, coverage_areas
-from custom_components.improved_shopping_list.stores import StoreError
-from custom_components.improved_shopping_list.price_sources import PriceSources, PriceError, consum_offer, sirena_offer, sirena_product
-from custom_components.improved_shopping_list.store_links import normalize_link
+from custom_components.improved_shopping_list_dev.const import CONF_TODO_ENTITY, DOMAIN
+from custom_components.improved_shopping_list_dev.list_settings import ListSettings
+from custom_components.improved_shopping_list_dev.regional_stores import async_resolve_areas, coverage_areas
+from custom_components.improved_shopping_list_dev.stores import StoreError
+from custom_components.improved_shopping_list_dev.price_sources import PriceSources, PriceError, consum_offer, sirena_offer, sirena_product
+from custom_components.improved_shopping_list_dev.store_links import normalize_link
 
 CONSUM_AREA = [{"shippingAreas":[{"shippingZoneId":"301D", "deliveryTypeId":"D", "enabled":True,
     "zone":{"id":301, "name":"Centro 301", "address":{"city":"Cullera"}}}]}]
@@ -58,7 +58,7 @@ async def test_no_consum_coverage_is_distinct_from_a_network_rejection(hass, aio
 
 
 async def test_eroski_location_rejection_retains_endpoint_and_http_status(hass,monkeypatch):
-    from custom_components.improved_shopping_list.eroski import EroskiClient,EroskiError
+    from custom_components.improved_shopping_list_dev.eroski import EroskiClient,EroskiError
     monkeypatch.setattr(EroskiClient,"selection",AsyncMock(side_effect=EroskiError("Eroski: HTTP 403",
         response_class="access_denied",http_status=403,endpoint="/es/login/delivery/")))
     with pytest.raises(StoreError) as error:

@@ -23,25 +23,25 @@ from homeassistant.core import SupportsResponse
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 
-from custom_components.improved_shopping_list.const import DOMAIN, CONF_TODO_ENTITY, CONF_TODO_ENTITIES
+from custom_components.improved_shopping_list_dev.const import DOMAIN, CONF_TODO_ENTITY, CONF_TODO_ENTITIES
 
 
-from custom_components.improved_shopping_list.list_settings import ListSettings
+from custom_components.improved_shopping_list_dev.list_settings import ListSettings
 
 
-from custom_components.improved_shopping_list.store_location import reference_location
+from custom_components.improved_shopping_list_dev.store_location import reference_location
 
 
-from custom_components.improved_shopping_list.price_manager import PriceManager, StorePriceView
+from custom_components.improved_shopping_list_dev.price_manager import PriceManager, StorePriceView
 
 
-from custom_components.improved_shopping_list.price_sources import PriceError, PriceSources, carrefour_offer
+from custom_components.improved_shopping_list_dev.price_sources import PriceError, PriceSources, carrefour_offer
 
 
-from custom_components.improved_shopping_list.store_links import normalize_link, normalize_links
+from custom_components.improved_shopping_list_dev.store_links import normalize_link, normalize_links
 
 
-from custom_components.improved_shopping_list import price_manager as module
+from custom_components.improved_shopping_list_dev import price_manager as module
 
 
 def product(name="Arroz", identifier="24097", store="alcampo"):
@@ -85,7 +85,7 @@ async def test_public_alcampo_api_and_403_are_distinct_from_not_found(hass,aiocl
 @pytest.mark.parametrize("region",["", "ac90d761-9d58-4918-a37d-dd14e1ce384a"])
 async def test_alcampo_anonymous_headers_region_and_product_metadata(hass,aioclient_mock,monkeypatch,region):
     import aiohttp
-    from custom_components.improved_shopping_list import price_sources
+    from custom_components.improved_shopping_list_dev import price_sources
     create_session = price_sources.async_create_clientsession
     def anonymous_session(hass,**kwargs):
         # The HA test fixture replaces the returned session and its cookie jar.
@@ -214,7 +214,7 @@ async def test_mercadona_reference_does_not_require_ean(hass,aioclient_mock):
 
 
 async def test_bindings_persist_and_old_clients_do_not_erase_them(hass):
-    from custom_components.improved_shopping_list.catalog import Catalog, FIELDS, CatalogError
+    from custom_components.improved_shopping_list_dev.catalog import Catalog, FIELDS, CatalogError
     catalog = Catalog(hass)
     await catalog.async_load()
     saved = await catalog.async_save_product({"name":"Arroz", "store_links":{"alcampo":"24097"}})

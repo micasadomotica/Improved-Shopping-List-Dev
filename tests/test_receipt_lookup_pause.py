@@ -3,7 +3,7 @@ import importlib.util
 from pathlib import Path
 import unittest
 
-spec=importlib.util.spec_from_file_location("receipt_pause",Path(__file__).parents[1]/"custom_components/improved_shopping_list/receipt_quantities.py")
+spec=importlib.util.spec_from_file_location("receipt_pause",Path(__file__).parents[1]/"custom_components/improved_shopping_list_dev/receipt_quantities.py")
 quantities=importlib.util.module_from_spec(spec);spec.loader.exec_module(quantities)
 
 

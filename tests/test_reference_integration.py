@@ -5,10 +5,10 @@ from unittest.mock import AsyncMock
 
 import pytest
 from homeassistant.util import dt as dt_util
-from custom_components.improved_shopping_list.catalog import Catalog, CatalogError, FIELDS
-from custom_components.improved_shopping_list.stock import StockManager
-from custom_components.improved_shopping_list.receipts import ReceiptManager
-from custom_components.improved_shopping_list.price_history import PriceHistory
+from custom_components.improved_shopping_list_dev.catalog import Catalog, CatalogError, FIELDS
+from custom_components.improved_shopping_list_dev.stock import StockManager
+from custom_components.improved_shopping_list_dev.receipts import ReceiptManager
+from custom_components.improved_shopping_list_dev.price_history import PriceHistory
 
 
 async def test_receipt_formats_survive_restart_and_correct_comparisons_without_stock_changes(hass):

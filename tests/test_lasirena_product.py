@@ -4,10 +4,10 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from custom_components.improved_shopping_list.lasirena_product import product_data
-from custom_components.improved_shopping_list.option_lookup import OptionLookup
-from custom_components.improved_shopping_list.price_sources import PriceError
-from custom_components.improved_shopping_list.store_links import normalize_link
+from custom_components.improved_shopping_list_dev.lasirena_product import product_data
+from custom_components.improved_shopping_list_dev.option_lookup import OptionLookup
+from custom_components.improved_shopping_list_dev.price_sources import PriceError
+from custom_components.improved_shopping_list_dev.store_links import normalize_link
 
 URL = "https://www.lasirena.es/es/lomos-de-salmon-noruego-premium-655/p"
 API = "https://www.lasirena.es/api/catalog_system/pub/products/search?fq=productId:655"
@@ -69,7 +69,7 @@ async def test_lookup_uses_api_cache_and_rate_callback_without_html_or_checkout(
 
 
 async def test_search_normalizes_padded_ean_and_checks_returned_sku(hass, aioclient_mock):
-    from custom_components.improved_shopping_list.lasirena_product import search
+    from custom_components.improved_shopping_list_dev.lasirena_product import search
     api = "https://www.lasirena.es/api/catalog_system/pub/products/search?fq=alternateIds_Ean:8414532006553"
     aioclient_mock.get(api, json=payload())
     before = AsyncMock()
@@ -81,13 +81,13 @@ async def test_search_normalizes_padded_ean_and_checks_returned_sku(hass, aiocli
 
 @pytest.mark.parametrize("data", [[], payload()])
 async def test_search_never_accepts_unrelated_ean(hass, aioclient_mock, data):
-    from custom_components.improved_shopping_list.lasirena_product import search
+    from custom_components.improved_shopping_list_dev.lasirena_product import search
     aioclient_mock.get("https://www.lasirena.es/api/catalog_system/pub/products/search?fq=alternateIds_Ean:8410199023094", json=data)
     assert await search(hass, "8410199023094", AsyncMock()) is None
 
 
 async def test_duplicate_ean_results_are_not_silently_selected(hass, aioclient_mock):
-    from custom_components.improved_shopping_list.lasirena_product import search
+    from custom_components.improved_shopping_list_dev.lasirena_product import search
     aioclient_mock.get("https://www.lasirena.es/api/catalog_system/pub/products/search?fq=alternateIds_Ean:8414532006553", json=payload()+payload())
     with pytest.raises(PriceError, match="varias"):
         await search(hass, "8414532006553", AsyncMock())

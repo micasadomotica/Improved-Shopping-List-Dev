@@ -5,8 +5,8 @@ from unittest.mock import AsyncMock
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.improved_shopping_list.const import CONF_TODO_ENTITY, DOMAIN
-from custom_components.improved_shopping_list.icons import (
+from custom_components.improved_shopping_list_dev.const import CONF_TODO_ENTITY, DOMAIN
+from custom_components.improved_shopping_list_dev.icons import (
     BASE_URL, ICONS_URL, IconError, IconLibrary, split_icon, validated_svg,
 )
 
@@ -107,7 +107,7 @@ async def test_search_translates_and_persists_old_product_but_preserves_manual_e
     assert catalog.products[0]["name_en"] == "Rice"
     assert aioclient_mock.mock_calls[0][1].query["query"] == "Rice"
     translator = AsyncMock(return_value="Rice")
-    monkeypatch.setattr("custom_components.improved_shopping_list.websocket.async_translate_name", translator)
+    monkeypatch.setattr("custom_components.improved_shopping_list_dev.websocket.async_translate_name", translator)
     await client.send_json({"id": 2, "type": f"{DOMAIN}/icons/search", "query": "Rice"})
     assert (await client.receive_json())["result"]["query"] == "Rice"
     translator.assert_not_awaited()

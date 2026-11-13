@@ -9,13 +9,13 @@ import pytest
 from homeassistant.core import SupportsResponse
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.improved_shopping_list.catalog import Catalog, CatalogError, normalize_product
-from custom_components.improved_shopping_list.activity import ActivityLog
-from custom_components.improved_shopping_list.const import CONF_TODO_ENTITY, DOMAIN
-from custom_components.improved_shopping_list.list_settings import ListSettings
-from custom_components.improved_shopping_list.readers import ReaderManager
-from custom_components.improved_shopping_list.stock import StockManager
-from custom_components.improved_shopping_list import readers as readers_module
+from custom_components.improved_shopping_list_dev.catalog import Catalog, CatalogError, normalize_product
+from custom_components.improved_shopping_list_dev.activity import ActivityLog
+from custom_components.improved_shopping_list_dev.const import CONF_TODO_ENTITY, DOMAIN
+from custom_components.improved_shopping_list_dev.list_settings import ListSettings
+from custom_components.improved_shopping_list_dev.readers import ReaderManager
+from custom_components.improved_shopping_list_dev.stock import StockManager
+from custom_components.improved_shopping_list_dev import readers as readers_module
 
 
 @pytest.fixture
@@ -88,7 +88,7 @@ async def add_product(env, reader, **changes):
 async def test_reader_matches_full_bring_name_without_duplicate_and_restores_uid(reader_env,monkeypatch):
     env=reader_env;env.settings.update_name_mode('todo.bring',True)
     clock=[1800000000.0]
-    monkeypatch.setattr('custom_components.improved_shopping_list.readers.time',SimpleNamespace(time=lambda:clock[0]))
+    monkeypatch.setattr('custom_components.improved_shopping_list_dev.readers.time',SimpleNamespace(time=lambda:clock[0]))
     reader=await add_reader(env,cooldown=1)
     await add_product(env,reader,name='Leche de avena')
     env.items['todo.bring']=[{'uid':'oat','summary':'Leche','description':'de avena','status':'needs_action'}]

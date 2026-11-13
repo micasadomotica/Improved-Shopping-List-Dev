@@ -11,12 +11,12 @@ import pytest
 from homeassistant.util import dt as dt_util
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.improved_shopping_list.const import DOMAIN, CONF_TODO_ENTITY
-from custom_components.improved_shopping_list.catalog import CatalogError
-from custom_components.improved_shopping_list.dia_account import DiaAccount, DiaAccountHTTP, DiaAccountError, API
-from custom_components.improved_shopping_list.dia_receipts import summary, reference_id, extract_dia_account_ticket
-from custom_components.improved_shopping_list.receipts import ReceiptManager
-from custom_components.improved_shopping_list.ticket_accounts import TicketAccounts
+from custom_components.improved_shopping_list_dev.const import DOMAIN, CONF_TODO_ENTITY
+from custom_components.improved_shopping_list_dev.catalog import CatalogError
+from custom_components.improved_shopping_list_dev.dia_account import DiaAccount, DiaAccountHTTP, DiaAccountError, API
+from custom_components.improved_shopping_list_dev.dia_receipts import summary, reference_id, extract_dia_account_ticket
+from custom_components.improved_shopping_list_dev.receipts import ReceiptManager
+from custom_components.improved_shopping_list_dev.ticket_accounts import TicketAccounts
 
 
 def fixture_ticket():
@@ -167,8 +167,8 @@ async def test_ticket_accounts_share_zone_favorite_order_and_stop_after_confirma
 
 async def test_dia_review_pending_import_is_explicit_and_preserves_one_history_entry(hass):
     import asyncio
-    from custom_components.improved_shopping_list.catalog import Catalog
-    from custom_components.improved_shopping_list.stock import StockManager
+    from custom_components.improved_shopping_list_dev.catalog import Catalog
+    from custom_components.improved_shopping_list_dev.stock import StockManager
     catalog=Catalog(hass);await catalog.async_load()
     product=await catalog.async_save_product({"name":"Producto A"})
     stock=StockManager(hass,catalog);await stock.async_load()

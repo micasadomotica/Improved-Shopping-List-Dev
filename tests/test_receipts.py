@@ -14,11 +14,11 @@ from pypdf.generic import DictionaryObject, NameObject, DecodedStreamObject
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 from homeassistant.util import dt as dt_util
 
-from custom_components.improved_shopping_list.catalog import Catalog, CatalogError
-from custom_components.improved_shopping_list.const import DOMAIN, CONF_TODO_ENTITY
-from custom_components.improved_shopping_list.receipt_parser import parse_carrefour, parse_carrefour_invoice, extract_receipt, extract_carrefour_account_ticket
-from custom_components.improved_shopping_list.receipts import ReceiptManager, converted_quantity
-from custom_components.improved_shopping_list.stock import StockManager
+from custom_components.improved_shopping_list_dev.catalog import Catalog, CatalogError
+from custom_components.improved_shopping_list_dev.const import DOMAIN, CONF_TODO_ENTITY
+from custom_components.improved_shopping_list_dev.receipt_parser import parse_carrefour, parse_carrefour_invoice, extract_receipt, extract_carrefour_account_ticket
+from custom_components.improved_shopping_list_dev.receipts import ReceiptManager, converted_quantity
+from custom_components.improved_shopping_list_dev.stock import StockManager
 
 
 def receipt_text():
@@ -219,7 +219,7 @@ async def test_distinct_receipts_can_replenish_while_list_entry_is_still_pending
 
 
 async def test_receipt_prices_only_replace_older_observations_and_respect_disable(hass):
-    from custom_components.improved_shopping_list.price_manager import PriceManager
+    from custom_components.improved_shopping_list_dev.price_manager import PriceManager
     env=await setup_manager(hass);draft=await preview(env)
     await env.manager.async_confirm(draft['token'],'owner',selections(draft,env.product),True)
     settings=SimpleNamespace(snapshot={'stores':{'carrefour':{'enabled':True,'sale_point':'005704'}},'price_updates_enabled':True})

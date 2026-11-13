@@ -7,10 +7,10 @@ import time
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.improved_shopping_list.catalog import Catalog
-from custom_components.improved_shopping_list.const import DOMAIN, CONF_TODO_ENTITY
-from custom_components.improved_shopping_list.price_history import PriceHistory, RETENTION, stamp
-from custom_components.improved_shopping_list import price_history as module
+from custom_components.improved_shopping_list_dev.catalog import Catalog
+from custom_components.improved_shopping_list_dev.const import DOMAIN, CONF_TODO_ENTITY
+from custom_components.improved_shopping_list_dev.price_history import PriceHistory, RETENTION, stamp
+from custom_components.improved_shopping_list_dev import price_history as module
 
 
 def offer(at, price='2.65'):

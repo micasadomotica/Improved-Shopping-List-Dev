@@ -19,7 +19,7 @@ from urllib.error import HTTPError
 ROOT = Path(__file__).resolve().parents[1]
 # Load pure modules without importing the Home Assistant package initializer.
 package = types.ModuleType("isl_protocol")
-package.__path__ = [str(ROOT / "custom_components/improved_shopping_list")]
+package.__path__ = [str(ROOT / "custom_components/improved_shopping_list_dev")]
 sys.modules[package.__name__] = package
 protocol = importlib.import_module("isl_protocol.community_data")
 TOKEN = os.environ["GH_TOKEN"]

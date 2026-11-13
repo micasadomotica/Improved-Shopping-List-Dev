@@ -2,7 +2,7 @@
 
 import pytest
 
-from custom_components.improved_shopping_list.product_translation import URL, async_translate_name
+from custom_components.improved_shopping_list_dev.product_translation import URL, async_translate_name
 
 
 async def test_translates_spanish_name_and_decodes_entities(hass, aioclient_mock):

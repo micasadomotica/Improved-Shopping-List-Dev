@@ -2,11 +2,11 @@
 from unittest.mock import AsyncMock
 import time
 
-from custom_components.improved_shopping_list.catalog import Catalog
-from custom_components.improved_shopping_list.ean_links import EANLinks
-from custom_components.improved_shopping_list.option_lookup import OptionLookup
-from custom_components.improved_shopping_list.public_catalogs import CatalogDiscovery, PublicCatalogSource
-from custom_components.improved_shopping_list.product_references import gtin
+from custom_components.improved_shopping_list_dev.catalog import Catalog
+from custom_components.improved_shopping_list_dev.ean_links import EANLinks
+from custom_components.improved_shopping_list_dev.option_lookup import OptionLookup
+from custom_components.improved_shopping_list_dev.public_catalogs import CatalogDiscovery, PublicCatalogSource
+from custom_components.improved_shopping_list_dev.product_references import gtin
 
 CODE = "8414532006553"
 URL = "https://www.lasirena.es/es/lomos-de-salmon-noruego-premium-655/p"

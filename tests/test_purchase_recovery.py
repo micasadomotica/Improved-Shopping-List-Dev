@@ -8,9 +8,9 @@ import unittest
 from unittest.mock import AsyncMock, Mock
 
 from homeassistant.util import dt as dt_util
-from custom_components.improved_shopping_list.catalog import CatalogError
-from custom_components.improved_shopping_list.receipts import ReceiptManager
-from custom_components.improved_shopping_list.ticket_accounts import TicketAccounts
+from custom_components.improved_shopping_list_dev.catalog import CatalogError
+from custom_components.improved_shopping_list_dev.receipts import ReceiptManager
+from custom_components.improved_shopping_list_dev.ticket_accounts import TicketAccounts
 
 
 class PurchaseRecoveryTests(unittest.IsolatedAsyncioTestCase):

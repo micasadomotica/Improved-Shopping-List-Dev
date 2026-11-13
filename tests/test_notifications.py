@@ -10,10 +10,10 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.util import dt as dt_util
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.improved_shopping_list.const import CONF_TODO_ENTITY, CONF_TODO_ENTITIES, DOMAIN
-from custom_components.improved_shopping_list.list_settings import ListSettings
-from custom_components.improved_shopping_list.notification_settings import DEFAULT_NOTIFICATIONS, normalize_notifications
-from custom_components.improved_shopping_list.notifications import NotificationManager, recent_pending_purchase
+from custom_components.improved_shopping_list_dev.const import CONF_TODO_ENTITY, CONF_TODO_ENTITIES, DOMAIN
+from custom_components.improved_shopping_list_dev.list_settings import ListSettings
+from custom_components.improved_shopping_list_dev.notification_settings import DEFAULT_NOTIFICATIONS, normalize_notifications
+from custom_components.improved_shopping_list_dev.notifications import NotificationManager, recent_pending_purchase
 
 
 class Todo:

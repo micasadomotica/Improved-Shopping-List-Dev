@@ -1,0 +1,91 @@
+{
+  "title": "Improved Shopping List Dev",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Improved Shopping List Dev",
+        "description": "Elige una lista de tareas creada para pruebas. Dev tiene catálogo y ajustes propios, pero una misma lista todo comparte sus artículos con el original. No se copian los datos del original.",
+        "data": {
+          "todo_entity": "Lista de la compra predeterminada"
+        }
+      }
+    },
+    "error": {
+      "invalid_entity": "Selecciona una entidad de tipo todo existente."
+    },
+    "abort": {
+      "already_configured": "Ya estÃ¡ configurada. Usa Configurar para cambiar la lista predeterminada."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Lista de la compra predeterminada",
+        "description": "Selecciona la lista que se abrirÃ¡ por defecto en el panel.",
+        "data": {
+          "todo_entity": "Lista de tareas"
+        }
+      }
+    },
+    "error": {
+      "invalid_entity": "Selecciona una entidad de tipo todo existente."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "shopping_list_products": {
+        "name": "Productos en la lista de la compra"
+      },
+      "next_purchase_amount": {
+        "name": "Importe aproximado de la prÃ³xima compra"
+      },
+      "catalog_products": {
+        "name": "Productos en el catÃ¡logo"
+      },
+      "catalog_categories": {
+        "name": "CategorÃ­as en el catÃ¡logo"
+      },
+      "low_stock_products": {
+        "name": "Productos con stock bajo"
+      },
+      "last_purchase_date": {
+        "name": "Fecha de la Ãºltima compra"
+      },
+      "last_purchase_amount": {
+        "name": "Importe de la Ãºltima compra"
+      },
+      "last_purchase_store": {
+        "name": "Tienda de la Ãºltima compra"
+      },
+      "active_readers": {
+        "name": "Lectores activos"
+      },
+      "default_store": {
+        "name": "Tienda predeterminada"
+      },
+      "active_stores": {
+        "name": "Tiendas activas"
+      }
+    },
+    "binary_sensor": {
+      "community_sharing": {
+        "name": "Compartir con la comunidad"
+      }
+    },
+    "switch": {
+      "price_updates": {
+        "name": "ActualizaciÃ³n automÃ¡tica de precios"
+      }
+    },
+    "number": {
+      "price_update_days": {
+        "name": "Frecuencia de actualizaciÃ³n de precios"
+      }
+    },
+    "time": {
+      "price_update_time": {
+        "name": "Hora de actualizaciÃ³n de precios"
+      }
+    }
+  }
+}

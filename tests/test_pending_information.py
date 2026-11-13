@@ -5,12 +5,12 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock
 import time
 
-from custom_components.improved_shopping_list.catalog import Catalog, FIELDS
-from custom_components.improved_shopping_list.pending_information import PendingInformationRefresh, pending, merge_result
-from custom_components.improved_shopping_list import pending_information as module
-from custom_components.improved_shopping_list.price_sources import PriceError
-from custom_components.improved_shopping_list.option_lookup import OptionLookup
-from custom_components.improved_shopping_list.store_links import normalize_link
+from custom_components.improved_shopping_list_dev.catalog import Catalog, FIELDS
+from custom_components.improved_shopping_list_dev.pending_information import PendingInformationRefresh, pending, merge_result
+from custom_components.improved_shopping_list_dev import pending_information as module
+from custom_components.improved_shopping_list_dev.price_sources import PriceError
+from custom_components.improved_shopping_list_dev.option_lookup import OptionLookup
+from custom_components.improved_shopping_list_dev.store_links import normalize_link
 
 EAN='8410199023094'
 OTHER='8410422111086'

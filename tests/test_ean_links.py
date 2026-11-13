@@ -12,10 +12,10 @@ from homeassistant.util import dt as dt_util
 from homeassistant.core import is_callback
 from pytest_homeassistant_custom_component.common import async_fire_time_changed
 
-from custom_components.improved_shopping_list.catalog import Catalog
-from custom_components.improved_shopping_list.ean_links import EANLinks, URL, DAY, enrich_product, parse_dictionary, redirect_product
-from custom_components.improved_shopping_list.product_references import gtin, reference_from_line
-from custom_components.improved_shopping_list.store_links import normalize_link
+from custom_components.improved_shopping_list_dev.catalog import Catalog
+from custom_components.improved_shopping_list_dev.ean_links import EANLinks, URL, DAY, enrich_product, parse_dictionary, redirect_product
+from custom_components.improved_shopping_list_dev.product_references import gtin, reference_from_line
+from custom_components.improved_shopping_list_dev.store_links import normalize_link
 
 EAN = "3560071237950"
 WEB = "https://www.carrefour.es/supermercado/anacardo/R-VC4AECOMM-491998/p"

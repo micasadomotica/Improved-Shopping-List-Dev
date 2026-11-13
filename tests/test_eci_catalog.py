@@ -9,14 +9,14 @@ import httpx
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.improved_shopping_list.catalog import Catalog
-from custom_components.improved_shopping_list.catalog_sources import INTERVAL
-from custom_components.improved_shopping_list import catalog_sources as base_module, eci_catalog as module
-from custom_components.improved_shopping_list.const import DOMAIN, CONF_TODO_ENTITY
-from custom_components.improved_shopping_list.eci_catalog import ECIClient, ECICatalog, product_data, BASE, STORE
-from custom_components.improved_shopping_list.price_sources import PriceError
-from custom_components.improved_shopping_list.product_references import gtin
-from custom_components.improved_shopping_list.store_links import normalize_link
+from custom_components.improved_shopping_list_dev.catalog import Catalog
+from custom_components.improved_shopping_list_dev.catalog_sources import INTERVAL
+from custom_components.improved_shopping_list_dev import catalog_sources as base_module, eci_catalog as module
+from custom_components.improved_shopping_list_dev.const import DOMAIN, CONF_TODO_ENTITY
+from custom_components.improved_shopping_list_dev.eci_catalog import ECIClient, ECICatalog, product_data, BASE, STORE
+from custom_components.improved_shopping_list_dev.price_sources import PriceError
+from custom_components.improved_shopping_list_dev.product_references import gtin
+from custom_components.improved_shopping_list_dev.store_links import normalize_link
 
 EAN='8410199023094'
 OTHER='8410422111086'
@@ -43,7 +43,7 @@ def test_product_parser_uses_single_item_price_and_exact_ean_not_conditional_pro
 
 @pytest.fixture
 async def eci_http(monkeypatch):
-    from custom_components.improved_shopping_list import public_http
+    from custom_components.improved_shopping_list_dev import public_http
     async def rejected_native(hass,store,url,before_request,**kwargs):
         await before_request()
         return public_http.Response(403,{'server':'AkamaiGHost'},b'Access Denied Reference #18.abc.123')
@@ -223,7 +223,7 @@ async def test_retired_source_status_and_subscription_fail_cleanly(hass,hass_ws_
 
 
 async def test_eci_native_alternative_preserves_exact_ean_verification(hass,eci_http,monkeypatch):
-    from custom_components.improved_shopping_list import public_http
+    from custom_components.improved_shopping_list_dev import public_http
     eci_http.homepage_statuses=[403]
     native=AsyncMock(return_value=public_http.Response(200,{},json.dumps(payload()).encode()))
     monkeypatch.setattr(public_http,'fetch',native)

@@ -1,6 +1,8 @@
-# <img src="https://raw.githubusercontent.com/TitoTB/Improved-Shopping-List/main/custom_components/improved_shopping_list/frontend/logo.png" alt="" width="40" height="40" align="left"> Improved Shopping List
+# <img src="custom_components/improved_shopping_list_dev/frontend/logo.png" alt="" width="40" height="40" align="left"> Improved Shopping List Dev
 
-> **Fork de pruebas de micasadomotica — 0.88.1-beta.1.** Basado en la versión 0.88.0 de [TitoTB](https://github.com/TitoTB/Improved-Shopping-List). Incluye correcciones para guardar URL sin datos recuperados y consultar productos frescos de Mercadona sin utilizar sus códigos internos como EAN compartidos. Consulta la [instalación y prueba del fork](docs/fork-testing.md). En Home Assistant 2026.11 o posterior se utiliza Marketplace. Si ya tienes el original configurado, lee la guía antes de sustituirlo.
+> **Integración de desarrollo independiente — 0.88.1.** Basada en la versión 0.88.0 de [TitoTB](https://github.com/TitoTB/Improved-Shopping-List), con las correcciones para guardar URL aunque falle la consulta y recuperar productos frescos de Mercadona sin compartir sus códigos internos como EAN. Puede convivir con el original: usa el dominio `improved_shopping_list_dev`, un panel propio y almacenamiento separado. No copia ni modifica la configuración o el catálogo del original.
+
+Para probar sin modificar tus artículos habituales, utiliza una lista de tareas creada para pruebas. **Si eliges la misma entidad `todo` en ambas integraciones, ambas modificarán los mismos artículos.** Dev incorpora inicialmente solo la lista seleccionada; añadir más listas es una acción explícita.
 
 ## Índice
 
@@ -24,16 +26,16 @@ No necesitas instalar tarjetas adicionales ni apps de Home Assistant OS. Home As
 
 ### Instalar con Marketplace
 
-Sigue la [guía actualizada del fork](docs/fork-testing.md). Incluye cómo añadir el repositorio desde un enlace y activar versiones preliminares.
+Añade `https://github.com/micasadomotica/Improved-Shopping-List-Dev` desde **Ajustes → Marketplace → Añadir desde enlace**, e instala **Improved Shopping List Dev**. Sigue el aviso de reinicio si aparece y añade la integración Dev desde **Ajustes → Dispositivos y servicios**. Elige una lista de pruebas.
 
-Si ya tienes el original configurado, no lo desinstales para cambiar al fork siguiendo las instrucciones antiguas. Marketplace puede eliminar también la configuración, los dispositivos y las entidades. Ese cambio de origen conservando la instalación aún debe verificarse.
+El original puede permanecer instalado y funcionando. No hay que desinstalarlo ni sustituir sus archivos. Las versiones de este repositorio pertenecen al canal Dev; la versión 0.88.1 se publica como release normal de GitHub para que Marketplace la ofrezca sin activar versiones preliminares. Consulta la [guía de instalación, pruebas y retirada de Dev](docs/fork-testing.md).
 
 Consulta la [documentación oficial de Marketplace](https://www.home-assistant.io/integrations/marketplace).
 
 ### Instalación manual alternativa
 
-1. Descarga el código de una [versión estable del repositorio](https://github.com/TitoTB/Improved-Shopping-List/releases).
-2. Copia la carpeta `custom_components/improved_shopping_list` dentro del directorio de configuración de Home Assistant. Su archivo `manifest.json` debe quedar en `custom_components/improved_shopping_list/manifest.json`, sin una carpeta adicional intermedia.
+1. Descarga el código de una [versión de Dev](https://github.com/micasadomotica/Improved-Shopping-List-Dev/releases).
+2. Copia la carpeta `custom_components/improved_shopping_list_dev` dentro del directorio de configuración de Home Assistant. Su archivo `manifest.json` debe quedar en `custom_components/improved_shopping_list_dev/manifest.json`, sin una carpeta adicional intermedia.
 3. Reinicia Home Assistant y sigue los pasos de **Añadir integración**, selección de la lista y apertura del panel descritos arriba.
 
 ### Actualizaciones

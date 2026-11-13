@@ -10,14 +10,14 @@ from unittest.mock import AsyncMock, Mock
 import pytest
 from homeassistant.util import dt as dt_util
 
-from custom_components.improved_shopping_list import lidl_catalog as module
-from custom_components.improved_shopping_list.lidl_catalog import LidlCatalog, parse_listing, product_data, INTERVAL
-from custom_components.improved_shopping_list.ean_links import EANLinks, parse_dictionary
-from custom_components.improved_shopping_list.product_references import gtin, merge_reference, normalized_references, matching_reference
-from custom_components.improved_shopping_list.store_links import normalize_link
-from custom_components.improved_shopping_list.catalog import Catalog, CatalogError
-from custom_components.improved_shopping_list.stock import StockManager
-from custom_components.improved_shopping_list.receipts import ReceiptManager
+from custom_components.improved_shopping_list_dev import lidl_catalog as module
+from custom_components.improved_shopping_list_dev.lidl_catalog import LidlCatalog, parse_listing, product_data, INTERVAL
+from custom_components.improved_shopping_list_dev.ean_links import EANLinks, parse_dictionary
+from custom_components.improved_shopping_list_dev.product_references import gtin, merge_reference, normalized_references, matching_reference
+from custom_components.improved_shopping_list_dev.store_links import normalize_link
+from custom_components.improved_shopping_list_dev.catalog import Catalog, CatalogError
+from custom_components.improved_shopping_list_dev.stock import StockManager
+from custom_components.improved_shopping_list_dev.receipts import ReceiptManager
 
 WEB="https://www.lidl.es/p/milbona-griego-natural-light/p11139074"
 API="https://www.lidl.es/p/api/gridboxes/ES/es?erpNumbers=11139074"
@@ -77,7 +77,7 @@ async def test_dictionary_precedes_public_pages_and_requires_exact_identity(hass
 
 async def test_dictionary_lidl_column_is_exact_and_manual_review_can_read_it(hass,aioclient_mock):
     catalog=Catalog(hass);await catalog.async_load();links=EANLinks(hass,catalog);await links.async_load()
-    from custom_components.improved_shopping_list.ean_links import URL
+    from custom_components.improved_shopping_list_dev.ean_links import URL
     aioclient_mock.get(URL,content=f"EAN,Carrefour,Alcampo,Lidl\n{EAN},,,{WEB}\n".encode())
     assert (await links.async_find_link("lidl",EAN))["url"]==WEB
     assert (await links.async_find_link("lidl","4006381333931")) is None

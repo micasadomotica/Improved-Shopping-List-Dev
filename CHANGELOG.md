@@ -1,3 +1,11 @@
+# 0.88.1 — Improved Shopping List Dev
+
+- Integración independiente instalable junto al original desde Marketplace.
+- Dominio, panel, rutas, almacenamiento, componentes y preferencias del navegador separados.
+- La configuración inicial solo incorpora la lista elegida para las pruebas.
+- Conserva las correcciones de URL y recuperación de Mercadona de 0.88.1-beta.1.
+- No copia datos del original. Las entidades todo seleccionadas siguen siendo compartidas con su proveedor.
+
 # Historial de cambios
 
 ## 0.88.1-beta.1 — 2026-11-13 — fork micasadomotica

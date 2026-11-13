@@ -11,7 +11,7 @@ import zlib
 import base64
 
 package = types.ModuleType("isl_test_protocol")
-package.__path__ = [str(Path(__file__).resolve().parents[1]/"custom_components/improved_shopping_list")]
+package.__path__ = [str(Path(__file__).resolve().parents[1]/"custom_components/improved_shopping_list_dev")]
 sys.modules[package.__name__] = package
 p = importlib.import_module("isl_test_protocol.community_data")
 NOW = 1792600000

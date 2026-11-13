@@ -1,0 +1,26 @@
+{
+  "domain": "improved_shopping_list_dev",
+  "name": "Improved Shopping List Dev",
+  "codeowners": [
+    "@TitoTB",
+    "@micasadomotica"
+  ],
+  "config_flow": true,
+  "dependencies": [
+    "frontend",
+    "http",
+    "panel_custom",
+    "todo",
+    "zone"
+  ],
+  "documentation": "https://github.com/micasadomotica/Improved-Shopping-List-Dev",
+  "integration_type": "service",
+  "iot_class": "local_push",
+  "issue_tracker": "https://github.com/micasadomotica/Improved-Shopping-List-Dev/issues",
+  "requirements": [
+    "pypdf==6.21.2",
+    "h2>=4.4.1",
+    "curl_cffi==0.16.1"
+  ],
+  "version": "0.88.1"
+}

@@ -6,8 +6,8 @@ from unittest.mock import AsyncMock
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.improved_shopping_list.catalog import Catalog, CatalogError, normalize_category, normalize_product, normalized_name
-from custom_components.improved_shopping_list.const import CONF_TODO_ENTITY, DOMAIN
+from custom_components.improved_shopping_list_dev.catalog import Catalog, CatalogError, normalize_category, normalize_product, normalized_name
+from custom_components.improved_shopping_list_dev.const import CONF_TODO_ENTITY, DOMAIN
 
 
 @pytest.mark.parametrize(("first","second"), [("Seitan","Seitán"),("SEITA\u0301N", " seitan "),("ＣＡＦÉ   molido","cafe molido")])

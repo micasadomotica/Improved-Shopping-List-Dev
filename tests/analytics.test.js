@@ -1,9 +1,9 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 globalThis.HTMLElement=class {};globalThis.customElements={get:()=>true};
-const {normalizeObservation,analyzeCatalog,analyzePurchase}=await import('../custom_components/improved_shopping_list/frontend/analytics-panel.js');
-const {packageCost,referenceRate,suggestedContent,validReferenceContent,validReferenceFormat,receiptCatalogPrice,pendingProductInformation}=await import('../custom_components/improved_shopping_list/frontend/reference-formats.js');
-const {cachedProductPrice,storeProductLink,storeFromProductUrl}=await import('../custom_components/improved_shopping_list/frontend/product-display.js');
+const {normalizeObservation,analyzeCatalog,analyzePurchase}=await import('../custom_components/improved_shopping_list_dev/frontend/analytics-panel.js');
+const {packageCost,referenceRate,suggestedContent,validReferenceContent,validReferenceFormat,receiptCatalogPrice,pendingProductInformation}=await import('../custom_components/improved_shopping_list_dev/frontend/reference-formats.js');
+const {cachedProductPrice,storeProductLink,storeFromProductUrl}=await import('../custom_components/improved_shopping_list_dev/frontend/product-display.js');
 const now=1800000000,ean='1234567890128';
 const offer=(store,price,extra={})=>({store,product_id:'p',price,currency:'EUR',at:now-3600,ean,...extra});
 const products=[{id:'p',name:'Arroz',category:'Despensa'},{id:'q',name:'Pavo',category:'Fresco'},{id:'none',name:'Sin precio'}];
@@ -189,8 +189,8 @@ test('pending information uses saved prices for the exact alternative and never 
  assert.deepEqual(pendingProductInformation(product,[{...exact,catalog_product_id:'different'}])[0].missing,['price']);
 });
 
-const {analyzeSpending,spendingCategoryRows}=await import('../custom_components/improved_shopping_list/frontend/analytics-insights.js');
-const {orderComparisonRows}=await import('../custom_components/improved_shopping_list/frontend/analytics-panel.js');
+const {analyzeSpending,spendingCategoryRows}=await import('../custom_components/improved_shopping_list_dev/frontend/analytics-insights.js');
+const {orderComparisonRows}=await import('../custom_components/improved_shopping_list_dev/frontend/analytics-panel.js');
 test('spending reconciles discounts, shipping and summary-only purchases without inventing category data',()=>{
  const receipts=[{id:'a',store:'carrefour',currency:'EUR',purchased_at:'2026-10-10T12:00:00Z',total:10,shipping:1,shoppers:['person.a','person.b','person.a'],lines:[{product_id:'p',amount:8,count:2,pack_quantity:500,pack_unit:'g'},{product_id:'q',amount:4,count:1,purchased_quantity:.25,purchased_unit:'kg'}]},{id:'b',store:'lidl',currency:'EUR',purchased_at:'2026-10-11T12:00:00Z',total:5,summary_only:true,lines:[{product_id:'p',amount:5}]}];
  const result=analyzeSpending(receipts,products,{from:'2026-10-01',to:'2026-10-31'});

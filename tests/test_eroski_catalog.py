@@ -4,14 +4,14 @@ import time
 
 import pytest
 
-from custom_components.improved_shopping_list.eroski_catalog import EroskiCatalogClient, search_result, product_data
-from custom_components.improved_shopping_list.eroski import EroskiError, ROOT
-from custom_components.improved_shopping_list.store_links import normalize_link
-from custom_components.improved_shopping_list.option_lookup import OptionLookup
-from custom_components.improved_shopping_list.catalog import Catalog
-from custom_components.improved_shopping_list.ean_links import EANLinks
-from custom_components.improved_shopping_list.product_references import gtin
-from custom_components.improved_shopping_list.public_catalogs import CatalogDiscovery, PublicCatalogSource
+from custom_components.improved_shopping_list_dev.eroski_catalog import EroskiCatalogClient, search_result, product_data
+from custom_components.improved_shopping_list_dev.eroski import EroskiError, ROOT
+from custom_components.improved_shopping_list_dev.store_links import normalize_link
+from custom_components.improved_shopping_list_dev.option_lookup import OptionLookup
+from custom_components.improved_shopping_list_dev.catalog import Catalog
+from custom_components.improved_shopping_list_dev.ean_links import EANLinks
+from custom_components.improved_shopping_list_dev.product_references import gtin
+from custom_components.improved_shopping_list_dev.public_catalogs import CatalogDiscovery, PublicCatalogSource
 
 CODE = '8410199023094'
 WEB = ROOT+'/es/productdetail/24791428-patatas-lays-gourmet-bolsa-170-g/'

@@ -3,7 +3,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from custom_components.improved_shopping_list.todo_names import combined_name, item_name, named_item
+from custom_components.improved_shopping_list_dev.todo_names import combined_name, item_name, named_item
 
 
 @pytest.mark.parametrize(('summary','description','expected'),[

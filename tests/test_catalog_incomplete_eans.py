@@ -4,10 +4,10 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from custom_components.improved_shopping_list.catalog_sources import CatalogSources
-from custom_components.improved_shopping_list.mercadona_catalog import MercadonaCatalog
-from custom_components.improved_shopping_list.public_catalogs import PublicCatalogSource
-from custom_components.improved_shopping_list.product_references import gtin
+from custom_components.improved_shopping_list_dev.catalog_sources import CatalogSources
+from custom_components.improved_shopping_list_dev.mercadona_catalog import MercadonaCatalog
+from custom_components.improved_shopping_list_dev.public_catalogs import PublicCatalogSource
+from custom_components.improved_shopping_list_dev.product_references import gtin
 
 EAN = "8410199023094"
 OTHER = "8410422111086"

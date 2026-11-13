@@ -7,12 +7,12 @@ from unittest.mock import Mock, AsyncMock
 import pytest
 from homeassistant.util import dt as dt_util
 
-from custom_components.improved_shopping_list import purchase_visits, purchase_detection
-from custom_components.improved_shopping_list.purchase_detection import PurchaseDetection
-from custom_components.improved_shopping_list.receipts import ReceiptManager
-from custom_components.improved_shopping_list.carrefour_account import CarrefourAccount
-from custom_components.improved_shopping_list.catalog import CatalogError
-from custom_components.improved_shopping_list.shopping_places import normalize_places
+from custom_components.improved_shopping_list_dev import purchase_visits, purchase_detection
+from custom_components.improved_shopping_list_dev.purchase_detection import PurchaseDetection
+from custom_components.improved_shopping_list_dev.receipts import ReceiptManager
+from custom_components.improved_shopping_list_dev.carrefour_account import CarrefourAccount
+from custom_components.improved_shopping_list_dev.catalog import CatalogError
+from custom_components.improved_shopping_list_dev.shopping_places import normalize_places
 
 
 @pytest.fixture

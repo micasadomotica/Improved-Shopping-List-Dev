@@ -6,7 +6,7 @@ from pathlib import Path
 import unittest
 from unittest.mock import AsyncMock, call, patch
 
-SPEC = importlib.util.spec_from_file_location("account_history", Path(__file__).parents[1] / "custom_components/improved_shopping_list/account_history.py")
+SPEC = importlib.util.spec_from_file_location("account_history", Path(__file__).parents[1] / "custom_components/improved_shopping_list_dev/account_history.py")
 history = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(history)
 

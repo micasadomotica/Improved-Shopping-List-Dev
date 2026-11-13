@@ -9,10 +9,10 @@ from homeassistant.components.todo import DATA_COMPONENT, TodoItem, TodoItemStat
 from homeassistant.core import SupportsResponse
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.improved_shopping_list.catalog import Catalog, CatalogError, FIELDS, normalize_product
-from custom_components.improved_shopping_list.const import CONF_TODO_ENTITY, DOMAIN
-from custom_components.improved_shopping_list.list_settings import ListSettings
-from custom_components.improved_shopping_list.quantities import ListQuantities
+from custom_components.improved_shopping_list_dev.catalog import Catalog, CatalogError, FIELDS, normalize_product
+from custom_components.improved_shopping_list_dev.const import CONF_TODO_ENTITY, DOMAIN
+from custom_components.improved_shopping_list_dev.list_settings import ListSettings
+from custom_components.improved_shopping_list_dev.quantities import ListQuantities
 
 
 class Todo:
@@ -190,7 +190,7 @@ async def test_simultaneous_recipe_additions_do_not_lose_quantities(hass, env):
 
 @pytest.mark.parametrize("mode", ["create", "restore", "pending_without_uid"])
 async def test_recipe_waits_for_provider_confirmation_without_repeating_writes(hass, env, monkeypatch, mode):
-    monkeypatch.setattr("custom_components.improved_shopping_list.quantities.RECIPE_CONFIRM_DELAYS", (.001, .001))
+    monkeypatch.setattr("custom_components.improved_shopping_list_dev.quantities.RECIPE_CONFIRM_DELAYS", (.001, .001))
     todo = env.todos["todo.main"]
     initial = todo.todo_items[0]
     if mode == "create":
@@ -233,7 +233,7 @@ async def test_recipe_waits_for_provider_confirmation_without_repeating_writes(h
 
 
 async def test_recipe_confirmation_failure_is_bounded_and_identifies_missing_product(hass, env, monkeypatch):
-    monkeypatch.setattr("custom_components.improved_shopping_list.quantities.RECIPE_CONFIRM_DELAYS", (.001, .001))
+    monkeypatch.setattr("custom_components.improved_shopping_list_dev.quantities.RECIPE_CONFIRM_DELAYS", (.001, .001))
     salt = await env.catalog.async_save_product({"name": "Sal"})
     recipe = await env.catalog.async_save_recipe({"name": "Pavo y sal", "ingredients": [
         {"product_id": env.product["id"], "quantity": 10}, {"product_id": salt["id"], "quantity": 2}]})
@@ -252,7 +252,7 @@ async def test_recipe_confirmation_failure_is_bounded_and_identifies_missing_pro
 
 
 async def test_recipe_stops_confirmation_when_list_is_removed(hass, env, monkeypatch):
-    monkeypatch.setattr("custom_components.improved_shopping_list.quantities.RECIPE_CONFIRM_DELAYS", (.001,))
+    monkeypatch.setattr("custom_components.improved_shopping_list_dev.quantities.RECIPE_CONFIRM_DELAYS", (.001,))
     env.todos["todo.main"].todo_items = []
     recipe = await env.catalog.async_save_recipe({"name": "Pavo", "ingredients": [
         {"product_id": env.product["id"], "quantity": 10}]})

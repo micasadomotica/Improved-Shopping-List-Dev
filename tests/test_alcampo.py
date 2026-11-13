@@ -8,13 +8,13 @@ import pytest
 # Preserve coverage of dormant connectors for a possible future reactivation.
 pytestmark = pytest.mark.usefixtures("archived_store_capabilities")
 
-from custom_components.improved_shopping_list.alcampo import (
+from custom_components.improved_shopping_list_dev.alcampo import (
     AlcampoManager, DAY, REQUEST_INTERVAL, search_terms, search_candidates, valid_ean, linked_commercial_names)
-from custom_components.improved_shopping_list.catalog import Catalog
-from custom_components.improved_shopping_list.price_manager import PriceManager
-from custom_components.improved_shopping_list.price_sources import PriceError
-from custom_components.improved_shopping_list.store_links import normalize_link
-from custom_components.improved_shopping_list import alcampo as module
+from custom_components.improved_shopping_list_dev.catalog import Catalog
+from custom_components.improved_shopping_list_dev.price_manager import PriceManager
+from custom_components.improved_shopping_list_dev.price_sources import PriceError
+from custom_components.improved_shopping_list_dev.store_links import normalize_link
+from custom_components.improved_shopping_list_dev import alcampo as module
 
 
 @pytest.fixture
@@ -244,7 +244,7 @@ async def test_manual_search_http_failure_keeps_shared_backoff(env):
 
 async def test_manual_search_websocket_requires_admin(hass,hass_ws_client,hass_read_only_user,monkeypatch):
     from pytest_homeassistant_custom_component.common import MockConfigEntry
-    from custom_components.improved_shopping_list.const import DOMAIN, CONF_TODO_ENTITY
+    from custom_components.improved_shopping_list_dev.const import DOMAIN, CONF_TODO_ENTITY
     entry=MockConfigEntry(domain=DOMAIN,data={CONF_TODO_ENTITY:'todo.main'});entry.add_to_hass(hass)
     assert await hass.config_entries.async_setup(entry.entry_id)
     manager=hass.data[DOMAIN]['alcampo']

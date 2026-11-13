@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { FEATURES, TodoSession, isAvailable, supports, todoEntities } from "../custom_components/improved_shopping_list/frontend/todo-client.js";
-import { productNameKey, combinedTodoName, namedTodoItem } from "../custom_components/improved_shopping_list/frontend/product-names.js";
+import { FEATURES, TodoSession, isAvailable, supports, todoEntities } from "../custom_components/improved_shopping_list_dev/frontend/todo-client.js";
+import { productNameKey, combinedTodoName, namedTodoItem } from "../custom_components/improved_shopping_list_dev/frontend/product-names.js";
 
 test('two-line names preserve variants, avoid repeated words and retain source fields',()=>{
   for(const [summary,description,expected] of [

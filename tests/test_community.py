@@ -12,9 +12,9 @@ import zipfile
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.improved_shopping_list.community import CommunityLibrary, build_export, build_catalog_export, validate_index
-from custom_components.improved_shopping_list.const import DOMAIN, CONF_TODO_ENTITY
-from custom_components.improved_shopping_list.icons import IconLibrary, IconError, ICONS_URL
+from custom_components.improved_shopping_list_dev.community import CommunityLibrary, build_export, build_catalog_export, validate_index
+from custom_components.improved_shopping_list_dev.const import DOMAIN, CONF_TODO_ENTITY
+from custom_components.improved_shopping_list_dev.icons import IconLibrary, IconError, ICONS_URL
 
 SVG = b'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="#ff0000" d="M0 0h20v20z"/></svg>'
 

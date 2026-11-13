@@ -10,10 +10,10 @@ import pytest
 from aiohttp import ClientConnectionError
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.improved_shopping_list.const import DOMAIN, CONF_TODO_ENTITY
-from custom_components.improved_shopping_list.community_sync import CommunitySync, CommunityError, DATA_URL, API
-from custom_components.improved_shopping_list.community_data import fingerprint, MARKER, CLIENT_ID
-from custom_components.improved_shopping_list import community_sync as module
+from custom_components.improved_shopping_list_dev.const import DOMAIN, CONF_TODO_ENTITY
+from custom_components.improved_shopping_list_dev.community_sync import CommunitySync, CommunityError, DATA_URL, API
+from custom_components.improved_shopping_list_dev.community_data import fingerprint, MARKER, CLIENT_ID
+from custom_components.improved_shopping_list_dev import community_sync as module
 
 
 @pytest.fixture

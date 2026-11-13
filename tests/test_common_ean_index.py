@@ -8,10 +8,10 @@ from unittest.mock import AsyncMock
 import time
 
 import pytest
-from custom_components.improved_shopping_list.catalog import Catalog
-from custom_components.improved_shopping_list.ean_common_index import CommonEANIndex,URL,INITIAL_URL,parse_index
-from custom_components.improved_shopping_list.product_references import gtin
-from custom_components.improved_shopping_list.product_lookup import ProductLookup
+from custom_components.improved_shopping_list_dev.catalog import Catalog
+from custom_components.improved_shopping_list_dev.ean_common_index import CommonEANIndex,URL,INITIAL_URL,parse_index
+from custom_components.improved_shopping_list_dev.product_references import gtin
+from custom_components.improved_shopping_list_dev.product_lookup import ProductLookup
 
 EAN='8410199023094';CODE=gtin(EAN)
 ROOT=Path(__file__).resolve().parents[1]
@@ -111,7 +111,7 @@ async def test_missing_product_name_can_still_come_from_enabled_shop(hass):
 
 
 async def test_nutrition_metadata_round_trips_without_changing_format_entries(hass):
-    from custom_components.improved_shopping_list.ean_common_index import CommonEANIndex,validate_index
+    from custom_components.improved_shopping_list_dev.ean_common_index import CommonEANIndex,validate_index
     metadata={'source':'openfoodfacts','license':'ODbL-1.0','checked_at':int(time.time()),'nutriscore':{'grade':'c','version':'2023'},'nova':4}
     raw={'schema_version':1,'revision':'a'*40,'updated_at':'2026-10-31T00:00:00+00:00','products':{CODE:{'brand':'Marca','origins':['carrefour']}},'nutrition':{CODE:metadata}}
     index=CommonEANIndex(hass,None);index._data.update(index=validate_index(raw),checked_at=time.time(),next_attempt=0)
