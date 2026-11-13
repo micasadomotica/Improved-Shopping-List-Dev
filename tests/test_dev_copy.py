@@ -20,6 +20,7 @@ from custom_components.improved_shopping_list_dev.stock import StockManager
 
 @pytest.fixture
 async def original(hass, tmp_path):
+    hass.config.config_dir = str(tmp_path)
     catalog = Catalog(hass)
     catalog._store = Store(hass, 1, f"{SOURCE_DOMAIN}.catalog")
     filename = "a" * 64 + ".svg"
@@ -114,6 +115,26 @@ async def test_copy_refuses_existing_dev_data(hass, original):
     with pytest.raises(ConfigEntryNotReady, match="dev_not_empty"):
         await async_copy_original(hass, entry)
     assert [p["name"] for p in hass.data[DOMAIN]["catalog"].products] == ["Keep me"]
+
+
+@pytest.mark.parametrize("kind", ["reader", "routine", "carrefour_account", "dia_account", "lidl_account", "community"])
+async def test_copy_refuses_previous_dev_connections(hass, original, kind):
+    entry = await make_dev(hass)
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    dev = hass.data[DOMAIN]
+    if kind == "reader":
+        dev["readers"]._data["readers"]["existing"] = {}
+    elif kind == "routine":
+        dev["meal_routines"]._routines["existing"] = {}
+    elif kind == "community":
+        dev["community_sync"]._data["credentials"] = {"access_token": "test"}
+    else:
+        dev[kind]._session = {"access_token": "test"}
+    hass.config_entries.async_update_entry(entry, data={**entry.data, COPY_ORIGINAL: True})
+    with pytest.raises(ConfigEntryNotReady, match="dev_not_empty"):
+        await async_copy_original(hass, entry)
+    assert not entry.data.get(COPY_COMPLETE)
+    assert dev["catalog"].products == []
 
 
 async def test_failed_write_resumes_the_staged_snapshot(hass, original, monkeypatch):
