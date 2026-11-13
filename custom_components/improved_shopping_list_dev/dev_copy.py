@@ -126,7 +126,7 @@ def _write_icons(directory, icons):
 def _is_empty(data):
     catalog, stock = data["catalog"], data["stock"]
     return not any((catalog._products, catalog._categories, catalog._recipes,
-                    catalog._recommendation_categories, catalog._source_options,
+                    catalog._recommendation_categories, any(catalog._source_options.values()),
                     stock._items, *stock.receipts.values(), data["icons"]._assets,
                     data["price_history"]._entries))
 
