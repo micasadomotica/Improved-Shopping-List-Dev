@@ -26,7 +26,7 @@ No necesitas instalar tarjetas adicionales ni apps de Home Assistant OS. Home As
 
 ### Instalar con Marketplace
 
-Añade `https://github.com/micasadomotica/Improved-Shopping-List-Dev` desde **Ajustes → Marketplace → Añadir desde enlace**, e instala **Improved Shopping List Dev**. Sigue el aviso de reinicio si aparece y añade la integración Dev desde **Ajustes → Dispositivos y servicios**. Elige una lista de pruebas. Para usar tu catálogo actual, marca **Copiar los datos del original a Dev**; el original debe estar activo y la lista elegida no debe estar seleccionada en él.
+Añade `https://github.com/micasadomotica/Improved-Shopping-List-Dev` desde **Ajustes → Marketplace → Añadir desde enlace**, e instala **Improved Shopping List Dev**. Sigue el aviso de reinicio si aparece y añade la integración Dev desde **Ajustes → Dispositivos y servicios**. Selecciona la lista que quieres usar. Para copiar tu catálogo actual, marca **Copiar los datos del original a Dev**; el original debe estar activo. Si eliges su misma lista, marca también **Permitir compartir la lista con el original**: marcar o borrar artículos se reflejará en ambos paneles, mientras que cada integración tendrá su propio catálogo y ajustes.
 
 El original puede permanecer instalado y funcionando. No hay que desinstalarlo ni sustituir sus archivos. Las versiones de este repositorio pertenecen al canal Dev; la versión 0.88.2 se publica como release normal de GitHub para que Marketplace la ofrezca sin activar versiones preliminares. Consulta la [guía de instalación, pruebas y retirada de Dev](docs/fork-testing.md).
 
