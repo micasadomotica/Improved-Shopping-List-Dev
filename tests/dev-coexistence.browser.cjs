@@ -14,7 +14,7 @@ const originalNames = [
   'isl-meal-consumption', 'isl-meal-routines', 'isl-notification-settings',
   'isl-pending-information-refresh', 'isl-purchases', 'isl-readers', 'isl-recipe-editor',
   'isl-settings', 'isl-shopping-places', 'isl-zone-map',
-  ...['carrefour', 'dia', 'consum', 'lasirena', 'eroski'].map(store => `isl-${store}-catalog`),
+  ...['masymas', 'bm', 'consum', 'lasirena', 'eroski'].map(store => `isl-${store}-catalog`),
 ];
 
 async function main() {
