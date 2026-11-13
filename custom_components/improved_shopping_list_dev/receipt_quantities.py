@@ -69,8 +69,9 @@ def price_from_option(ref):
     if ref.get("measure_price"):
         return measure_price(ref["measure_price"])
     previous=ref.get("last_price")
-    if previous and previous.get("estimated") and weight_format(ref):
-        return None  # An estimated piece price cannot stand in for a missing kg rate.
+    if previous and previous.get("estimated"):
+        return None  # An estimated selling price cannot stand in for a missing rate.
+    if previous:previous={key:value for key,value in previous.items() if key!="estimated"}
     if previous and previous.get("price",0)>0 and (ref.get("content_confirmed") or weight_format(ref)):
         if weight_format(ref):
             return measure_price({**previous,"quantity":1,"unit":"kg","source":"catalog"})
