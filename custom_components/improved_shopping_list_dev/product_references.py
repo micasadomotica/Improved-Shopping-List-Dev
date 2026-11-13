@@ -171,7 +171,8 @@ def normalized_references(values):
         row.update(id=reference_key(row["store"],row),content_quantity=quantity,content_unit=unit,content_confirmed=confirmed,active=active)
         price = raw.get("last_price")
         if price is not None:
-            if (not isinstance(price,dict) or set(price)-{"price","currency","checked_at"}
+            if (not isinstance(price,dict) or set(price)-{"price","currency","checked_at","estimated"}
+                or "estimated" in price and type(price["estimated"]) is not bool
                 or type(price.get("price")) not in (int,float) or not math.isfinite(price["price"]) or not 0<=price["price"]<=1000000
                 or price.get("currency")!="EUR" or type(price.get("checked_at")) not in (int,float)
                 or not math.isfinite(price["checked_at"]) or price["checked_at"]<=0 or not row["store"]):

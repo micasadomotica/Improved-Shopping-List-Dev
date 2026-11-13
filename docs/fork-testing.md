@@ -2,7 +2,7 @@
 
 Repositorio: https://github.com/micasadomotica/Improved-Shopping-List-Dev
 
-Versión inicial: **0.88.1**, basada en la 0.88.0 de TitoTB, con las correcciones de URL y Mercadona.
+Versión inicial: **0.88.2**, basada en la 0.88.0 de TitoTB, con las correcciones de URL y Mercadona.
 
 ## Convivencia con el original
 
@@ -22,7 +22,7 @@ Dev tiene configuración, catálogo, compras, Stock, iconos y preferencias de na
 
 1. Mantén instalado el original. No hace falta desinstalarlo ni sustituir archivos.
 2. En **Ajustes → Marketplace → Añadir desde enlace**, añade `https://github.com/micasadomotica/Improved-Shopping-List-Dev`. Conecta GitHub si se solicita. El tipo es **Integración**.
-3. Abre **Improved Shopping List Dev** e instala **0.88.1**. Es una release normal de este repositorio de desarrollo: no requiere habilitar versiones preliminares.
+3. Abre **Improved Shopping List Dev** e instala **0.88.2**. Es una release normal de este repositorio de desarrollo: no requiere habilitar versiones preliminares.
 4. Sigue el aviso de reinicio si aparece. En **Ajustes → Dispositivos y servicios → Añadir integración**, busca **Improved Shopping List Dev** si no se abre el asistente automáticamente.
 5. Selecciona la lista de pruebas. Abre el panel **Improved Shopping List Dev** y comprueba su versión.
 
@@ -34,7 +34,7 @@ Estas instrucciones corresponden a Marketplace de Home Assistant 2026.11 o poste
 - Pega `https://tienda.mercadona.es/product/3830/aguacate-pieza`, guarda sin recuperar datos y vuelve a abrir: debe conservarse el enlace. Debe ocurrir lo mismo si falla la consulta.
 - Recupera esa ficha: la alternativa de Mercadona debe usar la referencia `3830` y dejar vacío el EAN compartido.
 - Añade `https://tienda.mercadona.es/product/3858/aguacates-bandeja`: debe ser otra alternativa, con referencia `3858`.
-- En la consulta del 13 de noviembre de 2026 ambas fichas publicaban peso aproximado. Se tratan como venta al peso, con precio por kilogramo; no se inventan gramos exactos ni piezas de la bandeja.
+- La pieza debe mostrar Al peso / kg, el precio estimado por unidad y la tarifa por kilo. La bandeja debe mostrar Por envase y su precio estimado por pack. No se inventan gramos exactos ni piezas de la bandeja. Recuperar de nuevo la ficha corrige una bandeja guardada antes como Al peso.
 - Una alternativa existente con EAN, por ejemplo de Lidl, debe conservar sus datos al recuperar una URL de Mercadona: el resultado crea o reutiliza una alternativa separada.
 - Abre el panel original y el de Dev en la misma sesión de navegador. Comprueba que conservan sus catálogos, ajustes y listas seleccionadas.
 

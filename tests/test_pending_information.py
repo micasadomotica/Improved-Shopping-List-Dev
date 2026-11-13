@@ -168,3 +168,21 @@ async def test_local_mercadona_result_stays_separate_from_original_ean(hass):
     assert not local['ean'] and local['reference_id']=='3830' and local['content_quantity'] is None
     assert local['content_unit']=='kg' and local['measure_price']['price']==5.6
     assert not pending(saved)
+
+
+async def test_tray_lookup_repairs_old_weight_mode_and_preserves_both_prices(hass):
+    url='https://tienda.mercadona.es/product/3858'
+    catalog=Catalog(hass);await catalog.async_load()
+    original=await catalog.async_save_product({'name':'Aguacates','commercial_references':[{
+        'store':'mercadona','reference_id':'3858','url':url,'sale_mode':'weight','content_unit':'kg'}]})
+    product={key:deepcopy(original[key]) for key in FIELDS if key in original}
+    job={'reference_id':original['commercial_references'][0]['id'],'url':url}
+    data={'store':'mercadona','reference_id':'3858','url':url,'name':'Aguacates','sale_mode':'package',
+        'content_unit':'kg','price':3.87,'unit_price':3.87,'approximate':True,'currency':'EUR','checked_at':1800000000,
+        'measure_price':{'price':5.3,'quantity':1,'unit':'kg','currency':'EUR','checked_at':1800000000,'source':'web'}}
+    assert merge_result(product,job,data)
+    saved=await catalog.async_save_product(product)
+    ref=saved['commercial_references'][0]
+    assert ref['sale_mode']=='package' and ref['content_quantity'] is None and not ref['content_confirmed']
+    assert ref['last_price']=={'price':3.87,'currency':'EUR','checked_at':1800000000,'estimated':True}
+    assert ref['measure_price']['price']==5.3

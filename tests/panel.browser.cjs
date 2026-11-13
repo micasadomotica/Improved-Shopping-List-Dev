@@ -2846,12 +2846,29 @@ async function checkMercadonaLocalReferences(browser,url,errors){
   await catalog.getByRole('button',{name:'Editar Aguacate',exact:true}).click();
   const form=catalog.getByRole('dialog',{name:'Editar producto',exact:true});await form.getByRole('button',{name:'Alternativas',exact:true}).click();
   for(const [identifier,price] of [['3830',5.6],['3858',5.3]]){
-    await page.evaluate(({identifier,price})=>{window.optionLookupFixture={store:'mercadona',reference_id:identifier,url:'https://tienda.mercadona.es/product/'+identifier,name:identifier==='3830'?'Aguacate pieza':'Aguacates bandeja',sale_mode:'weight',content_unit:'kg',price,currency:'EUR',checked_at:1800000000,measure_price:{price,quantity:1,unit:'kg',currency:'EUR',checked_at:1800000000,source:'web'}};},{identifier,price});
+    await page.evaluate(({identifier,price})=>{window.optionLookupFixture={store:'mercadona',reference_id:identifier,url:'https://tienda.mercadona.es/product/'+identifier,name:identifier==='3830'?'Aguacate pieza':'Aguacates bandeja',sale_mode:identifier==='3830'?'weight':'package',content_unit:'kg',price:identifier==='3830'?price:3.87,unit_price:identifier==='3830'?1.01:3.87,approximate:true,currency:'EUR',checked_at:1800000000,measure_price:{price,quantity:1,unit:'kg',currency:'EUR',checked_at:1800000000,source:'web'}};},{identifier,price});
     await form.locator('#product-link-value').fill('https://tienda.mercadona.es/product/'+identifier);
     await form.locator('#retrieve-product-data').click();
     await form.getByText('Datos recuperados. Guarda el producto para conservarlos.',{exact:true}).waitFor();
   }
   assert.equal(await form.locator('.product-option').count(),3);
+  const piece=form.locator('.product-option[data-store="mercadona"]').nth(0),tray=form.locator('.product-option[data-store="mercadona"]').nth(1);
+  await openStoreOption(piece);await openStoreOption(tray);
+  assert.equal(await piece.locator('..').getByLabel('Tipo de venta',{exact:true}).inputValue(),'weight');
+  assert.equal(await tray.locator('..').getByLabel('Tipo de venta',{exact:true}).inputValue(),'package');
+  assert.match(await piece.locator('.option-summary-price').textContent(),/1,01.*ud.*5,60.*kg/);
+  assert.equal(await tray.getByLabel('Precio por envase',{exact:true}).inputValue(),'3.87');
+  await piece.locator('..').getByLabel('Tipo de venta',{exact:true}).selectOption('package');
+  assert.equal(await piece.getByLabel('Precio por envase',{exact:true}).inputValue(),'1.01');
+  await piece.locator('..').getByLabel('Tipo de venta',{exact:true}).selectOption('weight');
+  assert.equal(await piece.getByLabel('Precio por kg',{exact:true}).inputValue(),'5.6');
+  // Re-fetch repairs a previously misclassified tray and its visible price.
+  await tray.locator('..').getByLabel('Tipo de venta',{exact:true}).selectOption('weight');
+  assert.equal(await tray.getByLabel('Precio por kg',{exact:true}).inputValue(),'5.3');
+  await tray.getByRole('button',{name:'Recuperar datos',exact:true}).click();
+  await form.getByText('Datos recuperados. Guarda el producto para conservarlos.',{exact:true}).waitFor();
+  assert.equal(await tray.locator('..').getByLabel('Tipo de venta',{exact:true}).inputValue(),'package');
+  assert.equal(await tray.getByLabel('Precio por envase',{exact:true}).inputValue(),'3.87');
   const lidl=form.locator('.product-option[data-store="lidl"]');await openStoreOption(lidl);
   await lidl.getByLabel('URL de Lidl',{exact:true}).fill('https://tienda.mercadona.es/product/3858');
   await lidl.getByRole('button',{name:'Recuperar datos',exact:true}).click();
@@ -2865,7 +2882,10 @@ async function checkMercadonaLocalReferences(browser,url,errors){
   const local=saved.commercial_references.filter(ref=>ref.store==='mercadona');
   assert.deepEqual(local.map(ref=>ref.reference_id),['3830','3858']);
   assert.deepEqual(local.map(ref=>ref.measure_price.price),[5.6,5.3]);
-  assert.ok(local.every(ref=>!ref.ean&&ref.content_quantity===null&&ref.content_unit==='kg'&&ref.sale_mode==='weight'));
+  assert.ok(local.every(ref=>!ref.ean&&ref.content_quantity==null&&ref.content_unit==='kg'));
+  assert.deepEqual(local.map(ref=>ref.sale_mode),['weight','package']);
+  assert.deepEqual(local.map(ref=>ref.last_price.price),[1.01,3.87]);
+  assert.ok(local.every(ref=>ref.last_price.estimated===true));
   assert.deepEqual([saved.barcode,...saved.barcodes],['8410422111086']);
   await context.close();
 }

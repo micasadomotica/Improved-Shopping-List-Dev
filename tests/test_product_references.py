@@ -13,6 +13,19 @@ refs=importlib.util.module_from_spec(spec);spec.loader.exec_module(refs)
 
 
 class ReferenceTests(unittest.TestCase):
+    def test_estimated_package_price_is_distinct_from_kilogram_rate(self):
+        reference={'store':'mercadona','reference_id':'3858','sale_mode':'package',
+            'content_unit':'kg','last_price':{'price':3.87,'currency':'EUR','checked_at':1800000000,'estimated':True},
+            'measure_price':{'price':5.3,'quantity':1,'unit':'kg','currency':'EUR','checked_at':1800000000,'source':'web'}}
+        saved=refs.normalized_references([reference])[0]
+        self.assertEqual(saved['last_price']['price'],3.87)
+        self.assertTrue(saved['last_price']['estimated'])
+        self.assertEqual(saved['measure_price']['price'],5.3)
+        self.assertEqual(saved['sale_mode'],'package')
+        self.assertIsNone(saved['content_quantity'])
+        reference['last_price']['estimated']='true'
+        with self.assertRaises(ValueError):refs.normalized_references([reference])
+
     def test_metres_validate_and_remain_distinct_from_weight_and_volume(self):
         from _reference_tests.receipt_quantities import stock_quantity
         from _reference_tests.ean_common import content_key

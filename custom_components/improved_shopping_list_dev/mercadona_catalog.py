@@ -59,12 +59,20 @@ def product_data(data,link,expected_ean=""):
         except ValueError:pass
     if prices.get("unit_price") is not None:
         result.update(price=float(amount(prices["unit_price"])),currency="EUR")
+        result["unit_price"]=result["price"]
+    result["approximate"]=bool(prices.get("approx_size") or data.get("is_variable_weight"))
     rate=positive(prices.get("reference_price") or prices.get("bulk_price"))
     basis=str(prices.get("reference_format") or "").lower().strip()
     basis={"ud":"uds","unidad":"uds","unidades":"uds"}.get(basis,basis)
     if rate and basis in ("kg","l","uds"):
         result["measure_price"]=measure_price({"price":rate,"quantity":1,"unit":basis,"currency":"EUR","source":"web","checked_at":result["checked_at"]})
-    if (data.get("is_bulk") or data.get("is_variable_weight")) and str(prices.get("size_format") or "").lower().strip() in ("g","kg"):
+    if prices.get("is_pack") is True:
+        # A variable-weight tray is still purchased as a package. Its estimated
+        # selling price and comparison rate describe different quantities.
+        result["sale_mode"]="package"
+        if str(prices.get("size_format") or "").lower().strip() in ("g","kg"):
+            result.setdefault("content_unit","kg")
+    elif (data.get("is_bulk") or data.get("is_variable_weight")) and str(prices.get("size_format") or "").lower().strip() in ("g","kg"):
         result.update(sale_mode="weight",content_unit="kg")
         # unit_price is an estimate for the displayed weight, never a €/kg rate.
         result.pop("price",None)

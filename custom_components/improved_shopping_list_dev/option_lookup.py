@@ -165,6 +165,8 @@ def web_measure_price(result):
 
 def normalize_sale_mode(result):
     """An explicit bulk label distinguishes weighed sales from kg-sized packs."""
+    if result.get("sale_mode")=="package":
+        return result
     if result.get("content_unit") in ("g", "kg") and re.search(
         r"\b(?:granel|al\s+peso|peso\s+variable)\b", str(result.get("name", "")), re.I
     ):

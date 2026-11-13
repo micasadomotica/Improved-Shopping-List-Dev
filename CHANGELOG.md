@@ -1,3 +1,10 @@
+# 0.88.2 — Formatos y precios de Mercadona
+
+- Distingue la pieza al peso de la bandeja vendida por envase, incluso si su peso es variable.
+- Conserva el precio estimado por unidad/envase y el precio por kilo como datos separados.
+- Recuperar la ficha corrige el tipo de venta de una bandeja guardada anteriormente como Al peso.
+- Cambiar el tipo de venta muestra su precio correspondiente sin reinterpretar un precio por kilo como precio por envase.
+
 # 0.88.1 — Improved Shopping List Dev
 
 - Integración independiente instalable junto al original desde Marketplace.

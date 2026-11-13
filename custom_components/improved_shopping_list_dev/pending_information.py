@@ -71,12 +71,22 @@ def merge_result(product,job,data):
         if not different:
             for key in ("id","last_price","measure_price","ticket_reference_id"):target.pop(key,None)
     target.update(store=data["store"],url=data["url"],reference_id=data["reference_id"],active=True)
+    if data.get("sale_mode") in ("package","weight"):
+        if data["sale_mode"]=="weight":
+            target.update(content_quantity=None,content_unit="kg",content_confirmed=True)
+            target.pop("pack_count",None)
+        elif target.get("sale_mode")=="weight":
+            target.update(content_quantity=None,content_unit=data.get("content_unit",""),content_confirmed=False)
+        target["sale_mode"]=data["sale_mode"]
+        if data.get("content_unit"):target.setdefault("content_unit",data["content_unit"])
     for field in ("name","brand","ean","nutriscore","image_url","pack_count"):
         if data.get(field) not in (None,""):target[field]=deepcopy(data[field])
     if not target.get("content_confirmed") and data.get("content_quantity") and data.get("content_unit"):
         target.update(content_quantity=data["content_quantity"],content_unit=data["content_unit"],content_confirmed=True)
-    if data.get("price") is not None and data.get("currency")=="EUR":
-        target["last_price"]={"price":data["price"],"currency":"EUR","checked_at":data.get("checked_at",int(time.time()))}
+    unit_price=data.get("unit_price",data.get("price") if data.get("sale_mode")!="weight" else None)
+    if unit_price is not None and data.get("currency")=="EUR":
+        target["last_price"]={"price":unit_price,"currency":"EUR","checked_at":data.get("checked_at",int(time.time())),
+                              **({"estimated":True} if data.get("approximate") else {})}
     if data.get("measure_price"):target["measure_price"]=deepcopy(data["measure_price"])
     for other in refs:
         if other is target or other.get("active") is False or not gtin(target.get("ean")) or gtin(other.get("ean"))!=gtin(target["ean"]):continue
