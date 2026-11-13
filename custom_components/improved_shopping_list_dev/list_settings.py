@@ -33,16 +33,16 @@ DEFAULT_STORES = {store: {"enabled": False, **reference_location(store)} for sto
 def normalize_appearance(data: dict, *, defaults: dict | None = None) -> dict:
     required = {"gradient_start", "gradient_end", "columns", "mobile_columns"}
     if not isinstance(data, dict) or not required.issubset(data) or set(data) - set(DEFAULT_APPEARANCE):
-        raise ListSettingsError("La personalizaciÃ³n contiene campos no vÃ¡lidos.")
+        raise ListSettingsError("La personalización contiene campos no válidos.")
     data = {**(defaults or DEFAULT_APPEARANCE), **data}
     result = {}
     for key in ("gradient_start", "gradient_end", "completed_gradient_start", "completed_gradient_end", "quantity_color", "recipe_gradient_start", "recipe_gradient_end", "stock_gradient_start", "stock_gradient_end"):
         if not isinstance(data[key], str) or not re.fullmatch(r"#[a-fA-F0-9]{6}", data[key]):
-            raise ListSettingsError("Selecciona un color hexadecimal vÃ¡lido, como #ee524f.")
+            raise ListSettingsError("Selecciona un color hexadecimal válido, como #ee524f.")
         result[key] = data[key].lower()
     for key, limit in (("columns", 6), ("mobile_columns", 4)):
         if type(data[key]) is not int or not 1 <= data[key] <= limit:
-            raise ListSettingsError(f"El nÃºmero de productos por fila debe estar entre 1 y {limit}.")
+            raise ListSettingsError(f"El número de productos por fila debe estar entre 1 y {limit}.")
         result[key] = data[key]
     return result
 
@@ -136,7 +136,7 @@ class ListSettings:
     def update_name_mode(self, entity_id, enabled):
         allowed = set(self.snapshot["entities"]) | {item["entity_id"] for item in self.snapshot.get("gateway_lists", [])}
         if not self.entry or entity_id not in allowed or type(enabled) is not bool:
-            raise ListSettingsError("Selecciona una lista configurada y un modo de nombre vÃ¡lido.")
+            raise ListSettingsError("Selecciona una lista configurada y un modo de nombre válido.")
         self.hass.config_entries.async_update_entry(self.entry, options={**self.entry.options,
             "description_as_name": {**self.entry.options.get("description_as_name", {}), entity_id: enabled}})
         self.notify()
@@ -147,12 +147,12 @@ class ListSettings:
         if store not in DEFAULT_STORES:
             raise StoreError("Tienda no compatible.")
         if enabled and store not in store_availability.AVAILABLE_STORES:
-            raise StoreError("Esta tienda estÃ¡ archivada y no se puede activar.")
+            raise StoreError("Esta tienda está archivada y no se puede activar.")
         generation = self._generation
         async with self._stores_lock:
             entry = self.entry
             if not entry or generation != self._generation or not self.hass.data.get(DOMAIN, {}).get("active"):
-                raise StoreError("La integraciÃ³n no estÃ¡ activa.")
+                raise StoreError("La integración no está activa.")
             stores = {**list_options(entry)["stores"], store: {"enabled": enabled, **reference_location(store)}}
             self.hass.config_entries.async_update_entry(entry, options={**entry.options,
                 "stores": stores, "favorite_store": self._favorite(stores)})
@@ -162,7 +162,7 @@ class ListSettings:
     async def async_ensure_store_location(self, store):
         """Return the canonical reference; obsolete saved locations cannot leak in."""
         if not self.entry or not self.hass.data.get(DOMAIN, {}).get("active"):
-            raise StoreError("La integraciÃ³n no estÃ¡ activa.")
+            raise StoreError("La integración no está activa.")
         current = self.snapshot["stores"].get(store, {})
         if not current.get("enabled"):
             raise StoreError("Habilita la tienda antes de actualizar sus precios.")
@@ -199,11 +199,11 @@ class ListSettings:
 
     def update_price_schedule(self, value, enabled=None, days=None):
         if not self.entry or not re.fullmatch(r"(?:[01][0-9]|2[0-3]):[0-5][0-9]", value):
-            raise StoreError("Selecciona una hora vÃ¡lida para la actualizaciÃ³n.")
+            raise StoreError("Selecciona una hora válida para la actualización.")
         enabled=self.snapshot["price_updates_enabled"] if enabled is None else enabled
         days=self.snapshot["price_update_days"] if days is None else days
         if type(enabled) is not bool or type(days) is not int or not 1 <= days <= 3650:
-            raise StoreError("Indica una frecuencia de entre 1 y 3650 dÃ­as.")
+            raise StoreError("Indica una frecuencia de entre 1 y 3650 días.")
         self.hass.config_entries.async_update_entry(self.entry, options={**self.entry.options,"price_update_time":value,
             "price_updates_enabled":enabled,"price_update_days":days})
         self.notify()
@@ -222,7 +222,7 @@ class ListSettings:
     @callback
     def update(self, action: str, entity_id: str) -> dict:
         if not self.entry:
-            raise ListSettingsError("La integraciÃ³n no estÃ¡ activa.")
+            raise ListSettingsError("La integración no está activa.")
         current = self.snapshot
         entities = current["entities"]
         primary = current["primary_entity"]
@@ -243,10 +243,10 @@ class ListSettings:
                 primary = next(iter(entities), "")
         elif action == "primary":
             if entity_id not in entities:
-                raise ListSettingsError("AÃ±ade primero esta lista a la integraciÃ³n.")
+                raise ListSettingsError("Añade primero esta lista a la integración.")
             primary = entity_id
         else:
-            raise ListSettingsError("AcciÃ³n de listas no vÃ¡lida.")
+            raise ListSettingsError("Acción de listas no válida.")
         self.hass.config_entries.async_update_entry(self.entry, options={
             **self.entry.options, CONF_TODO_ENTITIES: entities, CONF_TODO_ENTITY: primary,
         })
@@ -260,7 +260,7 @@ class ListSettings:
             raise ListSettingsError("Indica un umbral entre 1 y 1000 productos.")
         config = {**deepcopy(DEFAULT_PURCHASE_DETECTION), **self.snapshot["purchase_detection"], **deepcopy(data)}
         if type(config['minimum_minutes']) is not int or not 1 <= config['minimum_minutes'] <= 1440:
-            raise ListSettingsError('Indica una permanencia mÃ­nima entre 1 y 1440 minutos.')
+            raise ListSettingsError('Indica una permanencia mínima entre 1 y 1440 minutos.')
         try:
             config['shops'] = normalize_places(config['shops'])
         except ValueError as err:
@@ -272,11 +272,11 @@ class ListSettings:
                 any(not isinstance(values,list) or len(values)>50 or
                     any(not isinstance(entity,str) or not re.fullmatch(r"zone\.[a-z0-9_]+",entity) for entity in values)
                     for values in zones.values())):
-            raise ListSettingsError("Selecciona personas y zonas vÃ¡lidas de Home Assistant.")
+            raise ListSettingsError("Selecciona personas y zonas válidas de Home Assistant.")
         config["persons"] = list(dict.fromkeys(persons))
         config["store_zones"] = {store:list(dict.fromkeys(values)) for store,values in zones.items()}
         if config["zone_assignment"] and not config["persons"]:
-            raise ListSettingsError("Selecciona al menos una persona para la asignaciÃ³n por zona.")
+            raise ListSettingsError("Selecciona al menos una persona para la asignación por zona.")
         self.hass.config_entries.async_update_entry(self.entry, options={**self.entry.options,"purchase_detection":config})
         self.notify()
         return self.snapshot
@@ -284,7 +284,7 @@ class ListSettings:
     @callback
     def update_notifications(self, data: dict) -> dict:
         if self.entry is None:
-            raise ListSettingsError("La integraciÃ³n no estÃ¡ activa.")
+            raise ListSettingsError("La integración no está activa.")
         try:
             notifications = normalize_notifications(data, self.snapshot["notifications"])
         except ValueError as err:
@@ -296,7 +296,7 @@ class ListSettings:
     @callback
     def update_appearance(self, data: dict) -> dict:
         if not self.entry:
-            raise ListSettingsError("La integraciÃ³n no estÃ¡ activa.")
+            raise ListSettingsError("La integración no está activa.")
         appearance = normalize_appearance(data, defaults=self.snapshot["appearance"])
         self.hass.config_entries.async_update_entry(self.entry, options={**self.entry.options, "appearance": appearance})
         self.notify()

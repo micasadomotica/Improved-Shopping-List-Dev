@@ -178,6 +178,7 @@ async def test_two_gateways_share_deduplication_and_no_chains(env):
 
 
 async def test_reconfiguration_and_deleted_pending_do_not_import_old_items(env):
+    env.settings.update("add", "todo.other")
     voice = env.todos["todo.voice"]
     voice.add("old", "Anterior")
     await env.manager.async_configure("todo.voice", "todo.main", False)

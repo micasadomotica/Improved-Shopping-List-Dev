@@ -29,6 +29,7 @@ async def reader_env(hass, monkeypatch):
     entry.add_to_hass(hass)
     settings = ListSettings(hass)
     settings.attach(entry)
+    settings.update("add", "todo.local")
     catalog = Catalog(hass)
     await catalog.async_load()
     manager = ReaderManager(hass, catalog, settings)

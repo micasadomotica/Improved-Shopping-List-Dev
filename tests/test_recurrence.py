@@ -157,6 +157,7 @@ async def test_old_client_and_other_edits_do_not_reset_but_changed_days_do(env):
 
 
 async def test_primary_change_during_read_does_not_write_old_list(env):
+    env.settings.update("add", "todo.other")
     await recurring(env)
     env.clock[0] += 3 * DAY
     env.delay = True
