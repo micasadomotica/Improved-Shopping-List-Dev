@@ -3,7 +3,7 @@
 - Copia opcional del catálogo, categorías, recetas, compras, Stock, precios, nutrición e iconos del original al configurar un Dev vacío.
 - Apariencia y tiendas propias; lista de pruebas independiente y automatizaciones desactivadas. No copia sesiones, lectores ni artículos de las listas originales.
 - La copia no modifica el original, no se repite al reiniciar y puede continuar tras un fallo de escritura.
-- Añade el icono local `brand/icon.png` para Home Assistant.
+- Documenta el icono local ya incluido: se muestra tras instalar Dev; el icono previo a la instalación depende del catálogo público de Marketplace.
 
 # 0.88.1 — Improved Shopping List Dev
 
