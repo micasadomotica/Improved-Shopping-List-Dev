@@ -94,6 +94,23 @@ async def test_scan_adds_purchase_unit_instead_of_manual_step(env):
     assert env.manager.value("todo.main", item())["quantity"] == 550
 
 
+async def test_scan_setting_preserves_purchase_defaults_and_legacy_saves(env, hass):
+    product = await env.catalog.async_set_scan_quantity(env.product["id"], env.product["revision"], 500)
+    assert product["unit_quantity"] == 250 and product["quantity_step"] == 50
+    assert env.manager.value("todo.main", item())["quantity"] == 250
+    legacy = {key: value for key, value in product.items() if key in FIELDS - {"scan_quantity"}}
+    saved = await env.catalog.async_save_product(legacy)
+    assert saved["scan_quantity"] == 500
+    with pytest.raises(CatalogError, match="Otra sesión"):
+        await env.catalog.async_set_scan_quantity(product["id"], product["revision"], 2)
+    for invalid in (0, -1, True, 0.0001, float("inf")):
+        with pytest.raises(CatalogError):
+            await env.catalog.async_set_scan_quantity(saved["id"], saved["revision"], invalid)
+    restored = Catalog(hass)
+    await restored.async_load()
+    assert restored.products[0]["scan_quantity"] == 500
+
+
 async def test_scan_revalidates_reader_and_pending_item_before_quantity_write(env):
     def stale_reader():
         raise CatalogError("El lector ha cambiado.")
@@ -130,6 +147,9 @@ async def test_unit_changes_cannot_reinterpret_old_overrides_and_missing_catalog
 async def test_quantity_api_permissions_and_unload(hass, hass_ws_client, hass_read_only_user):
     entry = MockConfigEntry(domain=DOMAIN, data={CONF_TODO_ENTITY: "todo.main"}); entry.add_to_hass(hass)
     assert await hass.config_entries.async_setup(entry.entry_id)
+    catalog = hass.data[DOMAIN]["catalog"]
+    product = await catalog.async_save_product({"name": "Pan"})
+    await hass.async_block_till_done()
     token = await hass.auth.async_create_refresh_token(hass_read_only_user, client_id="http://test.local")
     client = await hass_ws_client(hass, hass.auth.async_create_access_token(token))
     await client.send_json({"id": 1, "type": f"{DOMAIN}/quantities/adjust", "entity_id": "todo.main", "uid": "a", "direction": 1})
@@ -137,6 +157,15 @@ async def test_quantity_api_permissions_and_unload(hass, hass_ws_client, hass_re
     await client.send_json({"id": 2, "type": f"{DOMAIN}/quantities/subscribe"})
     assert (await client.receive_json())["success"]
     assert (await client.receive_json())["event"] == {"entries": {}}
+    command = {"type": f"{DOMAIN}/catalog/scan_quantity", "product_id": product["id"], "revision": product["revision"], "quantity": 2}
+    await client.send_json({"id": 3, **command})
+    assert (await client.receive_json())["error"]["code"] == "unauthorized"
+    admin = await hass_ws_client(hass)
+    await admin.send_json({"id": 1, **command})
+    result = await admin.receive_json()
+    assert result["success"] and result["result"]["product"]["scan_quantity"] == 2
+    assert result["result"]["product"]["unit_quantity"] == 1
+    await admin.close()
     await client.close(); await hass.async_block_till_done()
     # Only the native estimated-price sensor remains subscribed.
     assert len(hass.data[DOMAIN]["quantities"]._listeners) == 1

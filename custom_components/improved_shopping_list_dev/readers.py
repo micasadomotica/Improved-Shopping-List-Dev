@@ -1,6 +1,6 @@
 """Persist readers and process physical scans without an open frontend."""
 
-from asyncio import Lock, gather
+from asyncio import Lock, gather, sleep, timeout
 from copy import deepcopy
 from datetime import UTC, datetime
 import logging
@@ -8,6 +8,7 @@ import time
 from uuid import uuid4
 
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.components.todo import DATA_COMPONENT
 from homeassistant.helpers.event import async_track_state_change_event, async_track_state_report_event
 from homeassistant.helpers.storage import Store
 
@@ -15,6 +16,7 @@ from .catalog import READER_ACTIONS, CatalogError, code_key, normalized_name
 from .const import DOMAIN
 from .todo_names import item_name
 from .product_lookup import ProductLookup, is_product_barcode
+from .quantity_values import purchase_defaults
 
 _LOGGER = logging.getLogger(__name__)
 INVALID_STATES = {"", "unknown", "unavailable", "none"}
@@ -410,7 +412,8 @@ class ReaderManager:
             if not pending.get("uid") or self.quantities is None:
                 raise CatalogError("No se puede aumentar la cantidad del producto en la lista.")
             result = await self.quantities.async_adjust(target, str(pending["uid"]), 1,
-                reader=reader["name"], guard=lambda: self._still_current(reader, product, code, target))
+                reader=reader["name"], guard=lambda: self._still_current(reader, product, code, target),
+                scan_quantity=product.get("scan_quantity", purchase_defaults(product)["unit_quantity"]))
             value = result["entries"][target][str(pending["uid"])]
             self._status(reader["id"], code, f"Cantidad en la lista: {value['quantity']} {value['unit']}", product["name"])
             return
@@ -427,4 +430,37 @@ class ReaderManager:
             await self.hass.services.async_call("todo", "add_item", {"entity_id": target, "item": product["name"]}, blocking=True, context=context)
         else:
             raise CatalogError("La lista de destino no permite añadir o recuperar el producto.")
+        # Confirm the provider's UID before storing a first-scan amount. Never resend
+        # add_item on a delayed provider response (Bring may refresh asynchronously).
+        if self.quantities is not None:
+            pending = await self._confirm_pending_item(reader, product, code, target)
+            await self.quantities.async_adjust(target, str(pending["uid"]), 1,
+                reader=reader["name"], guard=lambda: self._still_current(reader, product, code, target),
+                scan_quantity=product.get("scan_quantity", purchase_defaults(product)["unit_quantity"]), reset=True)
         self._status(reader["id"], code, f"Añadido a {state.attributes.get('friendly_name', target)}", product["name"])
+
+    async def _confirm_pending_item(self, reader, product, code, target):
+        try:
+            async with timeout(30):
+                for delay in (0, 1, 4, 6):
+                    if delay:
+                        await sleep(delay)
+                    self._still_current(reader, product, code, target)
+                    state = self.hass.states.get(target)
+                    if state is None or state.state in ("unknown", "unavailable"):
+                        break
+                    if delay:
+                        component = self.hass.data.get(DATA_COMPONENT)
+                        entity = component.get_entity(target) if component else None
+                        if entity is not None:
+                            await entity.async_update_ha_state(force_refresh=True)
+                    result = await self.hass.services.async_call("todo", "get_items", {"entity_id": target}, blocking=True, return_response=True)
+                    items = result.get(target, {}).get("items") if isinstance(result, dict) else None
+                    if isinstance(items, list):
+                        pending = next((item for item in items if item.get("uid") and item.get("status") == "needs_action"
+                            and normalized_name(item_name(self.settings, target, item)) == normalized_name(product["name"])), None)
+                        if pending:
+                            return pending
+        except TimeoutError:
+            pass
+        raise CatalogError("El proveedor no ha confirmado el artículo. Comprueba la lista y su cantidad antes de volver a escanear.")

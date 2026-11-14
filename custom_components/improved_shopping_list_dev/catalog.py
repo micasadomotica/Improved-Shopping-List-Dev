@@ -28,7 +28,7 @@ FIELDS = {
     "id", "revision", "name", "category", "tags", "barcode",
     "price", "currency", "image_url", "icon", "notes",
     "barcodes", "nfc_tags", "reader_actions", "recurrence", "store_links",
-    "purchase_unit", "unit_quantity", "quantity_step", "commercial_references", "preferred_reference",
+    "purchase_unit", "unit_quantity", "quantity_step", "scan_quantity", "commercial_references", "preferred_reference",
 }
 READER_ACTIONS = {"none", "add_list", "stock_remove", "stock_add"}
 LEGACY_PRODUCT_FIELDS = {"brand", "format"}
@@ -120,6 +120,8 @@ def normalize_product(data: dict[str, Any]) -> dict[str, Any]:
         raise CatalogError("El nombre del producto es obligatorio.")
     try:
         product.update(normalize_purchase(data))
+        if "scan_quantity" in data:
+            product["scan_quantity"] = positive_quantity(data["scan_quantity"])
     except ValueError as err:
         raise CatalogError(str(err)) from err
     product["icon"] = _mdi_icon(data.get("icon", ""), optional=True)
@@ -588,6 +590,8 @@ class Catalog:
                 )
             # Older panel sessions must not erase newly introduced reader fields.
             if current:
+                if "scan_quantity" not in data and "scan_quantity" in current:
+                    product["scan_quantity"] = current["scan_quantity"]
                 for key, default in DEFAULT_PURCHASE.items():
                     if key not in data:
                         product[key] = current.get(key, default)
@@ -779,6 +783,24 @@ class Catalog:
                 "recurrence_started_at":datetime.fromtimestamp(anchor,UTC).isoformat() if recurrence["enabled"] else None,
                 "revision":revision+1, "updated_at":datetime.now(UTC).isoformat()}
             await self._persist({**self._products, product_id:product}, self._categories)
+        self._notify()
+        return deepcopy(product)
+
+    async def async_set_scan_quantity(self, product_id, revision, quantity):
+        """Set the amount per barcode/NFC scan without changing current list quantities."""
+        try:
+            quantity = positive_quantity(quantity)
+        except ValueError as err:
+            raise CatalogError(str(err)) from err
+        async with self._lock:
+            current = self._products.get(product_id)
+            if current is None:
+                raise CatalogError("El producto ya no existe.", "not_found")
+            if current["revision"] != revision:
+                raise CatalogError("Otra sesión ha modificado este producto. Actualiza el catálogo.", "conflict")
+            product = {**deepcopy(current), "scan_quantity": quantity,
+                       "revision": revision + 1, "updated_at": datetime.now(UTC).isoformat()}
+            await self._persist({**self._products, product_id: product}, self._categories)
         self._notify()
         return deepcopy(product)
 

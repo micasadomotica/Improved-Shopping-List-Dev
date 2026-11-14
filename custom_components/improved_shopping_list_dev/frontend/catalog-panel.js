@@ -141,11 +141,6 @@ class ImprovedShoppingCatalog extends HTMLElement {
     this._priceDataKey = key; this._priceData = value;
     this._renderProducts();this._renderPendingInformation();
   }
-  set quantityData(value) {
-    const key=JSON.stringify(value);
-    if(key===this._quantityKey)return;
-    this._quantityKey=key;this._quantityData=value;this._renderProducts();
-  }
   set listEntity(value) { this._listEntity = value; }
 
   set listItems(value) {
@@ -1501,29 +1496,28 @@ class ImprovedShoppingCatalog extends HTMLElement {
   }
 
   _quantityControl(product) {
-    const items=this._listItems.filter(item=>productNameKey(item.summary)===productNameKey(product.name));
-    const item=items.find(item=>item.status!=='completed')??items[0];
-    const value=purchaseQuantity(product,item ? this._quantityData?.entries?.[item.uid] : null);
-    const controls=element('div','row-quantity');controls.setAttribute('role','group');controls.setAttribute('aria-label','Cantidad de '+product.name);
-    const label=element('span','quantity-value',quantityLabel(value));label.title=label.textContent;
-    const locked=this._quantityData?.locked||!this._quantityData?.loaded||this._quantityData?.loading||this._adjustingQuantity||!item?.uid||!this.onAdjustQuantity||this._hass?.user?.is_admin!==true;
+    const value={...purchaseQuantity(product),quantity:Number(product.scan_quantity??product.unit_quantity??1)};
+    const controls=element('div','row-quantity');controls.setAttribute('role','group');controls.setAttribute('aria-label','Cantidad por escaneo de '+product.name);
+    const label=element('span','quantity-value',quantityLabel(value));label.title='Cantidad por escaneo de código de barras o NFC: '+label.textContent;
+    const locked=this._catalog.loading||this._adjustingQuantity||this._hass?.user?.is_admin!==true;
     for(const [direction,icon] of [[-1,'mdi:minus-thick'],[1,'mdi:plus-thick']]){
       const button=iconButton(icon,(direction>0?'Aumentar':'Disminuir')+' cantidad: '+product.name);
       const next=Math.round((value.quantity+direction*value.step)*1000)/1000;
       button.disabled=Boolean(locked||next<=0||next>1000000);
       button.dataset.quantityProduct=product.id;button.dataset.quantityDirection=String(direction);
-      button.title=item ? (direction>0?'+':'−')+' '+quantityLabel({quantity:value.step,unit:value.unit}) : 'Añade el producto a la lista para ajustar su cantidad';
-      button.addEventListener('click',event=>{event.stopPropagation();void this._adjustQuantity(product,item,direction);});
+      button.title='Cantidad por escaneo: '+(direction>0?'+':'−')+' '+quantityLabel({quantity:value.step,unit:value.unit});
+      button.addEventListener('click',event=>{event.stopPropagation();void this._adjustQuantity(product,next);});
       if(direction>0)controls.append(label);controls.append(button);
     }
     return controls;
   }
 
-  async _adjustQuantity(product,item,direction) {
-    if(this._adjustingQuantity||!item?.uid||!this.onAdjustQuantity)return;
+  async _adjustQuantity(product,next) {
+    if(this._adjustingQuantity||this._hass?.user?.is_admin!==true)return;
     const entity=this._listEntity;
+    const direction=next>Number(product.scan_quantity??product.unit_quantity??1)?1:-1;
     this._adjustingQuantity=true;this._catalog.error='';this._renderProducts();
-    try { await this.onAdjustQuantity(entity,item.uid,direction); }
+    try { await this._catalog.setScanQuantity(product,next); }
     catch(error){this._catalog.error=error.message??'No se ha podido cambiar la cantidad.';}
     finally {
       this._adjustingQuantity=false;this._render();
@@ -1982,6 +1976,7 @@ class ImprovedShoppingCatalog extends HTMLElement {
     product.purchase_unit=this._editing?.purchase_unit??'uds';
     product.unit_quantity=this._editing?.unit_quantity??1;
     product.quantity_step=this._editing?.quantity_step??1;
+    if(this._editing?.scan_quantity!==undefined)product.scan_quantity=this._editing.scan_quantity;
     product.store_links = structuredClone(this._storeLinks ?? {});
     product.commercial_references = structuredClone(this._commercialReferences ?? []).map(ref=>({...ref,content_confirmed:validReferenceFormat(ref)}));
     product.preferred_reference=this._preferredReference?.active!==false&&this._commercialReferences.includes(this._preferredReference)?structuredClone(this._preferredReference):'';

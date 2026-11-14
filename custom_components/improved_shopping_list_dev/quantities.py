@@ -74,7 +74,7 @@ class ListQuantities:
             "step": defaults["quantity_step"] if product or not record else record.get("step", 1),
             "unit_quantity": defaults["unit_quantity"]}
 
-    async def async_adjust(self, entity_id, uid, direction, *, reader=None, guard=None):
+    async def async_adjust(self, entity_id, uid, direction, *, reader=None, guard=None, scan_quantity=None, reset=False):
         async with self._lock:
             if not self._active or entity_id not in self.settings.snapshot["entities"]:
                 raise CatalogError("Selecciona una lista de la compra añadida a la integración.")
@@ -98,9 +98,9 @@ class ListQuantities:
             item = named_item(self.settings, entity_id, item)
             value = self.value(entity_id, item)
             try:
-                # A scan adds one purchase unit; manual +/- uses the editable step.
-                amount = value["unit_quantity"] if reader is not None else value["step"]
-                quantity = positive_quantity(round(value["quantity"] + direction * amount, 3))
+                # Scan amounts are separate from unit prices and manual adjustment steps.
+                amount = positive_quantity(scan_quantity if scan_quantity is not None else value["unit_quantity"]) if reader is not None else value["step"]
+                quantity = positive_quantity(amount if reset and reader is not None else round(value["quantity"] + direction * amount, 3))
             except ValueError as err:
                 raise CatalogError(str(err)) from err
             entries = deepcopy(self._entries)

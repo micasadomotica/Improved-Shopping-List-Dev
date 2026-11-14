@@ -105,6 +105,13 @@ export class CatalogSession {
     if (generation === this._generation) await this.refresh();
   }
 
+  async setScanQuantity(product, quantity) {
+    const generation=this._generation;
+    await catalogRequest(this.getHass(), {type:PREFIX+'scan_quantity',product_id:product.id,revision:product.revision,quantity},
+      'No se ha podido confirmar la cantidad por escaneo. Actualiza el catálogo antes de reintentar.');
+    if(generation===this._generation)await this.refresh();
+  }
+
   async saveRecipe(recipe) {
     const generation = this._generation;
     const result = await this.getHass().callWS({type:PREFIX+"recipe/save", recipe});

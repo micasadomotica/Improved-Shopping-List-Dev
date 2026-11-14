@@ -152,6 +152,30 @@ async def test_concurrent_scans_and_manual_adjustment_keep_all_quantities(reader
     assert len(env.calls) == 1
 
 
+@pytest.mark.parametrize("kind,code", [("barcode", "0012345"), ("nfc", "AA:BB:CC:DD")])
+async def test_configured_scan_quantity_is_separate_from_accumulated_list(reader_env, kind, code):
+    env = reader_env
+    reader = await add_reader(env, kind=kind, cooldown=0)
+    product = await add_product(env, reader, scan_quantity=2)
+    await env.manager.async_process(reader["id"], code)
+    item = env.items["todo.bring"][0]
+    assert env.quantities.value("todo.bring", item)["quantity"] == 2
+    await env.manager.async_process(reader["id"], code)
+    assert env.quantities.value("todo.bring", item)["quantity"] == 4
+    assert env.catalog.products[0]["scan_quantity"] == 2
+    await env.catalog.async_set_scan_quantity(product["id"], product["revision"], 3)
+    assert env.quantities.value("todo.bring", item)["quantity"] == 4
+    assert env.quantities.value("todo.bring", item)["unit_quantity"] == 1
+    await env.manager.async_process(reader["id"], code)
+    assert env.quantities.value("todo.bring", item)["quantity"] == 7
+    item["status"] = "completed"
+    await env.manager.async_process(reader["id"], code)
+    assert env.quantities.value("todo.bring", item)["quantity"] == 3
+    assert len(env.items["todo.bring"]) == 1
+    await env.catalog.async_load()
+    assert env.catalog.products[0]["scan_quantity"] == 3
+
+
 async def test_existing_reader_cooldown_is_not_migrated(hass, reader_env):
     env = reader_env
     reader = await add_reader(env, cooldown=60)
@@ -159,6 +183,29 @@ async def test_existing_reader_cooldown_is_not_migrated(hass, reader_env):
     await restored.async_load()
     assert restored.snapshot["readers"][0]["cooldown"] == 60
     assert restored.snapshot["readers"][0]["id"] == reader["id"]
+
+
+@pytest.mark.parametrize("confirm", [True, False])
+async def test_first_scan_waits_for_provider_uid_without_readding(hass, reader_env, monkeypatch, confirm):
+    env = reader_env
+    reader = await add_reader(env)
+    await add_product(env, reader, scan_quantity=2)
+    reads = 0
+    async def delayed_items(call):
+        nonlocal reads
+        reads += 1
+        items = env.items[call.data["entity_id"]] if confirm and reads >= 3 else []
+        return {call.data["entity_id"]: {"items": deepcopy(items)}}
+    hass.services.async_register("todo", "get_items", delayed_items, supports_response=SupportsResponse.ONLY)
+    monkeypatch.setattr(readers_module, "sleep", AsyncMock())
+    await env.manager.async_process(reader["id"], "0012345")
+    assert len(env.calls) == 1
+    assert len(env.items["todo.bring"]) == 1
+    if confirm:
+        assert env.quantities.value("todo.bring", env.items["todo.bring"][0])["quantity"] == 2
+    else:
+        assert env.quantities.snapshot["entries"] == {}
+        assert "No se pudo" in env.manager.snapshot["readers"][0]["last"]["message"]
 
 
 async def test_reader_matches_full_bring_name_without_duplicate_and_restores_uid(reader_env,monkeypatch):

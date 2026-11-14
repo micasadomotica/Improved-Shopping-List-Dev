@@ -102,6 +102,7 @@ def async_register_commands(hass: HomeAssistant) -> None:
     for command in (ws_recipe_save, ws_recipe_delete, ws_recipe_add, ws_recipe_season):
         websocket_api.async_register_command(hass, command)
     websocket_api.async_register_command(hass, ws_season_months)
+    websocket_api.async_register_command(hass, ws_scan_quantity)
     websocket_api.async_register_command(hass, ws_recommendation_category_save)
     websocket_api.async_register_command(hass, ws_recommendation_category_delete)
     websocket_api.async_register_command(hass, ws_catalog_delete)
@@ -1068,6 +1069,27 @@ async def ws_season_months(hass, connection, msg):
     except (OSError, HomeAssistantError):
         _LOGGER.exception("Could not persist seasonal products")
         connection.send_error(msg["id"], "storage_error", "No se han podido guardar los productos de temporada.")
+    else:
+        connection.send_result(msg["id"], {"product": product})
+
+
+@websocket_api.websocket_command({
+    vol.Required("type"): f"{DOMAIN}/catalog/scan_quantity",
+    vol.Required("product_id"): str, vol.Required("revision"): int,
+    vol.Required("quantity"): vol.Any(int, float),
+})
+@websocket_api.require_admin
+@websocket_api.async_response
+async def ws_scan_quantity(hass, connection, msg):
+    if not (catalog := _catalog(hass, connection, msg)):
+        return
+    try:
+        product = await catalog.async_set_scan_quantity(msg["product_id"], msg["revision"], msg["quantity"])
+    except CatalogError as err:
+        connection.send_error(msg["id"], err.code, str(err))
+    except (OSError, HomeAssistantError):
+        _LOGGER.exception("Could not persist scan quantity")
+        connection.send_error(msg["id"], "storage_error", "No se ha podido guardar la cantidad por escaneo.")
     else:
         connection.send_result(msg["id"], {"product": product})
 

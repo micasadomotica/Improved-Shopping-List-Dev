@@ -568,7 +568,6 @@ class ImprovedShoppingListPanel extends HTMLElement {
     root.querySelector("isl-dev-catalog").onComplete = (item) => this._runAction(
       () => this._session.setCompleted(item, true), "",
     );
-    root.querySelector("isl-dev-catalog").onAdjustQuantity = (entity,uid,direction) => this._quantities.adjust(entity,uid,direction);
     root.querySelector("isl-dev-catalog").onRenameSuggestion = (source, name) => this._session.renameFromSuggestion(source,name);
     root.querySelector(".menu").addEventListener("click", () => {
       this.dispatchEvent(new CustomEvent("hass-toggle-menu", { bubbles: true, composed: true }));
@@ -765,7 +764,6 @@ class ImprovedShoppingListPanel extends HTMLElement {
         catalog.listItems = available && !session.loading ? session.items : [];
         catalog.pendingItems = available && !session.loading
           ? session.items.filter(item => item.status !== "completed") : [];
-        catalog.quantityData = {entries:this._quantities.entries[session.entityId]??{},loaded:this._quantities.loaded,loading:this._quantities.loading,locked:this._busy||session.loading||!available};
       }
     }
     const locked = this._busy || session.loading || !available;

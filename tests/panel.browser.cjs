@@ -168,6 +168,13 @@ const hass={
       localStorage.setItem('receipt-fixture',JSON.stringify(window.receiptHistory));return receipt??{removed:true};
     }
     if(msg.type==='improved_shopping_list_dev/quantities/get')return {entries:structuredClone(window.quantityEntries)};
+    if(msg.type==='improved_shopping_list_dev/catalog/scan_quantity'){
+      if(window.failScanQuantity)throw new Error('No se pudo cambiar la cantidad por escaneo');
+      const product=window.catalogProducts.find(p=>p.id===msg.product_id);
+      if(product.revision!==msg.revision)throw new Error('Otra sesión ha modificado este producto');
+      Object.assign(product,{scan_quantity:msg.quantity,revision:product.revision+1});window.emitCatalog();
+      return {product:structuredClone(product)};
+    }
     if(msg.type==='improved_shopping_list_dev/quantities/adjust'){
       if(window.failQuantities)throw new Error('No se pudo cambiar la cantidad');
       const item=data[msg.entity_id].find(item=>item.uid===msg.uid);
@@ -2617,17 +2624,17 @@ async function checkPurchaseQuantities(browser,url,errors){
     assert.equal(await pavoRow.locator('.row-quantity button').count(),0);
     await quantityPage.getByRole('button',{name:'Catálogo',exact:true}).click();
     const quantityCatalog=quantityPage.locator('isl-dev-catalog');
-    assert.equal(await quantityCatalog.getByRole('group',{name:'Cantidad de Pavo',exact:true}).count(),0);
+    assert.equal(await quantityCatalog.getByRole('group',{name:'Cantidad por escaneo de Pavo',exact:true}).count(),0);
     await quantityCatalog.locator('#toggle-catalog-layout').click();
-    const quantityBadge=quantityCatalog.getByRole('group',{name:'Cantidad de Pavo',exact:true});
+    const quantityBadge=quantityCatalog.getByRole('group',{name:'Cantidad por escaneo de Pavo',exact:true});
     assert.equal(await quantityBadge.locator('.quantity-value').textContent(),'250 g');
     await quantityBadge.getByRole('button',{name:'Aumentar cantidad: Pavo',exact:true}).click();
     await quantityBadge.locator('.quantity-value').filter({hasText:'300 g'}).waitFor();
-    await quantityPage.evaluate(()=>{window.failQuantities=true;});
+    await quantityPage.evaluate(()=>{window.failScanQuantity=true;});
     await quantityBadge.getByRole('button',{name:'Aumentar cantidad: Pavo',exact:true}).click();
     await quantityCatalog.locator('#catalog-error').filter({hasText:'No se pudo cambiar la cantidad'}).waitFor();
     assert.equal(await quantityBadge.locator('.quantity-value').textContent(),'300 g');
-    await quantityPage.evaluate(()=>{window.failQuantities=false;});
+    await quantityPage.evaluate(()=>{window.failScanQuantity=false;});
 
     assert.equal(await quantityBadge.locator('ha-icon').first().getAttribute('icon'),'mdi:minus-thick');
     assert.equal(await quantityBadge.locator('ha-icon').last().getAttribute('icon'),'mdi:plus-thick');
@@ -2635,7 +2642,11 @@ async function checkPurchaseQuantities(browser,url,errors){
     assert.equal(await quantityPage.evaluate(()=>window.listData['todo.bring'].filter(item=>item.summary==='Pavo').length),1);
     assert.equal(await quantityPage.evaluate(()=>window.listData['todo.bring'].find(item=>item.uid==='pavo-entry').status),'needs_action');
     await quantityPage.getByRole('button',{name:'Lista',exact:true}).click();
-    await quantityPage.locator('#pending-total').filter({hasText:'3,00'}).waitFor();
+    await quantityPage.locator('#pending-total').filter({hasText:'2,50'}).waitFor();
+    // Receiving a scan total changes only the list, not the catalog setting or unit price.
+    await quantityPage.evaluate(()=>{window.quantityEntries['todo.bring']={'pavo-entry':{quantity:900,unit:'g',step:50}};window.emitQuantities();});
+    await pavoRow.locator('.row-quantity').filter({hasText:'900 g'}).waitFor();
+    await quantityPage.locator('#pending-total').filter({hasText:'9,00'}).waitFor();
     await quantityPage.reload();
     // The simulated native provider lives in page memory; restore its unchanged entries.
     await quantityPage.evaluate(async()=>{
@@ -2643,7 +2654,7 @@ async function checkPurchaseQuantities(browser,url,errors){
       window.storePriceFixture=[{catalog_product_id:'pavo',store:'carrefour',price:'2.50',currency:'EUR',checked_at:1792490400}];
       await window.testPanel._refreshRowPrices();
     });
-    await pavoRow.locator('.row-quantity').filter({hasText:'300 g'}).waitFor();
+    await pavoRow.locator('.row-quantity').filter({hasText:'900 g'}).waitFor();
     await quantityPage.getByRole('button',{name:'Catálogo',exact:true}).click();
     await quantityBadge.locator('.quantity-value').filter({hasText:'300 g'}).waitFor();
     await quantityCatalog.getByRole('button',{name:'Editar Pavo',exact:true}).click();
@@ -2664,7 +2675,7 @@ async function checkPurchaseQuantities(browser,url,errors){
       }));
     }
     await quantityPage.evaluate(()=>{window.listData['todo.bring']=window.listData['todo.bring'].filter(item=>item.summary!=='Pavo');window.emit('todo.bring');});
-    await quantityBadge.getByRole('button',{name:'Aumentar cantidad: Pavo',exact:true}).isDisabled().then(value=>assert.equal(value,true));
+    await quantityBadge.getByRole('button',{name:'Aumentar cantidad: Pavo',exact:true}).isDisabled().then(value=>assert.equal(value,false));
     await quantityPage.evaluate(()=>{window.listData['todo.bring'].push({uid:'pavo-entry',summary:'Pavo',status:'needs_action'});window.emit('todo.bring');});
     await quantityPage.getByRole('button',{name:'Ajustes',exact:true}).click();
     const quantitySettings=quantityPage.locator('isl-dev-settings');
