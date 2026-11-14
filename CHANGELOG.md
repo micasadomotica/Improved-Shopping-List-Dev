@@ -1,4 +1,4 @@
-# Pendiente de publicar — Cantidades y confirmación de compras
+# 0.89.0 — Cantidades y confirmación de compras
 
 - Añade botones −/+ junto a la cantidad de cada artículo pendiente, en filas y cuadrícula. Ajustan solo el total de la lista y actualizan su precio estimado.
 - Los controles son independientes del botón que marca el artículo como comprado y conservan la cantidad por escaneo del Catálogo. La resta se desactiva antes de llegar a cero.
