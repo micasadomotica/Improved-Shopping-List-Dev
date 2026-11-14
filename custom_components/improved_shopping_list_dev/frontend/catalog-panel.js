@@ -1,14 +1,14 @@
-import { ReplenishmentEditor, replenishmentMarkup } from './replenishment-editor.js?v=0.88.4';
+import { ReplenishmentEditor, replenishmentMarkup } from './replenishment-editor.js?v=0.88.5';
 const priceValue=value=>value==null||value===''?'':Number(Number(value).toFixed(2));
-import { purchaseQuantity, quantityLabel } from "./quantity-client.js?v=0.88.4";
-import { referenceContentControls, barcodeIdentity, validReferenceContent, validReferenceFormat, weightFormat, pendingProductInformation } from "./reference-formats.js?v=0.88.4";
-import { installDialogCloseButtons } from "./dialog-controls.js?v=0.88.4";
-import { CatalogSession } from "./catalog-client.js?v=0.88.4";
-import { matchCatalogProducts } from "./product-matching.js?v=0.88.4";
-import "./category-panel.js?v=0.88.4";
-import "./recipe-editor.js?v=0.88.4";
-import "./icon-picker.js?v=0.88.4";
-import { imageSource, normalizedName, productNameKey, cachedProductPrice, storeProductLink, storeFromProductUrl } from "./product-display.js?v=0.88.4";
+import { purchaseQuantity, quantityLabel } from "./quantity-client.js?v=0.88.5";
+import { referenceContentControls, barcodeIdentity, validReferenceContent, validReferenceFormat, weightFormat, pendingProductInformation } from "./reference-formats.js?v=0.88.5";
+import { installDialogCloseButtons } from "./dialog-controls.js?v=0.88.5";
+import { CatalogSession } from "./catalog-client.js?v=0.88.5";
+import { matchCatalogProducts } from "./product-matching.js?v=0.88.5";
+import "./category-panel.js?v=0.88.5";
+import "./recipe-editor.js?v=0.88.5";
+import "./icon-picker.js?v=0.88.5";
+import { imageSource, normalizedName, productNameKey, cachedProductPrice, storeProductLink, storeFromProductUrl } from "./product-display.js?v=0.88.5";
 export { imageSource, normalizedName, productNameKey, cachedProductPrice };
 
 const MONTHS = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
@@ -1823,6 +1823,7 @@ class ImprovedShoppingCatalog extends HTMLElement {
         if(data.sale_mode==='package'){
           if(weightFormat(ref))Object.assign(ref,{content_quantity:null,content_unit:data.content_unit??'',content_confirmed:false});
           ref.sale_mode='package';if(data.content_unit&&!ref.content_unit)ref.content_unit=data.content_unit;
+          if(data.store==='mercadona'&&data.approximate&&!data.content_quantity&&!data.content_unit&&!ref.content_quantity&&!ref.content_confirmed)ref.content_unit='';
         }
         if(Number.isInteger(data.pack_count)&&data.pack_count>0&&!ref.pack_count)ref.pack_count=data.pack_count;
         if(data.content_quantity>0&&data.content_unit&&!ref.content_confirmed){ref.content_quantity=data.content_quantity;ref.content_unit=data.content_unit;}

@@ -4,6 +4,7 @@ from copy import deepcopy
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock
 import time
+import pytest
 
 from custom_components.improved_shopping_list_dev.catalog import Catalog, FIELDS
 from custom_components.improved_shopping_list_dev.pending_information import PendingInformationRefresh, pending, merge_result
@@ -170,19 +171,25 @@ async def test_local_mercadona_result_stays_separate_from_original_ean(hass):
     assert not pending(saved)
 
 
-async def test_tray_lookup_repairs_old_weight_mode_and_preserves_both_prices(hass):
+@pytest.mark.parametrize('previous_mode',['weight','package'])
+async def test_tray_lookup_repairs_old_weight_mode_and_preserves_both_prices(hass,previous_mode):
     url='https://tienda.mercadona.es/product/3858'
     catalog=Catalog(hass);await catalog.async_load()
     original=await catalog.async_save_product({'name':'Aguacates','commercial_references':[{
-        'store':'mercadona','reference_id':'3858','url':url,'sale_mode':'weight','content_unit':'kg'}]})
+        'store':'mercadona','reference_id':'3858','url':url,'sale_mode':previous_mode,'content_unit':'kg'}]})
     product={key:deepcopy(original[key]) for key in FIELDS if key in original}
     job={'reference_id':original['commercial_references'][0]['id'],'url':url}
     data={'store':'mercadona','reference_id':'3858','url':url,'name':'Aguacates','sale_mode':'package',
-        'content_unit':'kg','price':3.87,'unit_price':3.87,'approximate':True,'currency':'EUR','checked_at':1800000000,
+        'price':3.87,'unit_price':3.87,'approximate':True,'currency':'EUR','checked_at':1800000000,
         'measure_price':{'price':5.3,'quantity':1,'unit':'kg','currency':'EUR','checked_at':1800000000,'source':'web'}}
     assert merge_result(product,job,data)
     saved=await catalog.async_save_product(product)
     ref=saved['commercial_references'][0]
     assert ref['sale_mode']=='package' and ref['content_quantity'] is None and not ref['content_confirmed']
+    assert ref['content_unit']==''
     assert ref['last_price']=={'price':3.87,'currency':'EUR','checked_at':1800000000,'estimated':True}
     assert ref['measure_price']['price']==5.3
+    # A manually confirmed actual package quantity is not an inferred unit.
+    ref.update(content_quantity=.65,content_unit='kg',content_confirmed=True)
+    assert merge_result(saved,job,data)
+    assert ref['content_quantity']==.65 and ref['content_unit']=='kg' and ref['content_confirmed']

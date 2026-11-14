@@ -1,6 +1,14 @@
 /** Shared list settings; entity contents remain owned by native todo providers. */
 const PREFIX = "improved_shopping_list_dev/settings/";
 
+// A lazy-loaded settings view can receive a session created before an update.
+// Keep this operation usable without requiring a new method on that instance.
+export async function saveMercadonaLocation(session,postalCode) {
+  const generation=session._generation,revision=++session._revision;
+  const data=await session.getHass().callWS({type:`${PREFIX}mercadona_location`,postal_code:postalCode});
+  if(generation===session._generation&&revision===session._revision)session._receive(data);
+}
+
 export const DEFAULT_APPEARANCE = Object.freeze({ gradient_start: "#ee524f", gradient_end: "#b52a27", completed_gradient_start: "#4faba2", completed_gradient_end: "#26857c", quantity_color:"#267052", recipe_gradient_start:"#66bb6a", recipe_gradient_end:"#2e7d32", stock_gradient_start:"#f59a23", stock_gradient_end:"#c65b0c", columns: 3, mobile_columns: 1 });
 
 export function gradientTextColor(start, end) {
@@ -191,9 +199,7 @@ export class ListSettingsSession {
   }
 
   async saveMercadonaLocation(postalCode) {
-    const generation=this._generation,revision=++this._revision;
-    const data=await this.getHass().callWS({type:`${PREFIX}mercadona_location`,postal_code:postalCode});
-    if(generation===this._generation&&revision===this._revision)this._receive(data);
+    return saveMercadonaLocation(this,postalCode);
   }
 
 

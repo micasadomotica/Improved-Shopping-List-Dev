@@ -122,7 +122,8 @@ def test_restricted_fresh_code_is_never_a_shared_ean_or_fixed_package(identifier
     data=product_data(p,link)
     assert not data['ean'] and not gtin(p['ean'])
     assert data['reference_id']==identifier and data['sale_mode']==('package' if identifier=='3858' else 'weight')
-    assert data['content_unit']=='kg' and 'content_quantity' not in data and 'pack_count' not in data
+    assert data.get('content_unit','')==('' if identifier=='3858' else 'kg')
+    assert 'content_quantity' not in data and 'pack_count' not in data
     assert data['unit_price']==float(p['price_instructions']['unit_price']) and data['approximate'] is True
     assert data['price']==float(p['price_instructions']['unit_price'] if identifier=='3858' else p['price_instructions']['reference_price'])
     assert data['measure_price']['price']==float(p['price_instructions']['reference_price'])
@@ -156,12 +157,13 @@ async def test_manual_fresh_lookup_persists_by_store_id_and_cannot_satisfy_an_ea
         catalog=Catalog(hass);await catalog.async_load()
         product=await catalog.async_save_product({'name':'Aguacate','commercial_references':[{
             'store':'mercadona','url':url,'reference_id':data['reference_id'],'name':data['name'],
-            'sale_mode':data['sale_mode'],'content_unit':'kg','measure_price':data['measure_price'],
+            'sale_mode':data['sale_mode'],'content_unit':data.get('content_unit',''),'measure_price':data['measure_price'],
             'last_price':{'price':data['unit_price'],'currency':'EUR','checked_at':data['checked_at'],'estimated':True}}]})
         restored=Catalog(hass);await restored.async_load()
         saved=next(p for p in restored.products if p['id']==product['id'])
         ref=saved['commercial_references'][0]
         assert not ref['ean'] and ref['reference_id']==identifier and ref['content_quantity'] is None
+        assert ref['content_unit']==('' if identifier=='3858' else 'kg')
         assert not saved['barcode'] and not saved['barcodes']
         assert ref['measure_price']['price']==data['measure_price']['price']
         assert ref['last_price']['price']==data['unit_price'] and ref['last_price']['estimated'] is True

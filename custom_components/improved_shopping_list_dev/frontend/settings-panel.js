@@ -1,15 +1,15 @@
-import "./shopping-places.js?v=0.88.4";
-import "./dia-prices-settings.js?v=0.88.4";
-import "./alcampo-settings.js?v=0.88.4";
-import "./catalog-sources.js?v=0.88.4";
-import "./carrefour-account.js?v=0.88.4";
-import "./lidl-account.js?v=0.88.4";
-import "./logs-panel.js?v=0.88.4";
-import "./notification-settings.js?v=0.88.4";
-import { installDialogCloseButtons } from "./dialog-controls.js?v=0.88.4";
-import { installToggleStyles } from "./toggle-styles.js?v=0.88.4";
-import { todoEntities, isAvailable } from "./todo-client.js?v=0.88.4";
-import { DEFAULT_APPEARANCE, gradientTextColor } from "./list-settings-client.js?v=0.88.4";
+import "./shopping-places.js?v=0.88.5";
+import "./dia-prices-settings.js?v=0.88.5";
+import "./alcampo-settings.js?v=0.88.5";
+import "./catalog-sources.js?v=0.88.5";
+import "./carrefour-account.js?v=0.88.5";
+import "./lidl-account.js?v=0.88.5";
+import "./logs-panel.js?v=0.88.5";
+import "./notification-settings.js?v=0.88.5";
+import { installDialogCloseButtons } from "./dialog-controls.js?v=0.88.5";
+import { installToggleStyles } from "./toggle-styles.js?v=0.88.5";
+import { todoEntities, isAvailable } from "./todo-client.js?v=0.88.5";
+import { DEFAULT_APPEARANCE, gradientTextColor, saveMercadonaLocation } from "./list-settings-client.js?v=0.88.5";
 
 const MERCADONA_LOGO_URL = new URL("mercadona.png", import.meta.url).href;
 
@@ -410,7 +410,7 @@ class ImprovedShoppingSettings extends HTMLElement {
       event.preventDefault();
       const postal=root.querySelector('#mercadona-postal-code').value.trim(),status=root.querySelector('#mercadona-location-status');
       status.textContent='';
-      void this._saveRetailSettings(async()=>{await this._data.settings.saveMercadonaLocation(postal);status.textContent='Zona guardada. Recupera de nuevo las fichas para actualizar sus precios.';});
+      void this._saveRetailSettings(async()=>{await saveMercadonaLocation(this._data.settings,postal);status.textContent='Zona guardada. Recupera de nuevo las fichas para actualizar sus precios.';});
     });
     root.querySelector("#store-dialog").addEventListener("cancel", event => { if (this._busy) event.preventDefault(); });
     root.querySelector("#store-dialog").addEventListener("close", () => {

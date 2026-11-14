@@ -78,6 +78,10 @@ def merge_result(product,job,data):
         elif target.get("sale_mode")=="weight":
             target.update(content_quantity=None,content_unit=data.get("content_unit",""),content_confirmed=False)
         target["sale_mode"]=data["sale_mode"]
+        if (data["sale_mode"]=="package" and data.get("store")=="mercadona" and data.get("approximate")
+                and not data.get("content_quantity") and not data.get("content_unit")
+                and not target.get("content_quantity") and not target.get("content_confirmed")):
+            target["content_unit"]=""
         if data.get("content_unit"):target.setdefault("content_unit",data["content_unit"])
     for field in ("name","brand","ean","nutriscore","image_url","pack_count"):
         if data.get(field) not in (None,""):target[field]=deepcopy(data[field])

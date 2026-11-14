@@ -1,3 +1,10 @@
+# 0.88.5 — Guardado de zona y unidad de las bandejas
+
+- Guarda la zona de Mercadona aunque el formulario se abra con una sesión de ajustes creada antes de actualizar, sin depender de un método ausente en esa instancia.
+- Las bandejas de peso aproximado quedan Por envase / Sin especificar cuando no hay contenido fijo confirmado. El precio por kilo se conserva como dato separado.
+- Recuperar una bandeja corrige la unidad antigua también al volver a vincularla o completar datos desde Pendiente, respetando los contenidos confirmados manualmente.
+- Las piezas al peso mantienen kg como unidad de medida.
+
 # 0.88.4 — Acceso a la zona desde el catálogo de Mercadona
 
 - Añade **Código postal de entrega** al engranaje del catálogo de Mercadona, accesible en la vista actual de Ajustes.

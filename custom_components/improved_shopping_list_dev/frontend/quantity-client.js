@@ -1,4 +1,4 @@
-import { ListSettingsSession } from './list-settings-client.js?v=0.88.4';
+import { ListSettingsSession } from './list-settings-client.js?v=0.88.5';
 
 export function purchaseQuantity(product, record) {
   const unit=product?.purchase_unit??record?.unit??'uds';

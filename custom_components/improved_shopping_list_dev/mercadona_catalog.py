@@ -70,8 +70,6 @@ def product_data(data,link,expected_ean=""):
         # A variable-weight tray is still purchased as a package. Its estimated
         # selling price and comparison rate describe different quantities.
         result["sale_mode"]="package"
-        if str(prices.get("size_format") or "").lower().strip() in ("g","kg"):
-            result.setdefault("content_unit","kg")
     elif (data.get("is_bulk") or data.get("is_variable_weight")) and str(prices.get("size_format") or "").lower().strip() in ("g","kg"):
         result.update(sale_mode="weight",content_unit="kg")
         # unit_price is an estimate for the displayed weight, never a €/kg rate.
