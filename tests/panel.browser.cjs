@@ -2588,6 +2588,57 @@ async function checkReaderEditor(browser,url,errors){
     await readerContext.close();
 }
 
+async function checkListQuantityControls(browser,url,errors){
+  const context=await browser.newContext({viewport:{width:1280,height:960}});
+  const page=await context.newPage();page.on('pageerror',error=>errors.push(error.message));
+  await page.goto(url);
+  await page.evaluate(async()=>{
+    window.catalogProducts=[{id:'bread',revision:1,name:'Pan',category:'',tags:[],notes:'',barcode:'',purchase_unit:'uds',unit_quantity:1,quantity_step:1,scan_quantity:4,price:.5,currency:'EUR'}];window.emitCatalog();
+    window.listData['todo.bring']=[{uid:'bread-item',summary:'Pan',status:'needs_action'}];window.emit('todo.bring');
+    window.quantityEntries={'todo.bring':{'bread-item':{quantity:4,unit:'uds',step:1}}};window.emitQuantities();
+  });
+  const card=page.getByRole('button',{name:'Marcar como comprado: Pan',exact:true});
+  const row=card.locator('..'),controls=row.getByRole('group',{name:'Cantidad en la lista: Pan',exact:true});
+  const minus=controls.getByRole('button',{name:'Disminuir cantidad en la lista: Pan',exact:true});
+  const plus=controls.getByRole('button',{name:'Aumentar cantidad en la lista: Pan',exact:true});
+  await minus.click();
+  await controls.locator('.quantity-value').filter({hasText:'3 uds'}).waitFor();
+  await page.locator('#pending-total').filter({hasText:'1,50'}).waitFor();
+  assert.equal(await page.evaluate(()=>window.listData['todo.bring'][0].status),'needs_action');
+  assert.equal(await card.locator('button').count(),0,'Quantity buttons must not be nested in the completion button');
+  await plus.press('Enter');
+  await controls.locator('.quantity-value').filter({hasText:'4 uds'}).waitFor();
+  await page.evaluate(()=>{window.failQuantities=true;});
+  await minus.click();
+  await page.getByRole('alert').filter({hasText:'No se pudo cambiar la cantidad'}).waitFor();
+  assert.equal(await controls.locator('.quantity-value').textContent(),'4 uds');
+  await page.evaluate(()=>{window.failQuantities=false;window.quantityEntries['todo.bring']['bread-item'].quantity=1;window.emitQuantities();});
+  assert.equal(await minus.isDisabled(),true);
+  await plus.click();
+  await controls.locator('.quantity-value').filter({hasText:'2 uds'}).waitFor();
+  assert.equal(await page.evaluate(()=>window.catalogProducts[0].scan_quantity),4);
+  for(const layout of ['grid','rows']){
+    if(layout==='rows')await page.locator('#toggle-list-layout').click();
+    for(const width of [1280,390,320]){
+      await page.setViewportSize({width,height:960});
+      assert.equal(await page.locator('main').evaluate(node=>node.scrollWidth>innerWidth),false);
+      assert.ok(await controls.evaluate(node=>{const box=node.getBoundingClientRect();return [...node.children].every(child=>{const r=child.getBoundingClientRect();return r.left>=box.left-1&&r.right<=box.right+1;});}));
+      await page.screenshot({path:`test-results/list-quantity-controls-${layout}-${width}.png`,fullPage:true});
+    }
+  }
+  await page.reload();
+  await page.evaluate(()=>{window.listData['todo.bring']=[{uid:'bread-item',summary:'Pan',status:'needs_action'}];window.emit('todo.bring');});
+  await controls.locator('.quantity-value').filter({hasText:'2 uds'}).waitFor();
+  assert.equal(await page.evaluate(()=>window.catalogProducts[0].scan_quantity),4);
+  await page.evaluate(()=>{window.testPanel.hass={...window.testPanel._hass,user:{is_admin:false}};});
+  assert.equal(await plus.isDisabled(),true);assert.equal(await minus.isDisabled(),true);
+  await page.evaluate(()=>{window.testPanel.hass={...window.testPanel._hass,user:{is_admin:true}};});
+  await card.click();
+  await page.getByRole('button',{name:'Volver a poner por comprar: Pan',exact:true,includeHidden:true}).waitFor({state:'attached'});
+  assert.equal(await page.getByRole('group',{name:'Cantidad en la lista: Pan',exact:true}).count(),0);
+  await context.close();
+}
+
 async function checkPurchaseQuantities(browser,url,errors){
     const quantityContext=await browser.newContext({viewport:{width:1280,height:960}});
     const quantityPage=await quantityContext.newPage();quantityPage.on('pageerror',error=>errors.push(error.message));
@@ -2621,7 +2672,7 @@ async function checkPurchaseQuantities(browser,url,errors){
     await quantityPage.setViewportSize({width:1280,height:960});
     await quantityPage.locator('#toggle-list-layout').click();
     await pavoRow.locator('.row-quantity').filter({hasText:'250 g'}).waitFor();
-    assert.equal(await pavoRow.locator('.row-quantity button').count(),0);
+    assert.equal(await pavoRow.locator('.row-quantity button').count(),2);
     await quantityPage.getByRole('button',{name:'Catálogo',exact:true}).click();
     const quantityCatalog=quantityPage.locator('isl-dev-catalog');
     assert.equal(await quantityCatalog.getByRole('group',{name:'Cantidad por escaneo de Pavo',exact:true}).count(),0);
@@ -3685,6 +3736,7 @@ async function main() {
     if(process.argv.includes('--lidl-reprocess-only')){const errors=[];await checkLidlReprocessLines(browser,`http://127.0.0.1:${server.address().port}`,errors);assert.deepEqual(errors,[]);console.log('Lidl full reprocessing passed.');return;}
     if(process.argv.includes('--lidl-metadata-only')){const errors=[];await checkLidlMetadata(browser,`http://127.0.0.1:${server.address().port}`,errors);assert.deepEqual(errors,[]);console.log('Lidl receipt metadata passed.');return;}
     if(process.argv.includes('--quantities-only')){const errors=[];await checkPurchaseQuantities(browser,`http://127.0.0.1:${server.address().port}`,errors);assert.deepEqual(errors,[]);console.log('Purchase quantities passed.');return;}
+    if(process.argv.includes('--list-quantities-only')){const errors=[];await checkListQuantityControls(browser,`http://127.0.0.1:${server.address().port}`,errors);assert.deepEqual(errors,[]);console.log('List quantity controls passed.');return;}
     if(process.argv.includes('--option-ean-only')){const errors=[];await checkRemovedTicketAlternative(browser,`http://127.0.0.1:${server.address().port}`,errors);await checkDifferentOptionEAN(browser,`http://127.0.0.1:${server.address().port}`,errors);await checkStagedOptionURL(browser,`http://127.0.0.1:${server.address().port}`,errors);await checkBulkOptionLookup(browser,`http://127.0.0.1:${server.address().port}`,errors);assert.deepEqual(errors,[]);console.log('Alternative EAN discovery passed.');return;}
     if(process.argv.includes('--catalog-sources-only')){const errors=[];await checkCatalogSources(browser,`http://127.0.0.1:${server.address().port}`,errors);assert.deepEqual(errors,[]);console.log('Catalog sources and EAN grouping passed.');return;}
     if(process.argv.includes('--repeated-receipt-product-only')){const errors=[];await checkRepeatedReceiptProduct(browser,`http://127.0.0.1:${server.address().port}`,errors);assert.deepEqual(errors,[]);console.log('Repeated receipt product passed.');return;}
@@ -4900,6 +4952,7 @@ async function main() {
     await settingsContext.close();
     // Reader configuration and unknown-code association use the same product form.
     await checkPurchaseQuantities(browser,url,errors);
+    await checkListQuantityControls(browser,url,errors);
 
     const gatewayContext=await browser.newContext({viewport:{width:390,height:844}});
     const gatewayPage=await gatewayContext.newPage();

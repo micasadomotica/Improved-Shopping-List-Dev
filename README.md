@@ -205,7 +205,9 @@ Configura la **acción por defecto**, la lista de destino y el intervalo de **an
 
 Con **Añadir a la lista**, cada lectura aceptada suma la **cantidad por escaneo** del producto en la misma fila, tanto para códigos de barras como para NFC. Se configura con −/+ en la vista de filas del Catálogo, incluso antes de añadir el producto a la lista. Por ejemplo, si Pan tiene 2 uds por escaneo, la primera lectura añade 2 y la segunda deja 4; el Catálogo sigue mostrando 2. Si no se configura, se utiliza la cantidad unitaria del producto.
 
-La **Lista** muestra el total acumulado. Cambiar la cantidad por escaneo no modifica ese total ni el precio por unidad. Al recuperar un producto de Compras recientes mediante un escaneo, comienza con la cantidad por escaneo actual. Las cantidades se guardan por lista y artículo, sin modificar el nombre ni la descripción del proveedor.
+La **Lista** muestra el total acumulado. Sus botones −/+ permiten corregirlo sin marcar el artículo como comprado ni cambiar la cantidad por escaneo. Utilizan el paso de ajuste del producto (normalmente 1 ud) y no permiten reducir la cantidad a cero. Están disponibles para administradores, en filas y cuadrícula.
+
+Cambiar la cantidad por escaneo del Catálogo no modifica el total de la Lista ni el precio por unidad. Al recuperar un producto de Compras recientes mediante un escaneo, comienza con la cantidad por escaneo actual. Las cantidades se guardan por lista y artículo, sin modificar el nombre ni la descripción del proveedor.
 
 Las entidades de lectores se escuchan también cuando comunican de nuevo el mismo código: se utiliza la fecha y hora del nuevo informe (`last_reported`), manteniendo la protección antirrepetición. La entidad debe comunicar cada escaneo, no actualizarse periódicamente con un código antiguo. Si el dispositivo descarta una lectura antes de enviarla a Home Assistant, será necesario ajustar su configuración.
 
