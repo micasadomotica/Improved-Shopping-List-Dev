@@ -314,6 +314,8 @@ class OptionLookup:
                     else:
                         result = await (self._page(store, link, before_request) if before_request else self._page(store, link)) or {}
                 except (aiohttp.ClientError, TimeoutError, ValueError) as err:
+                    if getattr(err,"diagnostics",{}).get("response_class")=="location_changed":
+                        raise
                     warnings.append(str(err))
                     statuses.append(getattr(err,"diagnostics",{}).get("http_status"))
                     attempts.append({"stage":"product_page", "error_type":type(err).__name__,
