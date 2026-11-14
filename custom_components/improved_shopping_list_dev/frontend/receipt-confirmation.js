@@ -1,4 +1,4 @@
-import { saveReceiptConfirmation } from './list-settings-client.js?v=0.89.1';
+import { saveReceiptConfirmation } from './list-settings-client.js?v=0.89.2';
 
 /** The same store preference in account and catalogue settings dialogs. */
 export function receiptConfirmationControl(store, getData) {

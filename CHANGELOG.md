@@ -1,4 +1,4 @@
-# Pendiente de publicar — Reposición pendiente de tickets
+# 0.89.2 — Reposición pendiente de tickets
 
 - La revisión manual selecciona los productos vinculados para añadirlos a Stock, también cuando todavía no tienen existencias registradas. Permite revisar las cantidades o desmarcarlos.
 - «Reprocesar datos» permite vincular líneas y guardar su reposición pendiente. Conserva las líneas ya repuestas y no vuelve a descontar la Lista.

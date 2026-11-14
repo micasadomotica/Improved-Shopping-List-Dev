@@ -1,4 +1,4 @@
-import { ListSettingsSession } from './list-settings-client.js?v=0.89.1';
+import { ListSettingsSession } from './list-settings-client.js?v=0.89.2';
 const node=(tag,cls,text)=>{const n=document.createElement(tag);if(cls)n.className=cls;if(text!==undefined)n.textContent=text;return n;};
 const finite=value=>value!==null&&value!==''&&typeof value!=='boolean'&&Number.isFinite(Number(value));
 const cents=value=>Math.round(Number(value)*100);
