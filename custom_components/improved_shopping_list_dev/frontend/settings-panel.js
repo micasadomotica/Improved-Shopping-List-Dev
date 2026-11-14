@@ -1,15 +1,15 @@
-import "./shopping-places.js?v=0.88.3";
-import "./dia-prices-settings.js?v=0.88.3";
-import "./alcampo-settings.js?v=0.88.3";
-import "./catalog-sources.js?v=0.88.3";
-import "./carrefour-account.js?v=0.88.3";
-import "./lidl-account.js?v=0.88.3";
-import "./logs-panel.js?v=0.88.3";
-import "./notification-settings.js?v=0.88.3";
-import { installDialogCloseButtons } from "./dialog-controls.js?v=0.88.3";
-import { installToggleStyles } from "./toggle-styles.js?v=0.88.3";
-import { todoEntities, isAvailable } from "./todo-client.js?v=0.88.3";
-import { DEFAULT_APPEARANCE, gradientTextColor } from "./list-settings-client.js?v=0.88.3";
+import "./shopping-places.js?v=0.88.4";
+import "./dia-prices-settings.js?v=0.88.4";
+import "./alcampo-settings.js?v=0.88.4";
+import "./catalog-sources.js?v=0.88.4";
+import "./carrefour-account.js?v=0.88.4";
+import "./lidl-account.js?v=0.88.4";
+import "./logs-panel.js?v=0.88.4";
+import "./notification-settings.js?v=0.88.4";
+import { installDialogCloseButtons } from "./dialog-controls.js?v=0.88.4";
+import { installToggleStyles } from "./toggle-styles.js?v=0.88.4";
+import { todoEntities, isAvailable } from "./todo-client.js?v=0.88.4";
+import { DEFAULT_APPEARANCE, gradientTextColor } from "./list-settings-client.js?v=0.88.4";
 
 const MERCADONA_LOGO_URL = new URL("mercadona.png", import.meta.url).href;
 
@@ -405,6 +405,7 @@ class ImprovedShoppingSettings extends HTMLElement {
     root.querySelector("#carrefour-dialog").addEventListener("close", () => { if (!root.querySelector("#carrefour-dialog").open) { this._carrefourGeneration = (this._carrefourGeneration || 0) + 1; this._carrefourLoading = false; root.querySelector("isl-dev-carrefour-account")?.deactivate(); } });
     root.querySelector("#mercadona-enabled").addEventListener("change",()=>void this._saveRetailSettings(()=>this._data.settings.setStoreEnabled("mercadona",root.querySelector("#mercadona-enabled").checked)));
     root.querySelector("#configure-mercadona").addEventListener("click", () => this._openStore());
+    root.querySelector('isl-dev-catalog-sources').addEventListener('configure-mercadona-location',()=>this._openStore());
     root.querySelector('#mercadona-location-form').addEventListener('submit',event=>{
       event.preventDefault();
       const postal=root.querySelector('#mercadona-postal-code').value.trim(),status=root.querySelector('#mercadona-location-status');
@@ -485,7 +486,7 @@ class ImprovedShoppingSettings extends HTMLElement {
       root.querySelector(`#${store}-enabled`).closest(".store-row").dataset.enabled = String(Boolean(settings.stores?.[store]?.enabled));
       const available=universal?["carrefour","lidl"].includes(store):(settings.availableStores??["mercadona","carrefour","consum","lasirena","eroski"]).includes(store);
       root.querySelector(`#${store}-enabled`).closest(".store-row").hidden=!available;
-      if(!available){
+      if(!available&&store!=='mercadona'){
         const dialog=root.querySelector(store==='mercadona'?'#store-dialog':`#${store}-dialog`);
         if(dialog?.open)dialog.close();
       }

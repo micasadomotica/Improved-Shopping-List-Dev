@@ -1,5 +1,5 @@
-import { installDialogCloseButtons } from './dialog-controls.js?v=0.88.3';
-import { installToggleStyles } from './toggle-styles.js?v=0.88.3';
+import { installDialogCloseButtons } from './dialog-controls.js?v=0.88.4';
+import { installToggleStyles } from './toggle-styles.js?v=0.88.4';
 
 class CatalogSourcesPanel extends HTMLElement {
   constructor(){super();this.attachShadow({mode:'open'});this._state={enabled:false,phase:'idle',total:0,processed:0,errors:[]};this._generation=0;this._stateVersion=0;this._pollGeneration=0;}
@@ -50,6 +50,9 @@ class CatalogSourcesPanel extends HTMLElement {
       this.shadowRoot.innerHTML=this.shadowRoot.innerHTML.replaceAll('Alcampo',name).replace('<h3>Catálogos</h3>','').replace('https://almeria.online/wp-content/uploads/2024/09/alcampo-logo.png',new URL(this._source+(this._source==='eroski'?'.svg':['consum','lasirena'].includes(this._source)?'.jpg':'.png'),import.meta.url).href);
     }else if(this._source==='mercadona'){
       this.shadowRoot.innerHTML=this.shadowRoot.innerHTML.replaceAll('Alcampo','Mercadona').replace('<h3>Catálogos</h3>','').replace('https://almeria.online/wp-content/uploads/2024/09/alcampo-logo.png',new URL('mercadona.png',import.meta.url).href);
+      const location=document.createElement('button');location.type='button';location.id='configure-location';location.className='option-setting';location.textContent='Código postal de entrega';
+      location.addEventListener('click',()=>{this.shadowRoot.querySelector('#catalog-options-dialog').close();this.dispatchEvent(new CustomEvent('configure-mercadona-location',{bubbles:true,composed:true}));});
+      this.shadowRoot.querySelector('#catalog-options-dialog').append(location);
     }else if(this._source==='elcorteingles'){
       this.shadowRoot.innerHTML=this.shadowRoot.innerHTML.replaceAll('Alcampo','El Corte Inglés').replace('<h3>Catálogos</h3>','').replace('https://almeria.online/wp-content/uploads/2024/09/alcampo-logo.png','https://img.samsungapps.com/productNew/000005314762/SPA/IconImage_20241028224125253_NEW_WAP_ICON_512_512.png');
     }else{
@@ -88,6 +91,7 @@ class CatalogSourcesPanel extends HTMLElement {
     const root=this.shadowRoot,s=this._state,total=s.total??0,done=s.processed??0;
     root.querySelector('#enabled').checked=Boolean(this._pendingEnabled??s.enabled);root.querySelector('#enabled').disabled=this._busy||this._data?.hass?.user?.is_admin!==true;
     root.querySelector('#configure').disabled=this._data?.hass?.user?.is_admin!==true;
+    const location=root.querySelector('#configure-location');if(location)location.disabled=this._data?.hass?.user?.is_admin!==true;
     root.querySelector('#show-store').checked=Boolean(this._pendingShowStore??s.show_store);root.querySelector('#show-store').disabled=this._settingsBusy||this._data?.hass?.user?.is_admin!==true;
     root.querySelector('#options-error').hidden=!this._optionsError;root.querySelector('#options-error').textContent=this._optionsError??'';
     root.querySelector('.row').dataset.enabled=String(Boolean(s.enabled));

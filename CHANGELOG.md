@@ -1,3 +1,10 @@
+# 0.88.4 — Acceso a la zona desde el catálogo de Mercadona
+
+- Añade **Código postal de entrega** al engranaje del catálogo de Mercadona, accesible en la vista actual de Ajustes.
+- Mantiene abierto el selector mientras se guarda la zona, aunque los controles antiguos de tiendas estén ocultos.
+- Comprueba el recorrido completo tanto en la vista actual de cuentas y establecimientos como en la anterior.
+- Incluye las correcciones de zona y alternativas recuperadas de 0.88.3.
+
 # 0.88.3 — Zona de Mercadona y alternativas recuperadas
 
 - Permite guardar el código postal de entrega desde Ajustes → Tiendas → Mercadona para consultar los precios de esa zona sin iniciar sesión.

@@ -2920,25 +2920,34 @@ async function checkMercadonaLocalReferences(browser,url,errors){
 }
 
 async function checkMercadonaLocation(browser,url,errors){
+  for(const universal of [false,true]){
   const context=await browser.newContext({viewport:{width:390,height:844}}),page=await context.newPage();
+  if(universal)await context.addInitScript(()=>localStorage.setItem('settings-fixture',JSON.stringify({entities:['todo.bring'],primary_entity:'todo.bring',purchase_detection:{enabled:false,threshold:5,shops:[]}})));
   page.on('pageerror',error=>errors.push(error.message));await page.goto(url);
   await page.getByRole('button',{name:'Ajustes',exact:true}).click();
   const settings=page.locator('isl-dev-settings');
   await settings.getByRole('button',{name:'Tiendas',exact:true}).click();
-  await settings.getByRole('button',{name:'Ajustes de Mercadona',exact:true}).click();
+  const source=settings.locator('isl-dev-mercadona-catalog');
+  const openLocation=async()=>{
+    await source.getByRole('button',{name:'Configurar catálogo de Mercadona',exact:true}).click();
+    await source.getByRole('button',{name:'Código postal de entrega',exact:true}).click();
+  };
+  if(universal)assert.equal(await settings.getByRole('button',{name:'Ajustes de Mercadona',exact:true}).count(),0);
+  await openLocation();
   const dialog=settings.locator('#store-dialog'),postal=dialog.getByLabel('Código postal de entrega',{exact:true});
   await postal.fill('28001');await dialog.getByRole('button',{name:'Guardar zona',exact:true}).click();
   await dialog.getByText('Zona guardada. Recupera de nuevo las fichas para actualizar sus precios.',{exact:true}).waitFor();
   assert.equal(await page.evaluate(()=>window.listSettings.stores.mercadona.postal_code),'28001');
   assert.ok(await dialog.evaluate(el=>el.scrollWidth<=el.clientWidth+1));
   await dialog.getByRole('button',{name:'Cerrar ventana',exact:true}).click();
-  await settings.getByRole('button',{name:'Ajustes de Mercadona',exact:true}).click();
+  await openLocation();
   assert.equal(await postal.inputValue(),'28001');
   await page.evaluate(()=>{window.failMercadonaLocation=true;});
   await postal.fill('28002');await dialog.getByRole('button',{name:'Guardar zona',exact:true}).click();
   await dialog.getByText('No se ha podido confirmar la zona',{exact:true}).waitFor();
   assert.equal(await page.evaluate(()=>window.listSettings.stores.mercadona.postal_code),'28001');
   await context.close();
+  }
 }
 
 async function checkAppearanceInLists(browser,url,errors){
