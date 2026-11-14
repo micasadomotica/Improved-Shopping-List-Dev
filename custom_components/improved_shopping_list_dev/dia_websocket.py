@@ -22,12 +22,14 @@ async def _operation(hass,connection,msg,action):
         elif action=="sync_history":result=await manager.async_sync_history(owner)
         elif action=="preview":result=await manager.async_preview(owner,msg["purchase_id"])
         else:result=await manager.async_preview_saved(owner,msg["receipt_id"])
+        if action in ("preview", "preview_saved"):
+            result = await manager.receipts.async_apply_confirmation_policy(result, owner)
     except DiaAccountError as err:
         data["activity"].record("stores.account","DIA: "+str(err),source="manual",diagnostics={"action":action,**err.diagnostics})
         connection.send_error(msg["id"],err.code,str(err))
     except CatalogError as err:
         connection.send_error(msg["id"],err.code,str(err))
-    except (OSError,HomeAssistantError):
+    except (OSError,HomeAssistantError,TimeoutError):
         connection.send_error(msg["id"],"storage_error","No se ha podido guardar la sesión o preparar el ticket de DIA.")
     else:
         if action!="status":data["activity"].record("stores.account","DIA: "+{"login":"cuenta conectada","disconnect":"cuenta desconectada","options":"opciones guardadas","purchases":"historial consultado","sync_history":"historial incorporado","preview":"ticket preparado para revisar","preview_saved":"ticket preparado para revisar"}[action],source="manual")

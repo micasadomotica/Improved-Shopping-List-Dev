@@ -521,7 +521,7 @@ class ImprovedShoppingListPanel extends HTMLElement {
     for(const [id,view] of [['stock-tab','stock'],['stock-routines-tab','routines'],['stock-readers-tab','readers']])root.querySelector('#'+id).addEventListener('click',()=>{this._stockView=view;this._syncOptionalSessions();void this._prepareView('stock');this._renderData();});
     root.querySelector('#nav-analytics').addEventListener('click',()=>this._switchView('analytics'));
     root.querySelector('isl-dev-purchases').addEventListener('receipt-busy',event=>{this._receiptBusy=event.detail;this._renderData();});
-    root.querySelector('isl-dev-purchases').addEventListener('receipt-imported',()=>{this._analyticsView='purchases';void this._stock.refresh();void this._refreshRowPrices();this._renderData();});
+    root.querySelector('isl-dev-purchases').addEventListener('receipt-imported',()=>{void this._quantities.refresh();this._analyticsView='purchases';void this._stock.refresh();void this._refreshRowPrices();this._renderData();});
     root.querySelector('isl-dev-purchases').createProduct=name=>this._createReceiptProduct(name);
     root.querySelector("#pending-total").addEventListener("click", () => {
       this._ticket = true;

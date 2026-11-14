@@ -1,7 +1,12 @@
-# Pendiente de publicar — Ajustar cantidades desde la Lista
+# Pendiente de publicar — Cantidades y confirmación de compras
 
 - Añade botones −/+ junto a la cantidad de cada artículo pendiente, en filas y cuadrícula. Ajustan solo el total de la lista y actualizan su precio estimado.
 - Los controles son independientes del botón que marca el artículo como comprado y conservan la cantidad por escaneo del Catálogo. La resta se desactiva antes de llegar a cero.
+
+- La confirmación de tickets permite revisar qué unidades se descontarán de la Lista, corregirlas o excluir productos. Si se cubre todo lo pendiente, marca el artículo como comprado; si falta cantidad, mantiene el resto pendiente.
+- Añade confirmación manual o automática por tienda, manual por defecto. La automática aplica solo líneas reconocidas con cantidades fiables; las demás quedan pendientes en el mismo ticket.
+- Registra por separado las líneas confirmadas y las actualizaciones de la Lista. Los reintentos conservan lo ya aplicado, sin duplicar Stock ni descuentos, y permiten conservar la cantidad actual cuando la Lista haya cambiado.
+- El ajuste no añade nuevos lectores de PDF: la subida manual sigue admitiendo documentos de Carrefour, y las cuentas compatibles recuperan sus propios tickets.
 
 # 0.88.9 — Cantidad configurada y total de compra
 

@@ -335,7 +335,15 @@ const hass={
       for(const line of draft.receipt.lines){const learned=window.receiptLinks.find(link=>link.id===line.id);if(learned)line.product_id=learned.product_id;}
       window.receiptDraft=structuredClone(draft.receipt);return draft;
     }
+    if(msg.type==='improved_shopping_list_dev/receipts/list_preview'){
+      if(window.failListReview)throw new Error('Lista no disponible');
+      return {id:'list-preview',entity:msg.entity??'todo.bring',entities:['todo.bring','todo.local'],rows:window.receiptListRows??[],links:msg.lines};
+    }
+    if(msg.type==='improved_shopping_list_dev/settings/receipt_confirmation'){
+      window.listSettings.receipt_confirmation={...window.listSettings.receipt_confirmation,[msg.store]:msg.mode};window.emitSettings();return structuredClone(window.listSettings);
+    }
     if(msg.type==='improved_shopping_list_dev/receipts/confirm'){
+
       if(window.failReceipt)throw new Error('No se ha podido guardar el ticket.');
       window.lastReceiptConfirmation=structuredClone(msg);
       const receipt=structuredClone(window.receiptDraft);
@@ -648,7 +656,7 @@ async function checkReceiptStockRefresh(browser,url,errors){
   window.receiptDraft=structuredClone(receipt);el.openPreview({token:'stock-refresh-ticket',receipt,products:[{id:'pavo',name:'Pavo',unit:'g',refill_quantity:2,stock_id:'pantry-pavo',commercial_references:[]}],purchases:[]});
   Object.assign(el._edits[0],{product_id:'pavo',replenish:true,quantity:2,unit:'g'});
   const hass=el._hass,original=hass.callWS;window.historyGate=new Promise(resolve=>window.releaseHistory=resolve);hass.callWS=async message=>{if(message.type==='improved_shopping_list_dev/receipts/get'){window.waitingHistory=true;await window.historyGate;}return original(message);};
-  void el._confirm(false);
+  void el._prepareListReview().then(()=>el._confirm(false));
  });
  await page.waitForFunction(()=>window.waitingHistory&&window.stockItems[0].quantity===3);
  await page.waitForFunction(()=>window.testPanel._stock.items[0]?.quantity===3);
@@ -1246,6 +1254,38 @@ async function checkMobileTicketAssociation(browser,url,errors){
   await search.fill('inexistente');await dialog.getByRole('status').filter({hasText:'No hay productos'}).waitFor();assert.equal(await dialog.getByRole('option').count(),0);await dialog.getByRole('button',{name:'Vincular',exact:true}).tap();await dialog.getByRole('alert').waitFor();
   await search.fill('avena');await search.press('ArrowDown');await page.keyboard.press('Enter');assert.equal(await search.inputValue(),'Leche de avena');await dialog.getByRole('button',{name:'Vincular',exact:true}).tap();await dialog.waitFor({state:'hidden'});assert.equal(await review.locator('.linked-name').textContent(),'→ Leche de avena');
   for(const width of [320,390,1280]){await page.setViewportSize({width,height:844});await review.getByRole('button',{name:'Vincular producto para SEITAN BIO',exact:true}).tap();await search.fill('');assert.ok(await dialog.evaluate(d=>d.scrollWidth<=d.clientWidth+1));await page.screenshot({path:'test-results/ticket-association-'+width+'.png',fullPage:true});await dialog.getByRole('button',{name:'Cerrar ventana',exact:true}).tap();}
+  await context.close();
+}
+
+
+async function checkReceiptListReview(browser,url,errors){
+  const context=await browser.newContext({viewport:{width:390,height:844}}),page=await context.newPage();
+  page.on('pageerror',error=>errors.push(error.message));await page.goto(url);
+  await page.getByRole('button',{name:'Analítica',exact:true}).click();const purchases=page.locator('isl-dev-purchases');
+  await purchases.locator('#ticket-file').waitFor({state:'attached'});
+  await purchases.evaluate(el=>{
+    const products=[{id:'cacao',name:'Cacao',unit:'uds',refill_quantity:1,stock_id:'',commercial_references:[]}];
+    const receipt={id:'list-review-ticket',store:'carrefour',store_name:'Carrefour',purchased_at:new Date().toISOString(),total:4,lines:[{id:'0',description:'CACAO',count:2,unit_price:2,amount:4,pack_quantity:null,pack_unit:'',product_id:'cacao',matched:true}]};
+    window.receiptDraft=structuredClone(receipt);window.receiptOptionsOverride={products,purchases:[]};
+    window.receiptListRows=[{product_id:'cacao',name:'Cacao',uid:'cacao-1',before:6,quantity:2,unit:'uds',step:1,enabled:true,reason:''}];
+    el.openPreview({token:'review-list',receipt,products,purchases:[]});el._step=2;el._renderStep();
+  });
+  const dialog=purchases.getByRole('dialog',{name:'Revisar ticket',exact:true});
+  await dialog.getByRole('button',{name:'Continuar',exact:true}).click();
+  await dialog.getByText('Quedarán 4 uds',{exact:true}).waitFor();
+  const quantity=dialog.getByRole('spinbutton',{name:'Cantidad comprada de Cacao'});
+  await quantity.fill('6');await dialog.getByText('Se marcará como comprado',{exact:true}).waitFor();
+  await quantity.fill('1');await dialog.getByText('Quedarán 5 uds',{exact:true}).waitFor();
+  const toggle=dialog.getByRole('checkbox',{name:'Descontar Cacao de la Lista'});await toggle.uncheck();await dialog.getByText('Se mantiene pendiente',{exact:true}).waitFor();await toggle.check();
+  for(const width of [1280,390,320]){await page.setViewportSize({width,height:844});assert.ok(await dialog.evaluate(el=>el.scrollWidth<=el.clientWidth+1));await page.screenshot({path:'test-results/receipt-list-review-'+width+'.png',fullPage:true});}
+  await dialog.getByRole('button',{name:'Confirmar compra',exact:true}).click();await dialog.waitFor({state:'hidden'});
+  assert.equal(await page.evaluate(()=>window.lastReceiptConfirmation.list_review.rows[0].quantity),1);
+  await page.getByRole('button',{name:'Ajustes',exact:true}).click();const settings=page.locator('isl-dev-settings');await settings.getByRole('button',{name:'Tiendas',exact:true}).click();
+  const section=settings.locator('#receipt-confirmation-settings');await section.locator('summary').click();
+  const modes=section.locator('[data-receipt-store]');assert.equal(await modes.count(),11);assert.ok((await modes.evaluateAll(nodes=>nodes.map(el=>el.value))).every(v=>v==='manual'));
+  await section.getByLabel('Confirmación de compras de Lidl',{exact:true}).selectOption('automatic');await page.waitForFunction(()=>window.listSettings.receipt_confirmation?.lidl==='automatic');
+  assert.equal(await section.getByLabel('Confirmación de compras de Mercadona',{exact:true}).inputValue(),'manual');
+  await section.evaluate(el=>el.scrollIntoView({block:'start'}));await page.screenshot({path:'test-results/receipt-confirmation-settings-mobile.png',fullPage:false});assert.ok(await section.evaluate(el=>el.scrollWidth<=el.clientWidth+1));
   await context.close();
 }
 
@@ -1899,7 +1939,7 @@ async function checkReceiptPackageFormats(browser,url,errors){
   assert.equal(await rows.nth(0).getByLabel('Contenido por envase',{exact:true}).inputValue(),'500');
   assert.equal(await rows.nth(1).getByLabel('Contenido por envase',{exact:true}).inputValue(),'1980');
   assert.deepEqual(await page.evaluate(()=>window.nutriCalls),['3017620422003']);
-  await dialog.getByRole('button',{name:'Actualizar precios y cerrar',exact:true}).click();await dialog.waitFor({state:'hidden'});
+  await dialog.getByRole('button',{name:'Revisar precios',exact:true}).click();await dialog.getByRole('button',{name:'Confirmar compra',exact:true}).click();await dialog.waitFor({state:'hidden'});
   const saved=await page.evaluate(()=>window.lastReceiptConfirmation);
   assert.deepEqual(saved.lines.map(line=>[line.pack_quantity,line.pack_unit]),[[500,'g'],[1980,'ml']]);
   await purchases.locator('#history .ticket-open').first().click();
@@ -1931,7 +1971,7 @@ async function checkReceiptPackageFormats(browser,url,errors){
   const quantity=dialog.getByLabel('Cantidad para SEITAN AL PESO',{exact:true});assert.equal(await quantity.inputValue(),'500');
   await dialog.getByText('Cantidad estimada',{exact:true}).waitFor();
   await quantity.fill('475');assert.equal(await dialog.getByText('Cantidad estimada',{exact:true}).count(),0);
-  await dialog.getByRole('button',{name:'Añadir stock y cerrar',exact:true}).click();await dialog.waitFor({state:'hidden'});
+  await dialog.getByRole('button',{name:'Revisar reposición',exact:true}).click();await dialog.getByRole('button',{name:'Confirmar compra',exact:true}).click();await dialog.waitFor({state:'hidden'});
   assert.equal(await page.evaluate(()=>window.lastReceiptConfirmation.lines[0].quantity),475);
   assert.equal(await page.evaluate(()=>window.lastReceiptConfirmation.lines[0].pack_quantity),null);
   assert.equal(await page.evaluate(()=>window.lastReceiptConfirmation.lines[0].quantity_edited),true);
@@ -1957,7 +1997,7 @@ async function checkReceiptPackageFormats(browser,url,errors){
   await page.evaluate(()=>{window.releaseNutri();window.delayNutriCode=null;});
   await page.waitForTimeout(100);assert.equal(await format.inputValue(),'250');
   assert.deepEqual(await page.evaluate(()=>window.nutriCalls),['3017620422003']);
-  await dialog.getByRole('button',{name:'Actualizar precios y cerrar',exact:true}).click();await dialog.waitFor({state:'hidden'});
+  await dialog.getByRole('button',{name:'Revisar precios',exact:true}).click();await dialog.getByRole('button',{name:'Confirmar compra',exact:true}).click();await dialog.waitFor({state:'hidden'});
   // Skipping a pending estimate stops the remaining lines and never delays confirmation.
   await purchases.evaluate(el=>{
     const products=['a','b'].map(id=>({id,name:id,unit:'g',refill_quantity:1000,stock_id:'s'+id,revision:1,commercial_references:[]}));
@@ -1971,7 +2011,7 @@ async function checkReceiptPackageFormats(browser,url,errors){
   assert.equal(await dialog.getByLabel('Cantidad para a',{exact:true}).inputValue(),'1');
   await dialog.locator('.review-group > summary').click();
   await dialog.getByRole('button',{name:'Incluir en Stock: a',exact:true}).click();
-  await dialog.getByRole('button',{name:'Añadir stock y cerrar',exact:true}).click();await dialog.waitFor({state:'hidden'});
+  await dialog.getByRole('button',{name:'Revisar reposición',exact:true}).click();await dialog.getByRole('button',{name:'Confirmar compra',exact:true}).click();await dialog.waitFor({state:'hidden'});
   await page.evaluate(()=>{window.finishQuantity();window.quantityWait=null;});await page.waitForTimeout(100);
   assert.equal(await page.evaluate(()=>window.quantityCalls.length),1);
   assert.equal(await page.evaluate(()=>window.lastReceiptConfirmation.lines[0].quantity),1);
@@ -1992,7 +2032,7 @@ async function checkReceiptPackageFormats(browser,url,errors){
   await dialog.getByRole('button',{name:'Continuar',exact:true}).click();
   await dialog.getByRole('button',{name:'Volver a vinculación',exact:true}).waitFor();
   assert.equal(await page.evaluate(()=>window.quantityCalls.length),2);
-  await dialog.getByRole('button',{name:'Añadir stock y cerrar',exact:true}).click();await dialog.waitFor({state:'hidden'});
+  await dialog.getByRole('button',{name:'Revisar reposición',exact:true}).click();await dialog.getByRole('button',{name:'Confirmar compra',exact:true}).click();await dialog.waitFor({state:'hidden'});
   await page.evaluate(()=>{window.quantityResults=null;});
   // A retained kg rate is editable, and is sent separately from ticket money/weight.
   await purchases.evaluate(el=>{
@@ -2046,7 +2086,7 @@ async function checkReceiptPackageFormats(browser,url,errors){
   assert.equal(await page.evaluate(()=>window.quantityCalls.length),0);
   assert.equal(await dialog.getByText('Relacionar con una compra ya registrada',{exact:true}).count(),0);
   assert.equal(await dialog.getByRole('combobox',{name:'Reposición de PESO RECUPERADO',exact:true}).count(),0);
-  await dialog.getByRole('button',{name:'Añadir stock y cerrar',exact:true}).click();await dialog.waitFor({state:'hidden'});
+  await dialog.getByRole('button',{name:'Revisar reposición',exact:true}).click();await dialog.getByRole('button',{name:'Confirmar compra',exact:true}).click();await dialog.waitFor({state:'hidden'});
   assert.equal(await page.evaluate(()=>window.lastReceiptConfirmation.lines[0].purchase_id),'');
   assert.equal(await page.evaluate(()=>window.lastReceiptConfirmation.lines[0].quantity),475);
   await page.evaluate(()=>{window.receiptOptionsOverride=null;});
@@ -2229,7 +2269,7 @@ async function checkLidlMetadata(browser,url,errors){
   assert.equal(await dialog.getByLabel('Unidad de medida',{exact:true}).inputValue(),'g');
   assert.equal(await dialog.getByText(/Formato propuesto desde una oferta de Lidl/).count(),1);
   await dialog.getByLabel('Contenido por envase',{exact:true}).fill('750');
-  await dialog.getByRole('button',{name:'Actualizar precios y cerrar',exact:true}).click();await dialog.waitFor({state:'hidden'});
+  await dialog.getByRole('button',{name:'Revisar precios',exact:true}).click();await dialog.getByRole('button',{name:'Confirmar compra',exact:true}).click();await dialog.waitFor({state:'hidden'});
   assert.equal(await page.evaluate(()=>window.lastReceiptConfirmation.lines[0].pack_quantity),750);
   assert.equal(await page.evaluate(()=>window.lastReceiptConfirmation.lines[0].pack_unit),'g');
   assert.equal(await page.evaluate(()=>window.lidlMetadataCalls.length),1);
@@ -3713,6 +3753,8 @@ async function main() {
   let browser;
   try {
     browser = await chromium.launch({ headless: true, channel: process.env.PLAYWRIGHT_CHANNEL || undefined });
+    if(process.argv.includes('--receipt-list-only')){const errors=[];await checkReceiptListReview(browser,`http://127.0.0.1:${server.address().port}`,errors);assert.deepEqual(errors,[]);console.log('Receipt List review and per-store confirmation passed.');return;}
+    if(process.argv.includes('--receipt-formats-only')){const errors=[];await checkReceiptPackageFormats(browser,`http://127.0.0.1:${server.address().port}`,errors);assert.deepEqual(errors,[]);console.log('Receipt formats passed.');return;}
     if(process.argv.includes('--remove-ean-only')){const errors=[];await checkRemoveOnlyEAN(browser,`http://127.0.0.1:${server.address().port}`,errors);assert.deepEqual(errors,[]);console.log('Removing the only EAN passed.');return;}
     if(process.argv.includes('--preferences-only')){const errors=[];await checkPreferredAlternatives(browser,`http://127.0.0.1:${server.address().port}`,errors);assert.deepEqual(errors,[]);console.log('Preferred alternatives and catalog favorites passed.');return;}
     if(process.argv.includes('--mercadona-location-only')){const errors=[];await checkMercadonaLocation(browser,`http://127.0.0.1:${server.address().port}`,errors);assert.deepEqual(errors,[]);console.log('Mercadona location browser checks passed.');return;}
@@ -4202,7 +4244,7 @@ async function main() {
       const bounds=await yogurtListCard.locator("button.item").evaluate(node=>{
         const card=node.getBoundingClientRect(),media=node.querySelector(".product-media").getBoundingClientRect(),
           text=node.querySelector(".item-text").getBoundingClientRect(),meta=node.querySelector(".row-meta").getBoundingClientRect();
-        return {wide:card.width>card.height,ordered:media.right<=text.left&&text.right<=meta.left,overflow:node.scrollWidth>node.clientWidth};
+        return {wide:card.width>card.height,ordered:media.right<=text.left&&(text.right<=meta.left||text.bottom<=meta.top),overflow:node.scrollWidth>node.clientWidth};
       });
       assert.deepEqual(bounds,{wide:true,ordered:true,overflow:false});
       assert.equal(await yogurtListCard.locator(".item-text").evaluate(node=>getComputedStyle(node).textAlign),"left");
@@ -5334,7 +5376,7 @@ async function main() {
     assert.equal(await review.getByRole('button',{name:'Guardar precio de Seitán',exact:true}).getAttribute('aria-pressed'),'false');
     await purchasePage.screenshot({path:'test-results/receipt-wizard-prices-mobile.png',fullPage:true});
     assert.equal(await review.locator('#review-result').isVisible(),false);
-    assert.equal(await review.getByRole('button',{name:'Actualizar precios y cerrar',exact:true}).isVisible(),true);
+    assert.equal(await review.getByRole('button',{name:'Revisar precios',exact:true}).isVisible(),true);
     await review.getByRole('button',{name:'Continuar',exact:true}).click();
     assert.equal(await review.locator('#review-result').isVisible(),true);
     assert.equal(await review.locator('#review-lines').isVisible(),false);
@@ -5384,11 +5426,11 @@ async function main() {
     await stockOnlyReview.getByRole('button',{name:'Continuar',exact:true}).click();
     assert.equal(await stockOnlyReview.locator('#unregistered-stock-group').count(),0);
     await stockOnlyPage.evaluate(()=>{window.failReceipt=true;});
-    await stockOnlyReview.getByRole('button',{name:'Añadir stock y cerrar',exact:true}).click();
+    await stockOnlyReview.getByRole('button',{name:'Revisar reposición',exact:true}).click();await stockOnlyReview.getByRole('button',{name:'Confirmar compra',exact:true}).click();
     await stockOnlyReview.locator('#review-error').filter({hasText:'No se ha podido guardar el ticket.'}).waitFor();
     assert.equal(await stockOnlyPage.evaluate(()=>window.receiptHistory.length),0);
     await stockOnlyPage.evaluate(()=>{window.failReceipt=false;});
-    await stockOnlyReview.getByRole('button',{name:'Añadir stock y cerrar',exact:true}).click();
+    await stockOnlyReview.getByRole('button',{name:'Confirmar compra',exact:true}).click();
     await stockOnlyReview.waitFor({state:'hidden'});
     assert.equal(await stockOnlyPage.evaluate(()=>window.lastReceiptConfirmation.update_prices),false);
     assert.equal(await stockOnlyPage.evaluate(()=>window.lastReceiptConfirmation.lines.some(line=>line.save_price)),false);
@@ -6024,7 +6066,7 @@ async function main() {
     assert.match(await invoiceReview.locator('[data-line-id="0"] .price-value').textContent(),/2,65/);
     assert.equal(await invoiceReview.locator('[data-line-id="0"] .original').count(),0);
     assert.equal(await invoiceReview.locator('#review-result').isVisible(),false);
-    await invoiceReview.getByRole('button',{name:'Actualizar precios y cerrar',exact:true}).click();await invoiceReview.waitFor({state:'hidden'});
+    await invoiceReview.getByRole('button',{name:'Revisar precios',exact:true}).click();await invoiceReview.getByRole('button',{name:'Confirmar compra',exact:true}).click();await invoiceReview.waitFor({state:'hidden'});
     await invoicePurchases.locator('#history .ticket-open').click();
     assert.match(await invoicePurchases.locator('#purchase-detail').textContent(),/Gastos de envío/);
     assert.match(await invoicePurchases.locator('#purchase-detail').textContent(),/Descuento de línea/);
@@ -6182,6 +6224,7 @@ async function main() {
     await checkLidlReprocessLines(browser,url,errors);
     await checkReferenceFormats(browser,url,errors);
     await checkReceiptPackageFormats(browser,url,errors);
+    await checkReceiptListReview(browser,`http://127.0.0.1:${server.address().port}`,errors);
     await checkRepeatedReceiptProduct(browser,url,errors);
     await checkReplenishmentLayout(browser,`http://127.0.0.1:${server.address().port}`,errors);
     await checkCompactProductEditor(browser,url,errors);

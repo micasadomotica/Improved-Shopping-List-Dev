@@ -350,6 +350,17 @@ class ImprovedShoppingSettings extends HTMLElement {
     this._foldSettingsBlock(accounts,accounts.querySelector('.stores-heading'),'mdi:account-outline');
     this._foldSettingsBlock(catalogs,catalogsTitle,'mdi:book-open-variant');
 
+    const confirmations=document.createElement('section');confirmations.className='card';confirmations.id='receipt-confirmation-settings';
+    const confirmationTitle=document.createElement('h2');confirmationTitle.textContent='Confirmación de compras';
+    const confirmationHelp=document.createElement('p');confirmationHelp.className='helper';confirmationHelp.textContent='Manual permite revisar Stock y Lista antes de confirmar. Automática aplica las líneas reconocidas con cantidades válidas y deja las demás pendientes. Se usa la lista principal. Solo se procesan los formatos de ticket compatibles; este ajuste no activa nuevas fuentes.';
+    confirmations.append(confirmationTitle,confirmationHelp);
+    for(const [store,name] of Object.entries({alcampo:'Alcampo',bm:'BM',carrefour:'Carrefour',consum:'Consum',dia:'DIA',elcorteingles:'El Corte Inglés',eroski:'Eroski',lasirena:'La Sirena',lidl:'Lidl',masymas:'Masymas',mercadona:'Mercadona'})){
+      const label=document.createElement('label');label.className='detection-row';label.textContent=name;
+      const select=document.createElement('select');select.dataset.receiptStore=store;select.setAttribute('aria-label','Confirmación de compras de '+name);select.append(new Option('Manual','manual'),new Option('Automática','automatic'));
+      select.addEventListener('change',()=>void this._saveRetailSettings(async()=>{const data=await this._data.hass.callWS({type:'improved_shopping_list_dev/settings/receipt_confirmation',store,mode:select.value});this._data.settings._receive(data);}));
+      label.append(select);confirmations.append(label);
+    }
+    stores.append(confirmations);this._foldSettingsBlock(confirmations,confirmationTitle,'mdi:receipt-text-check');confirmations.querySelector('details').open=false;
     installDialogCloseButtons(root);
     installToggleStyles(root);
     root.querySelector("#refresh-all-prices").addEventListener("click",()=>void this._refreshPricesNow());
@@ -455,6 +466,7 @@ class ImprovedShoppingSettings extends HTMLElement {
     const root = this.shadowRoot;
     const admin = hass?.user?.is_admin === true;
     const locked = !admin || !settings.loaded || settings.loading || this._busy;
+    for(const select of root.querySelectorAll('[data-receipt-store]')){select.value=settings.receiptConfirmation?.[select.dataset.receiptStore]??'manual';select.disabled=locked;}
     const detection=settings.purchaseDetection??{enabled:false,threshold:5};
     const universal=Array.isArray(detection.shops);
     if(universal&&!root.querySelector('isl-dev-shopping-places')){

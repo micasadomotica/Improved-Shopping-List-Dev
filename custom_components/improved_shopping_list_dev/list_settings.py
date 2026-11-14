@@ -75,6 +75,7 @@ def list_options(entry: ConfigEntry) -> dict:
             "notifications": notification_options(entry.options.get("notifications")),
             "appearance": {**DEFAULT_APPEARANCE, **entry.options.get("appearance", {})},
             "stores": stores,
+            "receipt_confirmation": {store: "automatic" if entry.options.get("receipt_confirmation", {}).get(store) == "automatic" else "manual" for store in STORES},
             "favorite_store": entry.options.get("favorite_store", ""), "price_update_time":entry.options.get("price_update_time", "01:00"),
             "price_updates_enabled":entry.options.get("price_updates_enabled",True), "price_update_days":entry.options.get("price_update_days",1)}
 
@@ -138,6 +139,7 @@ class ListSettings:
                 modes[entity_id] = True
         if modes:
             snapshot["description_as_name"] = modes
+        snapshot.setdefault("receipt_confirmation", {store: "manual" for store in STORES})
         snapshot=store_availability.apply_availability(snapshot)
         # Price preference is independent of account and catalog activation.
         preferred=self.entry.options.get("price_favorite_store") if self.entry else None
@@ -201,6 +203,15 @@ class ListSettings:
             self.hass.config_entries.async_update_entry(entry,options=options)
             self.notify()
             return self.snapshot
+
+    @callback
+    def update_receipt_confirmation(self, store, mode):
+        if not self.entry or store not in STORES or mode not in ("manual", "automatic"):
+            raise StoreError("Selecciona una tienda y un modo de confirmación válidos.")
+        self.hass.config_entries.async_update_entry(self.entry, options={**self.entry.options,
+            "receipt_confirmation": {**self.snapshot["receipt_confirmation"], store: mode}})
+        self.notify()
+        return self.snapshot
 
     def _favorite(self, stores):
         active = [key for key, value in stores.items() if value.get("enabled") and key in store_availability.AVAILABLE_STORES]

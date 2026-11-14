@@ -28,6 +28,7 @@ class ListQuantities:
         self._active, self._dirty = False, False
         self._lock = asyncio.Lock()
         self._task = None
+        self._receipt_operations = {}
 
     async def async_load(self):
         saved = await self._store.async_load()
@@ -45,6 +46,9 @@ class ListQuantities:
             except (ValueError, TypeError, KeyError) as err:
                 raise ValueError("No se han podido leer las cantidades de compra.") from err
             self._entries = saved["entries"]
+            self._receipt_operations = saved.get("receipt_operations", {})
+            if not isinstance(self._receipt_operations, dict):
+                raise ValueError("No se ha podido leer la conciliación de tickets.")
 
     @property
     def snapshot(self):
@@ -105,13 +109,46 @@ class ListQuantities:
                 raise CatalogError(str(err)) from err
             entries = deepcopy(self._entries)
             entries.setdefault(entity_id, {})[uid] = {"quantity": quantity, "unit": value["unit"], "step": value["step"]}
-            await self._store.async_save({"entries": entries})
+            await self._store.async_save({"entries": entries, "receipt_operations": self._receipt_operations})
             self._entries = entries
             self._notify()
             self.activity.record("list.quantity", f"Cantidad de compra: {item.get('summary', '')} · {quantity} {value['unit']}",
                 source="reader" if reader is not None else "manual", reader=reader or "", product=item.get("summary", ""), list_entity=entity_id,
                 diagnostics={"quantity": quantity, "unit": value["unit"]})
             return self.snapshot
+
+    async def async_apply_receipt_action(self, action, item):
+        """Caller holds _lock. Persist a debit and its receipt marker together."""
+        identifier = action["id"]
+        state = self._receipt_operations.get(identifier)
+        if state == "applied":
+            return
+        if not item or normalized_name(item.get("summary", "")) != normalized_name(action["name"]):
+            raise CatalogError("El producto ha cambiado o ya no está en la Lista. Revisa la conciliación.")
+        if state == "completing":
+            if item.get("status") != "completed":
+                raise CatalogError("No se pudo verificar la compra. Comprueba la fila y márcala como comprada para finalizar la conciliación.")
+        else:
+            current = self.value(action["entity"], item)
+            if item.get("status") != "needs_action" or current["quantity"] != action["before"] or current["unit"] != action["unit"]:
+                raise CatalogError("La Lista ha cambiado. Se conserva su cantidad; revisa la conciliación del ticket.")
+            if action["after"] == 0:
+                operations = {**self._receipt_operations, identifier: "completing"}
+                await self._store.async_save({"entries": self._entries, "receipt_operations": operations})
+                self._receipt_operations = operations
+                async with asyncio.timeout(30):
+                    await self.hass.services.async_call("todo", "update_item", {"entity_id": action["entity"], "item": action["uid"], "status": "completed"}, blocking=True)
+                    result = await self.hass.services.async_call("todo", "get_items", {"entity_id": action["entity"]}, blocking=True, return_response=True)
+                items = result.get(action["entity"], {}).get("items", []) if isinstance(result, dict) else []
+                if not any(str(row.get("uid")) == action["uid"] and row.get("status") == "completed" for row in items):
+                    raise CatalogError("La Lista todavía no confirma el producto como comprado. Reintenta la conciliación cuando se actualice.")
+        entries = deepcopy(self._entries)
+        if action["after"] > 0:
+            entries.setdefault(action["entity"], {})[action["uid"]] = {"quantity": action["after"], "unit": action["unit"], "step": action["step"]}
+        operations = {**self._receipt_operations, identifier: "applied"}
+        await self._store.async_save({"entries": entries, "receipt_operations": operations})
+        self._entries, self._receipt_operations = entries, operations
+        self._notify()
 
     async def async_add_recipe(self, recipe_id, revision, entity_id, operation_lock):
         """Add physical ingredient quantities, serializing with readers and quantity edits."""
@@ -202,7 +239,7 @@ class ListQuantities:
                     entries = deepcopy(self._entries)
                     entries.setdefault(entity_id, {})[str(item["uid"])] = {"quantity": amount, "unit": ingredient["unit"], "step": purchase_defaults(product)["quantity_step"]}
                     try:
-                        await self._store.async_save({"entries": entries})
+                        await self._store.async_save({"entries": entries, "receipt_operations": self._receipt_operations})
                     except (OSError, HomeAssistantError) as err:
                         raise CatalogError("El ingrediente está en la lista, pero no se ha podido guardar su cantidad. Compruébala antes de reintentar.") from err
                     self._entries = entries
@@ -271,7 +308,7 @@ class ListQuantities:
                     if not records:
                         entries.pop(entity_id, None)
                 if entries != self._entries:
-                    await self._store.async_save({"entries": entries})
+                    await self._store.async_save({"entries": entries, "receipt_operations": self._receipt_operations})
                     self._entries = entries
                 self._notify()
 

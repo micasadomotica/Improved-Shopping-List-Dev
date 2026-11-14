@@ -268,13 +268,17 @@ async def test_receipt_api_is_admin_only_and_inactive_guard(hass,hass_ws_client,
     for i,operation in enumerate(['get','subscribe','preview'],1):
         await client.send_json({'id':i,'type':f'{DOMAIN}/receipts/{operation}',**({'pdf':'invalid'} if operation=='preview' else {})})
         assert (await client.receive_json())['error']['code']=='unauthorized'
-    for i,operation in enumerate(['options','link','reprocess'],4):
-        await client.send_json({'id':i,'type':f'{DOMAIN}/receipts/{operation}','token':'missing',**({'lines':[]} if operation in ('link','reprocess') else {})})
+    for i,operation in enumerate(['options','link','reprocess','list_preview'],4):
+        await client.send_json({'id':i,'type':f'{DOMAIN}/receipts/{operation}','token':'missing',**({'lines':[]} if operation in ('link','reprocess','list_preview') else {})})
         assert (await client.receive_json())['error']['code']=='unauthorized'
-    for i,operation in enumerate(['search_detection_ticket','preview_detection_ticket'],7):
+    for i,operation in enumerate(['search_detection_ticket','preview_detection_ticket'],8):
         fields={'receipt_id':'missing','store':'carrefour'} if operation=='search_detection_ticket' else {'recovery_token':'missing','purchase_id':'missing'}
         await client.send_json({'id':i,'type':f'{DOMAIN}/receipts/{operation}',**fields})
         assert (await client.receive_json())['error']['code']=='unauthorized'
+    await client.send_json({'id':10,'type':f'{DOMAIN}/receipts/list_retry','receipt_id':'missing'})
+    assert (await client.receive_json())['error']['code']=='unauthorized'
+    await client.send_json({'id':11,'type':f'{DOMAIN}/settings/receipt_confirmation','store':'lidl','mode':'automatic'})
+    assert (await client.receive_json())['error']['code']=='unauthorized'
     await client.close()
     admin=await hass_ws_client(hass)
     await admin.send_json({'id':1,'type':f'{DOMAIN}/receipts/get'})
@@ -734,3 +738,223 @@ async def test_manual_recovery_confirmation_replaces_unknown_without_automatic_s
     assert saved['detection_id']=='manual-detection' and saved['shoppers']==['person.one']
     assert len(env.stock.receipts['history'])==1 and 'manual-detection' not in env.stock.receipts['history']
     assert env.stock.snapshot['items'][0]['quantity']==20
+
+
+async def shopping_env(hass, *, pending=6, count=2, extra=False):
+    """Synthetic catalogue/receipt; no real account or household data."""
+    from homeassistant.core import SupportsResponse
+    from custom_components.improved_shopping_list_dev.quantities import ListQuantities
+
+    env = await setup_manager(hass)
+    env.automation._operation_lock = asyncio.Lock()
+    settings = SimpleNamespace(snapshot={"entities": ["todo.main", "todo.other"], "primary_entity": "todo.main", "receipt_confirmation": {}})
+    env.manager.settings = settings
+    quantities = ListQuantities(hass, env.stock.catalog, settings, SimpleNamespace(record=lambda *args, **kwargs: None))
+    await quantities.async_load()
+    quantities._active = True
+    quantities._entries = {"todo.main": {"line": {"quantity": pending, "unit": "uds", "step": 1}}}
+    env.automation.quantities = quantities
+    env.todo_items = {"todo.main": [{"uid": "line", "summary": env.product["name"], "status": "needs_action"}], "todo.other": []}
+    env.todo_writes = []
+    for entity in env.todo_items:
+        hass.states.async_set(entity, "1", {"supported_features": 7})
+    async def read(call):
+        entity = call.data["entity_id"]
+        return {entity: {"items": deepcopy(env.todo_items[entity])}}
+    async def update(call):
+        env.todo_writes.append(dict(call.data))
+        row = next(item for item in env.todo_items[call.data["entity_id"]] if item["uid"] == call.data["item"])
+        row["status"] = call.data["status"]
+    hass.services.async_register("todo", "get_items", read, supports_response=SupportsResponse.ONLY)
+    hass.services.async_register("todo", "update_item", update)
+    receipt = parse_carrefour(receipt_text())
+    receipt.update(id="synthetic-reconciliation", digest="synthetic-reconciliation")
+    line = receipt["lines"][0]
+    line.update(description=env.product["name"], count=count, amount=count*2.65)
+    receipt["lines"] = [line]
+    if extra:
+        receipt["lines"].append({**deepcopy(line), "id": "later", "description": "Desconocido", "count": 1, "amount": 2.65})
+    receipt["total"] = sum(row["amount"] for row in receipt["lines"])
+    env.draft = await env.manager._prepare_preview(receipt, "owner")
+    env.links = [{"id": line["id"], "product_id": env.product["id"] if line["id"] == "0" else ""} for line in receipt["lines"]]
+    return env
+
+
+async def test_ticket_review_reduces_list_independently_of_catalog_and_stock_units(hass):
+    env = await shopping_env(hass)
+    catalog_before = deepcopy(env.stock.catalog.products)
+    review = await env.manager.async_preview_list(env.draft["token"], "owner", env.links)
+    assert review["rows"][0]["quantity"] == 2
+    assert review["rows"][0]["before"] == 6
+    receipt = await env.manager.async_confirm(env.draft["token"], "owner", selections(env.draft, env.product, 500), False, review)
+    assert env.stock._items[env.item["id"]]["quantity"] == 520
+    assert env.automation.quantities._entries["todo.main"]["line"]["quantity"] == 4
+    assert env.todo_items["todo.main"][0]["status"] == "needs_action"
+    assert env.stock.catalog.products[0]["unit_quantity"] == catalog_before[0]["unit_quantity"]
+    assert not receipt["list_pending"] and receipt["list_actions"][0]["after"] == 4
+    await env.manager.async_retry_list(receipt["id"], "owner")
+    assert env.automation.quantities._entries["todo.main"]["line"]["quantity"] == 4
+    assert env.stock._items[env.item["id"]]["quantity"] == 520
+
+
+@pytest.mark.parametrize("pending", [1, 2])
+async def test_ticket_covers_list_marks_completed_once(hass, pending):
+    env = await shopping_env(hass, pending=pending)
+    review = await env.manager.async_preview_list(env.draft["token"], "owner", env.links)
+    receipt = await env.manager.async_confirm(env.draft["token"], "owner", selections(env.draft, env.product, 500), False, review)
+    assert env.todo_items["todo.main"][0]["status"] == "completed"
+    await env.manager.async_retry_list(receipt["id"], "owner")
+    assert len(env.todo_writes) == 1
+
+
+async def test_ticket_list_review_can_correct_quantity_or_leave_list_untouched(hass):
+    env = await shopping_env(hass)
+    review = await env.manager.async_preview_list(env.draft["token"], "owner", env.links)
+    review["rows"][0]["quantity"] = 1
+    await env.manager.async_confirm(env.draft["token"], "owner", selections(env.draft, env.product, 500), False, review)
+    assert env.automation.quantities._entries["todo.main"]["line"]["quantity"] == 5
+
+
+async def test_ticket_stale_list_review_fails_before_stock_changes(hass):
+    env = await shopping_env(hass)
+    review = await env.manager.async_preview_list(env.draft["token"], "owner", env.links)
+    await env.automation.quantities.async_adjust("todo.main", "line", 1)
+    with pytest.raises(CatalogError, match="cantidades"):
+        await env.manager.async_confirm(env.draft["token"], "owner", selections(env.draft, env.product, 500), False, review)
+    assert env.stock._items[env.item["id"]]["quantity"] == 20
+    assert not env.stock.receipts["history"]
+
+
+async def test_automatic_partial_ticket_review_only_applies_remaining_lines(hass):
+    env = await shopping_env(hass, extra=True)
+    env.manager.settings.snapshot["receipt_confirmation"]["carrefour"] = "automatic"
+    result = await env.manager.async_apply_confirmation_policy(env.draft, "owner")
+    receipt = result["receipt"]
+    assert result["automatic"] and receipt["pending_review"]
+    assert [line["confirmed"] for line in receipt["lines"]] == [True, False]
+    assert receipt["lines"][1]["product_id"] == ""
+    assert env.stock._items[env.item["id"]]["quantity"] == 520
+    assert env.automation.quantities._entries["todo.main"]["line"]["quantity"] == 4
+    draft = await env.manager.async_review_saved(receipt["id"], "owner")
+    assert len(draft["receipt"]["lines"]) == 1
+    assert draft["receipt"]["lines"][0]["id"] == "later"
+    links = [{"id": "later", "product_id": env.product["id"]}]
+    review = await env.manager.async_preview_list(draft["token"], "owner", links)
+    saved = await env.manager.async_confirm(draft["token"], "owner", selections(draft, env.product, 250), False, review)
+    assert not saved["pending_review"] and len(saved["lines"]) == 2
+    assert env.stock._items[env.item["id"]]["quantity"] == 770
+    assert env.automation.quantities._entries["todo.main"]["line"]["quantity"] == 3
+    assert len(env.stock.receipts["history"]) == 1
+    assert next(iter(env.stock.receipts["purchases"].values()))["quantity"] == 750
+
+
+async def test_automatic_ticket_defers_estimated_or_ambiguous_lines(hass):
+    env = await shopping_env(hass)
+    env.manager.settings.snapshot["receipt_confirmation"]["carrefour"] = "automatic"
+    env.todo_items["todo.main"].append({"uid": "second", "summary": env.product["name"], "status": "needs_action"})
+    result = await env.manager.async_apply_confirmation_policy(env.draft, "owner")
+    assert result["receipt"]["pending_review"]
+    assert not result["receipt"]["lines"][0]["confirmed"]
+    assert env.stock._items[env.item["id"]]["quantity"] == 20
+    assert not env.todo_writes
+
+
+async def test_receipt_debit_ledger_survives_history_write_failure_and_restart(hass, monkeypatch):
+    from custom_components.improved_shopping_list_dev.quantities import ListQuantities
+    env = await shopping_env(hass)
+    review = await env.manager.async_preview_list(env.draft["token"], "owner", env.links)
+    persist = env.stock._persist
+    calls = 0
+    async def fail_final(*args, **kwargs):
+        nonlocal calls
+        calls += 1
+        if calls == 2:
+            raise OSError("synthetic disk failure")
+        await persist(*args, **kwargs)
+    monkeypatch.setattr(env.stock, "_persist", fail_final)
+    with pytest.raises(OSError):
+        await env.manager.async_confirm(env.draft["token"], "owner", selections(env.draft, env.product, 500), False, review)
+    saved = next(iter(env.stock.receipts["history"].values()))
+    assert saved["list_pending"]
+    quantities = ListQuantities(hass, env.stock.catalog, env.manager.settings, None)
+    await quantities.async_load()
+    env.automation.quantities = quantities
+    monkeypatch.setattr(env.stock, "_persist", persist)
+    retried = await env.manager.async_retry_list(saved["id"], "owner")
+    assert not retried["list_pending"]
+    assert quantities._entries["todo.main"]["line"]["quantity"] == 4
+    assert env.stock._items[env.item["id"]]["quantity"] == 520
+
+
+async def test_provider_timeout_after_completion_recovers_without_second_write(hass):
+    env = await shopping_env(hass, pending=2)
+    async def uncertain(call):
+        env.todo_writes.append(dict(call.data))
+        env.todo_items["todo.main"][0]["status"] = "completed"
+        raise TimeoutError("synthetic delayed response")
+    hass.services.async_register("todo", "update_item", uncertain)
+    review = await env.manager.async_preview_list(env.draft["token"], "owner", env.links)
+    saved = await env.manager.async_confirm(env.draft["token"], "owner", selections(env.draft, env.product, 500), False, review)
+    assert saved["list_pending"]
+    retried = await env.manager.async_retry_list(saved["id"], "owner")
+    assert not retried["list_pending"] and len(env.todo_writes) == 1
+    assert env.stock._items[env.item["id"]]["quantity"] == 520
+
+
+def test_weight_ticket_does_not_treat_kilograms_as_item_count():
+    line = {"count": 1, "purchased_quantity": .7, "purchased_unit": "kg", "ticket_measure_price": {"unit": "kg"}, "pack_quantity": None, "pack_unit": ""}
+    assert ReceiptManager._receipt_amount(line, "uds") is None
+    assert ReceiptManager._receipt_amount(line, "g") == 700
+
+
+async def test_manual_store_import_only_previews_until_confirmation(hass):
+    env = await shopping_env(hass)
+    result = await env.manager.async_apply_confirmation_policy(env.draft, "owner")
+    assert result is env.draft
+    assert not env.stock.receipts["history"]
+    assert env.stock._items[env.item["id"]]["quantity"] == 20
+    assert env.automation.quantities._entries["todo.main"]["line"]["quantity"] == 6
+
+
+async def test_automatic_account_archive_confirms_known_lines_and_retains_pending(hass):
+    env = await shopping_env(hass, extra=True)
+    env.manager.settings.snapshot["receipt_confirmation"]["carrefour"] = "automatic"
+    saved = await env.manager.async_archive_account_ticket(env.draft["token"], "owner")
+    assert saved["pending_review"] and not saved.get("summary_only")
+    assert saved["lines"][0]["confirmed"] and not saved["lines"][1]["confirmed"]
+    assert env.stock._items[env.item["id"]]["quantity"] == 520
+
+
+async def test_manual_confirmation_can_skip_shopping_list(hass):
+    env = await shopping_env(hass)
+    review = await env.manager.async_preview_list(env.draft["token"], "owner", env.links, "")
+    saved = await env.manager.async_confirm(env.draft["token"], "owner", selections(env.draft, env.product, 500), False, review)
+    assert not saved["list_actions"]
+    assert env.automation.quantities._entries["todo.main"]["line"]["quantity"] == 6
+    assert env.stock._items[env.item["id"]]["quantity"] == 520
+
+
+async def test_changed_list_after_stock_commit_can_be_kept_without_double_stock(hass, monkeypatch):
+    env = await shopping_env(hass)
+    review = await env.manager.async_preview_list(env.draft["token"], "owner", env.links)
+    original_apply = env.automation.quantities.async_apply_receipt_action
+    async def changed(action, item):
+        env.automation.quantities._entries["todo.main"]["line"]["quantity"] = 9
+        await original_apply(action, item)
+    monkeypatch.setattr(env.automation.quantities, "async_apply_receipt_action", changed)
+    saved = await env.manager.async_confirm(env.draft["token"], "owner", selections(env.draft, env.product, 500), False, review)
+    assert saved["list_pending"]
+    saved = await env.manager.async_retry_list(saved["id"], "owner", saved["list_actions"][0]["id"])
+    assert not saved["list_pending"] and saved["list_actions"][0]["state"] == "skipped"
+    assert env.automation.quantities._entries["todo.main"]["line"]["quantity"] == 9
+    assert env.stock._items[env.item["id"]]["quantity"] == 520
+
+
+async def test_automatic_estimates_are_left_pending_for_manual_quantity_review(hass):
+    env = await shopping_env(hass)
+    env.manager.settings.snapshot["receipt_confirmation"]["carrefour"] = "automatic"
+    env.draft["receipt"]["lines"][0]["quantity_estimated"] = True
+    result = await env.manager.async_apply_confirmation_policy(env.draft, "owner")
+    assert result["receipt"]["pending_review"]
+    assert not result["receipt"]["lines"][0]["confirmed"]
+    assert env.stock._items[env.item["id"]]["quantity"] == 20

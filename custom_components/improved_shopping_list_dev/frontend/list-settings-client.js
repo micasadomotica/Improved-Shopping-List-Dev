@@ -36,6 +36,7 @@ export class ListSettingsSession {
     this.purchaseDetection = {enabled:false,threshold:5};
     this.primary = "";
     this.stores = {};
+    this.receiptConfirmation = {};
     this.availableStores = ["mercadona", "carrefour", "lidl", "consum", "lasirena", "eroski"];
     this.favoriteStore = "";
     this.appearance = { ...DEFAULT_APPEARANCE };
@@ -47,6 +48,7 @@ export class ListSettingsSession {
   }
 
   _receive(data) {
+    this.receiptConfirmation = data.receipt_confirmation ?? {};
     this.entities = data.entities ?? [];
     this.gatewayLists = data.gateway_lists ?? [];
     this.descriptionAsName = {...data.description_as_name};

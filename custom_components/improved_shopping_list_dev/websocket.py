@@ -95,7 +95,7 @@ def async_register_commands(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, ws_detected_purchase_discard)
     websocket_api.async_register_command(hass, ws_detected_purchase_search_ticket)
     websocket_api.async_register_command(hass, ws_detected_purchase_preview_ticket)
-    for command in (ws_receipts_get, ws_receipts_subscribe, ws_receipts_preview, ws_receipts_confirm, ws_receipts_reprocess, ws_receipts_discard, ws_receipts_options, ws_receipts_link, ws_receipts_review_saved, ws_receipts_estimate_quantity, ws_receipts_lidl_metadata):
+    for command in (ws_receipts_get, ws_receipts_subscribe, ws_receipts_preview, ws_receipts_confirm, ws_receipts_list_preview, ws_receipts_list_retry, ws_receipts_reprocess, ws_receipts_discard, ws_receipts_options, ws_receipts_link, ws_receipts_review_saved, ws_receipts_estimate_quantity, ws_receipts_lidl_metadata):
         websocket_api.async_register_command(hass, command)
     websocket_api.async_register_command(hass, ws_catalog_subscribe)
     websocket_api.async_register_command(hass, ws_catalog_save)
@@ -124,6 +124,7 @@ def async_register_commands(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, ws_store_progress)
     websocket_api.async_register_command(hass, ws_carrefour_products)
     websocket_api.async_register_command(hass, ws_favorite_store)
+    websocket_api.async_register_command(hass, ws_receipt_confirmation)
     websocket_api.async_register_command(hass, ws_price_schedule)
     websocket_api.async_register_command(hass, ws_store_enabled)
     websocket_api.async_register_command(hass, ws_cached_prices)
@@ -217,11 +218,14 @@ async def _receipt_operation(hass,connection,msg,operation):
     if not _catalog(hass,connection,msg):
         return
     try:
-        result = await operation(hass.data[DOMAIN]["receipts"],connection.user.id)
+        manager = hass.data[DOMAIN]["receipts"]
+        result = await operation(manager,connection.user.id)
+        if msg["type"] == f"{DOMAIN}/receipts/preview":
+            result = await manager.async_apply_confirmation_policy(result, connection.user.id)
     except CatalogError as err:
         connection.send_error(msg["id"],err.code,str(err))
-    except OSError:
-        connection.send_error(msg["id"],"storage_error","No se ha podido guardar el ticket. No se ha modificado el stock.")
+    except (OSError, HomeAssistantError, TimeoutError):
+        connection.send_error(msg["id"],"storage_error","No se ha podido completar la operación. Revisa el ticket en Compras antes de reintentarlo.")
     else:
         connection.send_result(msg["id"],result)
 
@@ -235,11 +239,11 @@ async def ws_receipts_preview(hass,connection,msg):
 
 
 @websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/receipts/confirm",vol.Required("token"):str,
-    vol.Required("lines"):list,vol.Required("update_prices"):bool})
+    vol.Required("lines"):list,vol.Required("update_prices"):bool,vol.Optional("list_review"):dict})
 @websocket_api.require_admin
 @websocket_api.async_response
 async def ws_receipts_confirm(hass,connection,msg):
-    await _receipt_operation(hass,connection,msg,lambda manager,owner:manager.async_confirm(msg["token"],owner,msg["lines"],msg["update_prices"]))
+    await _receipt_operation(hass,connection,msg,lambda manager,owner:manager.async_confirm(msg["token"],owner,msg["lines"],msg["update_prices"],msg.get("list_review")))
 
 
 @websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/receipts/reprocess",vol.Required("token"):str,vol.Required("lines"):list})
@@ -1206,12 +1210,14 @@ async def _carrefour_account_operation(hass, connection, msg, action, operation)
     data = hass.data[DOMAIN]
     try:
         result = await operation(data["carrefour_account"], connection.user.id)
+        if msg["type"] in (f"{DOMAIN}/carrefour_account/preview", f"{DOMAIN}/carrefour_account/preview_saved"):
+            result = await data["receipts"].async_apply_confirmation_policy(result, connection.user.id)
     except CarrefourAccountError as err:
         data["activity"].record("stores.account", "Carrefour: " + str(err), source="manual", diagnostics={"action": action, **err.diagnostics})
         connection.send_error(msg["id"], err.code, str(err))
     except CatalogError as err:
         connection.send_error(msg["id"], err.code, str(err))
-    except (OSError, HomeAssistantError):
+    except (OSError, HomeAssistantError, TimeoutError):
         connection.send_error(msg["id"], "storage_error", "No se ha podido guardar la sesión o preparar el ticket de Carrefour.")
     else:
         data["activity"].record("stores.account", "Carrefour: " + action, source="manual",
@@ -1416,3 +1422,31 @@ async def ws_detected_purchase_search_ticket(hass,connection,msg):
 @websocket_api.async_response
 async def ws_detected_purchase_preview_ticket(hass,connection,msg):
     await _receipt_operation(hass,connection,msg,lambda receipts,owner:hass.data[DOMAIN]["ticket_accounts"].async_preview_manual(receipts,owner,msg["recovery_token"],msg["purchase_id"]))
+
+
+@websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/receipts/list_preview", vol.Required("token"): str, vol.Required("lines"): list, vol.Optional("entity"): str})
+@websocket_api.require_admin
+@websocket_api.async_response
+async def ws_receipts_list_preview(hass, connection, msg):
+    await _receipt_operation(hass, connection, msg, lambda manager, owner: manager.async_preview_list(msg["token"], owner, msg["lines"], msg.get("entity")))
+
+
+@websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/receipts/list_retry", vol.Required("receipt_id"): str, vol.Optional("keep_current"): str})
+@websocket_api.require_admin
+@websocket_api.async_response
+async def ws_receipts_list_retry(hass, connection, msg):
+    await _receipt_operation(hass, connection, msg, lambda manager, owner: manager.async_retry_list(msg["receipt_id"], owner, msg.get("keep_current")))
+
+
+@websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/settings/receipt_confirmation", vol.Required("store"): vol.In(tuple(STORES)), vol.Required("mode"): vol.In(("manual", "automatic"))})
+@websocket_api.require_admin
+@websocket_api.async_response
+async def ws_receipt_confirmation(hass, connection, msg):
+    if not _catalog(hass, connection, msg):
+        return
+    try:
+        result = hass.data[DOMAIN]["settings"].update_receipt_confirmation(msg["store"], msg["mode"])
+    except StoreError as err:
+        connection.send_error(msg["id"], "invalid_store", str(err))
+    else:
+        connection.send_result(msg["id"], result)

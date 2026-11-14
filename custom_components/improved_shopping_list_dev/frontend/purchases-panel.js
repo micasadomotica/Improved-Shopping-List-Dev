@@ -45,6 +45,7 @@ class ImprovedShoppingPurchases extends HTMLElement {
   openPreview(draft){
     if(this._busy||!this._active||this._hass?.user?.is_admin!==true)return false;
     if(this._draft&&!this.shadowRoot.querySelector('dialog').open){const token=this._draft.token;void this._hass.callWS({type:'improved_shopping_list_dev/receipts/discard',token}).catch(()=>{});}
+    if(draft.automatic){this._showAutomaticResult(draft);return true;}
     this._draft=draft;this._error='';this._buildReview();this.shadowRoot.querySelector('dialog').showModal();return true;
   }
   chooseFile(){if(!this._busy&&this._hass?.user?.is_admin===true)this.shadowRoot.querySelector('#ticket-file').click();}
@@ -94,14 +95,15 @@ class ImprovedShoppingPurchases extends HTMLElement {
       .ticket{display:flex;align-items:center;gap:12px;min-width:0}.store-image{width:42px;height:42px;object-fit:contain;background:white;border-radius:10px;padding:5px;flex:none}.ticket .title{overflow-wrap:anywhere}.ticket .ticket-open{flex:none;width:40px;height:40px;border:0;border-radius:10px;background:var(--secondary-background-color,#edf2ef);display:grid;place-items:center;padding:0}.ticket-open.reviewed{background:var(--isl-dev-green,#267052);color:white}.ticket-open:focus-visible{outline:3px solid var(--primary-color,#267052);outline-offset:2px}#purchase-detail-info{align-items:center;padding-bottom:12px;border-bottom:1px solid var(--divider-color,#d9e0dd)}#purchase-detail-info .total{margin-left:auto}.spending-chart{background:var(--card-background-color,#fff);padding:18px;border-radius:14px;margin-bottom:16px;min-width:0}.spending-chart h3{margin:0 0 4px;font-size:1.05em}.spending-chart .chart-note{font-size:.8em;opacity:.65;margin:0 0 12px}.chart-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.chart-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-left:auto;min-width:0;max-width:100%}.chart-navigation{display:flex;align-items:center;gap:6px;min-width:0}.chart-navigation button{flex:none}.upload-ticket{display:grid;place-items:center;flex:none;width:36px;height:36px;padding:0;border:0;border-radius:10px;background:var(--isl-dev-green,#267052);color:#fff}.upload-ticket ha-icon{display:block;width:22px;height:22px;--mdc-icon-size:22px}.upload-ticket:focus-visible{outline:3px solid var(--primary-color,#267052);outline-offset:2px}.chart-period{font-size:.8em;text-align:center}.chart-navigation button{display:grid;place-items:center;width:32px;height:32px;padding:0;border:0;border-radius:8px;background:var(--secondary-background-color,#edf2ef)}.chart-navigation button ha-icon{--mdc-icon-size:22px}.chart-navigation button:focus-visible{outline:3px solid var(--primary-color,#267052);outline-offset:2px}.chart-scroll{width:100%;min-width:0;overflow-x:auto}.chart-range{display:flex;align-items:center;gap:6px;border:0;border-radius:8px;padding:8px;background:var(--secondary-background-color,#edf2ef);font-size:.8em;min-width:0}.chart-range span{overflow-wrap:anywhere}.chart-range ha-icon{flex:none}#purchase-period-dialog{width:min(460px,calc(100vw - 24px))}#purchase-period-form .period-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:20px}.monthly-bars{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));align-items:end;gap:14px;width:100%;padding:8px 0 0;border-bottom:1px solid var(--divider-color,#d9e0dd)}.month-column{min-width:0;text-align:center}.month-total{display:block;font-weight:700;font-size:clamp(.6rem,2vw,.85rem);margin-bottom:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.month-stack{height:130px;display:flex;flex-direction:column;justify-content:end;gap:0;background:repeating-linear-gradient(to top,transparent 0,transparent calc(25% - 1px),var(--divider-color,#d9e0dd) 25%);border-bottom:1px solid var(--divider-color,#d9e0dd)}.store-segment{width:70%;margin-inline:auto;flex:none;min-height:0}.month-label{display:block;font-size:.8em;padding:8px 0}.chart-legend{display:flex;flex-wrap:wrap;gap:10px 16px;margin-top:14px}.chart-key{display:inline-flex;align-items:center;gap:6px;font-size:.8em}.chart-swatch{width:10px;height:10px;border-radius:3px;flex:none}@media(max-width:550px){.ticket{gap:8px}.ticket .store-image{width:34px;height:34px}.ticket .ticket-open{width:32px;height:36px}.ticket .title{font-size:.85em}.ticket .total{font-size:.9em}.spending-chart{padding:14px}.monthly-bars{gap:6px}.month-label{font-size:.7em}.chart-period{font-size:.7em}}
       #detected-purchase-dialog{width:min(500px,calc(100vw - 24px))}#detected-purchase-form label{margin-top:16px}#detected-products{max-height:25vh;overflow:auto;padding-left:20px}.ticket.needs-details{border:1px dashed var(--secondary-text-color,#64748b)}.ticket .edit-detection{background:#ffb74d;color:#182b22}.actions .danger{background:#d32f2f;color:#fff}
     .recovery-actions{display:flex;justify-content:flex-start;margin-top:12px}.recovery-actions button{display:flex;align-items:center;gap:8px;border:0;border-radius:10px;padding:10px 14px;background:#2196f3;color:#fff}.recovery-choice{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;margin-top:8px;padding:12px;border:1px solid var(--divider-color,#d9e0dd);border-radius:10px;background:var(--secondary-background-color,#edf2ef);color:inherit;text-align:left}.zone-candidates{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:18px}.zone-store-choice{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-width:0;flex:1;padding:10px;border:1px solid var(--divider-color,#d9e0dd);border-radius:10px;background:var(--secondary-background-color,#edf2ef)}.zone-store-choice:focus-visible{outline:3px solid var(--primary-color,#267052);outline-offset:2px}.zone-store-choice[aria-pressed=true]{background:var(--primary-color,#267052);color:white}.zone-store-choice .store-image{width:28px;height:28px;flex:none}
+    .list-receipt-review input[type=checkbox]{width:20px;height:20px;min-height:20px;padding:0;vertical-align:middle}.list-receipt-review .purchase-summary-line{align-items:start}.list-receipt-review .purchase-summary-line>label{max-width:110px;flex:none}.list-receipt-review select{width:100%}.list-receipt-review .purchase-summary-line>div>label{display:flex;align-items:center;gap:4px}
     .spending-chart{border:1px solid var(--divider-color,#dfe7e1);border-radius:16px;padding:20px}.ticket{border:1px solid var(--divider-color,#dfe7e1);border-radius:12px;padding:14px;margin-top:0;background:var(--card-background-color,#fff)}.ticket .store-image{border-radius:50%}.chart-legend{justify-content:center;padding-top:8px}.month-stack{height:160px}.chart-key{padding:5px 8px;border-radius:8px}.chart-swatch{width:9px;height:9px}.ticket .total{font-weight:750}.chart-range{min-height:40px}.purchase-filters{gap:12px}@media(max-width:550px){.spending-chart{padding:14px}.month-stack{height:130px}.ticket{padding:12px}.chart-legend{gap:8px}}
 </style>
     <input id="ticket-file" type="file" accept="application/pdf,.pdf" hidden>
     <p id="message" class="notice" role="status" hidden></p><section id="spending-chart" class="spending-chart" aria-label="Gasto mensual por tienda" hidden></section><div class="purchase-filters"><label>Tienda<select id="filter-shop" aria-label="Filtrar por tienda"><option value="">Todas las tiendas</option></select></label><label>Usuario<select id="filter-person" aria-label="Filtrar por usuario"><option value="">Todos los usuarios</option></select></label></div><div id="history"></div><button id="more-purchases" type="button" hidden>Mostrar más</button><p id="empty" class="empty" hidden>Todavía no has subido ningún ticket.</p>
-    <dialog aria-labelledby="review-title"><form id="review-form"><h2 id="review-title">Revisar ticket</h2><div id="review-summary" class="receipt-info"></div>
+    <dialog aria-labelledby="review-title"><form id="review-form"><h2 id="review-title">Revisar ticket</h2><div id="review-summary" class="receipt-info"></div><p id="review-confirmed-summary" class="note" hidden></p>
       <ol id="review-steps" aria-label="Pasos de revisión del ticket"><li><button type="button">1. Vinculación</button></li><li><button type="button">2. Stock</button></li><li><button type="button">3. Precios</button></li><li><button type="button">4. Resumen</button></li></ol><h3 id="step-title"></h3><p id="step-help" class="note"></p>
       <div id="review-lines"></div><div id="review-result" class="review-summary" hidden></div>
-      <p id="review-error" class="notice error" role="alert" hidden></p><div class="actions"><button id="previous-step" class="secondary" type="button">Anterior</button><button id="links-only" type="button">Guardar vinculaciones y cerrar</button><button id="stock-only" type="button" hidden>Añadir stock y cerrar</button><button id="prices-only" type="button" hidden>Actualizar precios y cerrar</button><button id="confirm-ticket" type="submit">Continuar</button></div>
+      <p id="review-error" class="notice error" role="alert" hidden></p><div class="actions"><button id="previous-step" class="secondary" type="button">Anterior</button><button id="links-only" type="button">Guardar vinculaciones y cerrar</button><button id="stock-only" type="button" hidden>Revisar reposición</button><button id="prices-only" type="button" hidden>Revisar precios</button><button id="confirm-ticket" type="submit">Continuar</button></div>
     </form></dialog>
     <dialog id="association-dialog" aria-labelledby="association-title"><form id="association-form">
       <h2 id="association-title">Vincular producto</h2>
@@ -160,14 +162,17 @@ class ImprovedShoppingPurchases extends HTMLElement {
     try{
       const encoded=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result.split(',')[1]);reader.onerror=()=>reject(new Error('No se ha podido leer el archivo.'));reader.readAsDataURL(file);});
       this._draft=await this._hass.callWS({type:'improved_shopping_list_dev/receipts/preview',pdf:encoded});
+      if(this._draft.automatic){this._showAutomaticResult(this._draft);this._draft=null;return;}
       if(!this.isConnected||!this._active){const token=this._draft.token;this._draft=null;void this._hass.callWS({type:'improved_shopping_list_dev/receipts/discard',token}).catch(()=>{});return;}
       this._buildReview();this.shadowRoot.querySelector('dialog').showModal();
     }catch(error){this._error=error.message??'No se ha podido leer el ticket.';}
     finally{this._reading=false;this._setBusy(false);this._render();}
   }
   _buildReview(){
+    this._listReview=null;this._confirmationUpdatePrices=undefined;this._notice='';
     const root=this.shadowRoot,{receipt,products}=this._draft;
     root.querySelector('#review-summary').replaceChildren(node('strong','',receipt.store_name+(receipt.provisional_store?' · Provisional':receipt.zone_candidates?.length>1&&receipt.needs_details?' · Tiendas por confirmar':'')+(receipt.document_type==='invoice'?' · Factura':'')),node('span','',documentDate(receipt)),node('strong','',money(receipt.total)));
+    const confirmed=root.querySelector('#review-confirmed-summary');confirmed.hidden=!this._draft.confirmed_count;confirmed.textContent=this._draft.confirmed_count+' líneas ya confirmadas. Solo se aplicarán las pendientes que revises ahora. El importe mostrado es el total del ticket.';
     this._step=this._draft.reprocess?2:0;
     root.querySelector('#review-title').textContent=this._draft.reprocess?'Reprocesar ticket':'Revisar ticket';
     this._reviewGroups={};
@@ -352,7 +357,7 @@ class ImprovedShoppingPurchases extends HTMLElement {
   _goToStep(step){
     if(this._draft?.reprocess)return;
     if(this._busy||!this._draft||!Number.isInteger(step)||step<0||step>=this._step)return;
-    this._step=step;this._errorMessage('');this._renderStep();
+    this._listReview=null;this._confirmationUpdatePrices=undefined;this._step=step;this._errorMessage('');this._renderStep();
   }
   _renderStep(){
     if(!this._draft)return;
@@ -469,6 +474,53 @@ class ImprovedShoppingPurchases extends HTMLElement {
     if(receipt.shipping)lines.append(this._totalRow('Gastos de envío',receipt.shipping));
     if(receipt.discount)lines.append(this._totalRow('Descuentos generales',-receipt.discount));
     result.replaceChildren(heading,stats,lines,this._totalRow('Total de la compra',receipt.total));
+    this._renderListReview(result);
+  }
+  _showAutomaticResult(result){
+    const receipt=result.receipt,count=receipt.lines.filter(line=>line.confirmed).length;
+    this._notice='Confirmadas automáticamente '+count+' líneas.'+(receipt.pending_review?' Las restantes están pendientes en Compras.':'')+(receipt.list_pending?' Queda pendiente actualizar la Lista.':'');
+    this.dispatchEvent(new CustomEvent('receipt-imported'));void this._session.refresh();this._render();
+  }
+  async _prepareListReview(entity){
+    this._listReview=null;
+    this._setBusy(true);this._errorMessage('');
+    try{
+      this._listReview=await this._hass.callWS({type:'improved_shopping_list_dev/receipts/list_preview',token:this._draft.token,lines:this._edits.map(edit=>({id:edit.id,product_id:edit.product_id})),...(entity!==undefined?{entity}:{})});
+      this._step=3;this._renderStep();
+    }catch(error){this._errorMessage(error.message??'No se ha podido revisar la Lista.');}
+    finally{this._setBusy(false);}
+  }
+  _renderListReview(container){
+    const review=this._listReview;if(!review)return;
+    const section=node('section','list-receipt-review');section.append(node('h3','','Actualizar Lista'));
+    const label=node('label','','Lista de la compra'),select=node('select');select.setAttribute('aria-label','Lista de la compra del ticket');
+    select.append(new Option('No actualizar la Lista',''),...review.entities.map(entity=>new Option(this._hass.states[entity]?.attributes?.friendly_name??entity,entity)));select.value=review.entity;label.append(select);section.append(label);
+    select.addEventListener('change',()=>void this._prepareListReview(select.value));
+    for(const row of review.rows){
+      const card=node('div','purchase-summary-line'),details=node('div'),toggle=node('input');toggle.type='checkbox';toggle.checked=row.enabled;toggle.setAttribute('aria-label','Descontar '+row.name+' de la Lista');toggle.disabled=!row.uid;toggle.dataset.locked=String(!row.uid);
+      const name=node('label');name.append(toggle,document.createTextNode(' '+row.name));details.append(name);
+      const quantity=node('input');quantity.type='number';quantity.min='0.001';quantity.step='any';quantity.value=row.quantity||'';quantity.setAttribute('aria-label','Cantidad comprada de '+row.name);quantity.style.maxWidth='110px';quantity.required=row.enabled;
+      const remaining=node('span','muted');const update=()=>{row.quantity=quantity.value===''?null:Number(quantity.value);row.enabled=toggle.checked;quantity.required=row.enabled;remaining.textContent=!row.enabled?'Se mantiene pendiente':row.quantity>0?(row.quantity>=row.before?'Se marcará como comprado':'Quedarán '+Number((row.before-row.quantity).toFixed(3))+' '+row.unit):'Indica la cantidad comprada';};
+      toggle.addEventListener('change',update);quantity.addEventListener('input',update);update();
+      if(row.before!=null)details.append(node('span','muted','Pendiente: '+row.before+' '+row.unit));if(row.reason)details.append(node('span','muted',row.reason));details.append(remaining);
+      const field=node('label','','Comprado'+(row.unit?' ('+row.unit+')':''));field.append(quantity);card.append(details,field);section.append(card);
+    }
+    if(!review.rows.length)section.append(node('p','note',review.entity?'No hay productos vinculados pendientes en esta lista.':'El ticket no modificará ninguna lista.'));
+    container.append(section);
+  }
+  _renderListStatus(container,receipt){
+    const pending=(receipt.list_actions??[]).filter(action=>!['applied','skipped'].includes(action.state));
+    if(!pending.length)return;
+    const section=node('section');section.append(node('h3','','Lista pendiente de actualizar'));
+    for(const action of pending){
+      section.append(node('p','note',action.name+': '+(action.error||'Pendiente de aplicar')));
+      const keep=node('button','','Conservar cantidad actual de '+action.name);keep.type='button';keep.addEventListener('click',async()=>{
+        keep.disabled=true;try{const saved=await this._hass.callWS({type:'improved_shopping_list_dev/receipts/list_retry',receipt_id:receipt.id,keep_current:action.id});this._openPurchaseDetail(saved);await this._session.refresh();}catch(error){section.append(node('p','error',error.message));}finally{keep.disabled=false;}
+      });section.append(keep);
+    }
+    const retry=node('button','','Reintentar actualización de la Lista');retry.type='button';retry.addEventListener('click',async()=>{
+      retry.disabled=true;try{const saved=await this._hass.callWS({type:'improved_shopping_list_dev/receipts/list_retry',receipt_id:receipt.id});this._openPurchaseDetail(saved);this.dispatchEvent(new CustomEvent('receipt-imported'));await this._session.refresh();}catch(error){section.append(node('p','error',error.message));}finally{retry.disabled=false;}
+    });section.append(retry);container.append(section);
   }
   _productImage(product){
     const media=node('span','association-image'),fallback=icon(product.icon||'mdi:shopping');
@@ -604,19 +656,20 @@ class ImprovedShoppingPurchases extends HTMLElement {
       }
       return;
     }
-    if(this._step===2){this._step=3;this._renderStep();return;}
+    if(this._step===2){await this._prepareListReview();return;}
     await this._confirm();
   }
-  async _confirm(updatePrices=Boolean(this._pricesEnabled)){
+  async _confirm(updatePrices=this._confirmationUpdatePrices??Boolean(this._pricesEnabled)){
     if(this._busy||!this._draft||!this._validateLinks()||(!this._draft.reprocess&&!this._validateStock()))return;
+    if(!this._draft.reprocess&&!this._listReview){this._confirmationUpdatePrices=updatePrices;if(!updatePrices)for(const edit of this._edits)edit.save_price=false;await this._prepareListReview();return;}
     this._setBusy(true);
     try{
       const token=this._draft.token;
       if(this._draft?.token!==token)return;
       if(this._draft.reprocess){
         await this._hass.callWS({type:'improved_shopping_list_dev/receipts/reprocess',token,lines:this._edits.map(edit=>({id:edit.id,product_id:edit.product_id,pack_quantity:validReferenceContent(edit.packageFormat)?edit.packageFormat.content_quantity:null,pack_unit:validReferenceFormat(edit.packageFormat)?edit.packageFormat.content_unit:'',...this._manualPricePayload(edit)}))});
-      }else await this._hass.callWS({type:'improved_shopping_list_dev/receipts/confirm',token:this._draft.token,update_prices:Boolean(updatePrices&&this._pricesEnabled),
-        lines:this._edits.map(edit=>({id:edit.id,product_id:edit.product_id,replenish:Boolean(edit.product_id&&edit.replenish),quantity:edit.replenish?edit.quantity:null,unit:edit.unit,purchase_id:'',save_price:Boolean(edit.product_id&&edit.save_price&&updatePrices&&this._pricesEnabled),quantity_edited:Boolean(edit.quantityEdited),pack_quantity:validReferenceContent(edit.packageFormat)?edit.packageFormat.content_quantity:null,pack_unit:validReferenceFormat(edit.packageFormat)?edit.packageFormat.content_unit:'',...(updatePrices&&this._pricesEnabled?this._manualPricePayload(edit):{})}))});
+      }else {const saved=await this._hass.callWS({type:'improved_shopping_list_dev/receipts/confirm',token:this._draft.token,list_review:this._listReview,update_prices:Boolean(updatePrices&&this._pricesEnabled),
+        lines:this._edits.map(edit=>({id:edit.id,product_id:edit.product_id,replenish:Boolean(edit.product_id&&edit.replenish),quantity:edit.replenish?edit.quantity:null,unit:edit.unit,purchase_id:'',save_price:Boolean(edit.product_id&&edit.save_price&&updatePrices&&this._pricesEnabled),quantity_edited:Boolean(edit.quantityEdited),pack_quantity:validReferenceContent(edit.packageFormat)?edit.packageFormat.content_quantity:null,pack_unit:validReferenceFormat(edit.packageFormat)?edit.packageFormat.content_unit:'',...(updatePrices&&this._pricesEnabled?this._manualPricePayload(edit):{})}))});this._notice=saved.list_pending?'Stock guardado. Queda pendiente actualizar la Lista: abre el ticket para revisarlo.':'Compra confirmada.';}
       this._draft=null;this.shadowRoot.querySelector('dialog').close();this.dispatchEvent(new CustomEvent('receipt-imported'));await this._session.refresh();
     }catch(error){this._errorMessage(error.message??'No se ha podido guardar el ticket.');}
     finally{this._setBusy(false);}
@@ -632,7 +685,7 @@ class ImprovedShoppingPurchases extends HTMLElement {
       for(const button of choices.querySelectorAll('button')){if(!available.has(button.dataset.store))button.remove();}
       if(!choices.children.length){choices.hidden=true;root.querySelector('#detected-zone-help').hidden=true;}
     }
-    const text=this._reading?'Leyendo ticket…':this._error|| (this._history?this._session.error:'') || (this._history&&this._session.loading?'Cargando compras…':'');
+    const text=this._reading?'Leyendo ticket…':this._error||this._notice|| (this._history?this._session.error:'') || (this._history&&this._session.loading?'Cargando compras…':'');
     message.textContent=text;message.hidden=!text;message.classList.toggle('error',Boolean(this._error||this._session.error));
     root.querySelector('#history').hidden=!this._history;root.querySelector('#empty').hidden=true;
     root.querySelector('#spending-chart').hidden=!this._history;root.querySelector('.purchase-filters').hidden=!this._history;
@@ -656,10 +709,10 @@ class ImprovedShoppingPurchases extends HTMLElement {
     root.querySelector('#history').replaceChildren(...receipts.slice(0,this._visiblePurchases).map(receipt=>{
       const card=node('article','ticket'+(receipt.needs_details?' needs-details':''));card.dataset.id=receipt.id;
       const title=node('div','title');title.append(node('strong','',(receipt.shop_name||receipt.store_name)+(receipt.document_type==='invoice'?' · Factura':'')),node('span','muted',documentDate(receipt)+(receipt.article_count==null?'':' · '+receipt.article_count+' artículos')));
-      const open=this._button('Ver ticket de '+receipt.store_name+' del '+documentDate(receipt),'mdi:receipt-text',()=>receipt.summary_only?void this._reviewPending(receipt):this._openPurchaseDetail(receipt),'ticket-open'+(!receipt.summary_only?' reviewed':''));
+      const open=this._button('Ver ticket de '+receipt.store_name+' del '+documentDate(receipt),'mdi:receipt-text',()=>receipt.summary_only||receipt.pending_review?void this._reviewPending(receipt):this._openPurchaseDetail(receipt),'ticket-open'+(!receipt.summary_only?' reviewed':''));
       if(receipt.shoppers?.length)title.append(node('span','shoppers',receipt.shoppers.map(person=>this._hass.states[person]?.attributes?.friendly_name??person).join(', ')));if(receipt.allocation_pending)title.append(node('small','muted','Productos pendientes de repartir'));
       card.style.borderLeft=receipt.shop_color?'4px solid '+receipt.shop_color:'';
-      card.append(this._receiptImage(receipt),title,node('span','total',receipt.total==null?'Importe pendiente':money(receipt.total)));if(!receipt.summary_only||receipt.pending_review||(['carrefour','dia','lidl'].includes(receipt.store)&&receipt.account_key&&receipt.ticket_available!==false))card.append(open);if(receipt.detected_purchase)card.append(this._button(receipt.needs_details?'Completar compra detectada':'Editar compra detectada','mdi:pencil',()=>this._editDetectedPurchase(receipt),'ticket-open edit-detection'));return card;
+      card.append(this._receiptImage(receipt),title,node('span','total',receipt.total==null?'Importe pendiente':money(receipt.total)));if(!receipt.summary_only||receipt.pending_review||(['carrefour','dia','lidl'].includes(receipt.store)&&receipt.account_key&&receipt.ticket_available!==false))card.append(open);if(receipt.list_pending)card.append(this._button('Revisar Lista pendiente','mdi:playlist-check',()=>this._openPurchaseDetail(receipt),'ticket-open'));if(receipt.pending_review)title.append(node('span','muted',' · Pendiente de revisión'));if(receipt.detected_purchase)card.append(this._button(receipt.needs_details?'Completar compra detectada':'Editar compra detectada','mdi:pencil',()=>this._editDetectedPurchase(receipt),'ticket-open edit-detection'));return card;
     }));
   }
   _detectedStoreFields(){const root=this.shadowRoot;this._recoveryToken=null;root.querySelector('#detected-recovery-results').replaceChildren();this._updateRecoveryControl();const other=root.querySelector('#detected-store').value==='other';root.querySelector('#detected-other-label').hidden=!other;root.querySelector('#detected-other').required=other;for(const button of root.querySelectorAll('.zone-store-choice'))button.setAttribute('aria-pressed',String(button.dataset.store===root.querySelector('#detected-store').value));}
@@ -725,7 +778,7 @@ class ImprovedShoppingPurchases extends HTMLElement {
   async _reviewPending(receipt){
     if(this._busy)return;
     this._setBusy(true);this._error='';
-    try{const draft=await this._hass.callWS({type:receipt.pending_review?'improved_shopping_list_dev/receipts/review_saved':'improved_shopping_list_dev/'+receipt.store+'_account/preview_saved',receipt_id:receipt.id});this._draft=draft;this._buildReview();this.shadowRoot.querySelector('dialog').showModal();}
+    try{const draft=await this._hass.callWS({type:receipt.pending_review?'improved_shopping_list_dev/receipts/review_saved':'improved_shopping_list_dev/'+receipt.store+'_account/preview_saved',receipt_id:receipt.id});if(draft.automatic){this._showAutomaticResult(draft);return;}this._draft=draft;this._buildReview();this.shadowRoot.querySelector('dialog').showModal();}
     catch(error){this._error=error.message??'No se ha podido abrir el ticket.';this._render();}
     finally{this._setBusy(false);}
   }
@@ -741,6 +794,7 @@ class ImprovedShoppingPurchases extends HTMLElement {
     const root=this.shadowRoot;
     root.querySelector('#purchase-detail-info').replaceChildren(this._storeImage(receipt.store,receipt.store_name),node('strong','',receipt.store_name),node('span','muted',documentDate(receipt)),node('strong','total',money(receipt.total)));
     const container=root.querySelector('#purchase-detail-lines');container.replaceChildren();
+    this._renderListStatus(container,receipt);
     for(const line of receipt.lines){
       const row=node('div','line'),description=node('div');description.append(node('p','',line.description),node('p','muted',line.count+' × '+money(line.unit_price)));
       if(line.ean)description.append(node('p','muted','EAN: '+line.ean));

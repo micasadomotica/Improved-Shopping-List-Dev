@@ -53,7 +53,7 @@ async def test_settings_select_only_primary_persist_remove_and_restore(hass):
     entry.add_to_hass(hass)
     settings = ListSettings(hass)
     settings.attach(entry)
-    assert settings.snapshot == {"entities": ["todo.bring"], "primary_entity": "todo.bring", "gateway_lists": [], "purchase_detection":DEFAULT_PURCHASE_DETECTION, "notifications": DEFAULT_NOTIFICATIONS, "appearance": DEFAULT_APPEARANCE, "stores": DEFAULT_STORES, "favorite_store": "", "price_update_time":"01:00","price_updates_enabled":True,"price_update_days":1}
+    assert settings.snapshot == {"entities": ["todo.bring"], "primary_entity": "todo.bring", "gateway_lists": [], "purchase_detection":DEFAULT_PURCHASE_DETECTION, "receipt_confirmation": {store: "manual" for store in settings_module.STORES}, "notifications": DEFAULT_NOTIFICATIONS, "appearance": DEFAULT_APPEARANCE, "stores": DEFAULT_STORES, "favorite_store": "", "price_update_time":"01:00","price_updates_enabled":True,"price_update_days":1}
     settings.update("add", "todo.local")
     settings.update("primary", "todo.local")
     settings.update("remove", "todo.bring")
@@ -61,14 +61,14 @@ async def test_settings_select_only_primary_persist_remove_and_restore(hass):
     assert entry.options["unrelated"] is True
     restored = ListSettings(hass)
     restored.attach(entry)
-    assert restored.snapshot == {"entities": ["todo.local"], "primary_entity": "todo.local", "gateway_lists": [], "purchase_detection":DEFAULT_PURCHASE_DETECTION, "notifications": DEFAULT_NOTIFICATIONS, "appearance": DEFAULT_APPEARANCE, "stores": DEFAULT_STORES, "favorite_store": "", "price_update_time":"01:00","price_updates_enabled":True,"price_update_days":1}
+    assert restored.snapshot == {"entities": ["todo.local"], "primary_entity": "todo.local", "gateway_lists": [], "purchase_detection":DEFAULT_PURCHASE_DETECTION, "receipt_confirmation": {store: "manual" for store in settings_module.STORES}, "notifications": DEFAULT_NOTIFICATIONS, "appearance": DEFAULT_APPEARANCE, "stores": DEFAULT_STORES, "favorite_store": "", "price_update_time":"01:00","price_updates_enabled":True,"price_update_days":1}
     restored.update("add", "todo.bring")
     restored.update("add", "todo.bring")
     assert len(restored.snapshot["entities"]) == 2
     restored.update("remove", "todo.local")
     assert restored.snapshot["primary_entity"] == "todo.bring"
     restored.update("remove", "todo.bring")
-    assert restored.snapshot == {"entities": [], "primary_entity": "", "gateway_lists": [], "purchase_detection":DEFAULT_PURCHASE_DETECTION, "notifications": DEFAULT_NOTIFICATIONS, "appearance": DEFAULT_APPEARANCE, "stores": DEFAULT_STORES, "favorite_store": "", "price_update_time":"01:00","price_updates_enabled":True,"price_update_days":1}
+    assert restored.snapshot == {"entities": [], "primary_entity": "", "gateway_lists": [], "purchase_detection":DEFAULT_PURCHASE_DETECTION, "receipt_confirmation": {store: "manual" for store in settings_module.STORES}, "notifications": DEFAULT_NOTIFICATIONS, "appearance": DEFAULT_APPEARANCE, "stores": DEFAULT_STORES, "favorite_store": "", "price_update_time":"01:00","price_updates_enabled":True,"price_update_days":1}
     empty = ListSettings(hass)
     empty.attach(entry)
     assert empty.snapshot == restored.snapshot  # Do not re-add deliberately removed lists on reload.
@@ -237,3 +237,19 @@ async def test_purchase_zone_settings_validate_and_preserve_saved_mapping(hass):
                     {"store_zones":{"unknown":["zone.market"]}},{"store_zones":{"carrefour":"zone.market"}}):
         with pytest.raises(ListSettingsError):
             settings.update_purchase_detection({**config,**invalid})
+
+
+async def test_receipt_confirmation_defaults_manual_for_every_store_and_persists_independently(hass):
+    from custom_components.improved_shopping_list_dev.store_links import STORES
+    entry = MockConfigEntry(domain=DOMAIN, data={CONF_TODO_ENTITY: "todo.main"})
+    entry.add_to_hass(hass)
+    settings = ListSettings(hass); settings.attach(entry)
+    assert settings.snapshot["receipt_confirmation"] == {store: "manual" for store in STORES}
+    settings.update_receipt_confirmation("lidl", "automatic")
+    restored = ListSettings(hass); restored.attach(entry)
+    assert restored.snapshot["receipt_confirmation"]["lidl"] == "automatic"
+    assert restored.snapshot["receipt_confirmation"]["mercadona"] == "manual"
+    with pytest.raises(StoreError):
+        restored.update_receipt_confirmation("unknown", "automatic")
+    with pytest.raises(StoreError):
+        restored.update_receipt_confirmation("lidl", True)

@@ -237,7 +237,7 @@ Es la vista inicial. Muestra las compras registradas y una gráfica de gasto men
 - **Subiendo un ticket o una factura.** Utiliza el botón de subir ticket de esta vista. El supermercado y el formato del documento deben estar soportados: actualmente, la subida manual reconoce tickets y facturas PDF de Carrefour que contienen texto. Los documentos escaneados como imagen requieren un tratamiento distinto y no se reconocen mediante OCR.
 - **Mediante la detección automática de compra, si la has configurado.** Completar más de la cantidad indicada de productos durante un día permite detectar una compra. Las personas y zonas configuradas ayudan a identificar la tienda. Si no se encuentra un ticket o no se identifica la tienda, puedes completar sus datos manualmente o adjuntar un documento compatible.
 
-El icono del ticket de cada compra abre su revisión o recupera el detalle desde la cuenta conectada, cuando está disponible. El icono aparece en verde cuando el ticket ya se ha revisado. Recuperar una compra en el histórico no repone por sí solo el Stock ni confirma todos sus productos.
+El icono del ticket de cada compra abre su revisión o recupera el detalle desde la cuenta conectada, cuando está disponible. El icono aparece en verde cuando el ticket ya se ha revisado. El modo manual es el predeterminado: recuperar una compra no repone Stock ni modifica la Lista hasta confirmar el ticket.
 
 #### Para qué sirve revisar un ticket
 
@@ -246,13 +246,19 @@ La revisión convierte los nombres y cantidades del supermercado en información
 1. **Vinculación.** Relaciona cada línea del ticket con un producto de tu catálogo o crea uno nuevo. Las líneas que no vincules se ignoran para las operaciones sobre productos. Las asociaciones se guardan para reconocer futuras compras de esa tienda, aunque no incluyas el producto en Stock. Varias líneas pueden corresponder al mismo producto genérico, conservando sus alternativas comerciales y sus EAN cuando están disponibles.
 2. **Stock.** Selecciona los productos que quieres reponer y confirma la cantidad y las unidades. Los que ya están en Stock aparecen seleccionados inicialmente; puedes incluir otros o desmarcarlos. Se propone la cantidad recuperada del ticket o estimada a partir de un precio por unidad de medida y, cuando no se conoce, la cantidad predeterminada de reposición. Puedes corregirla antes de guardar. Marcar un producto como comprado en la lista no aumenta por sí solo el Stock.
 3. **Precios.** Selecciona los productos vinculados cuyo precio quieres guardar para esa tienda. Cuando se dispone de ellos, también se aprovechan el EAN y los datos de formato del producto, como el contenido del envase. En un producto al peso, el importe total pagado no sustituye al precio por kg: se utiliza una tarifa identificada en el ticket o el valor que confirmes manualmente.
-4. **Resumen.** Comprueba las vinculaciones, las reposiciones y los precios seleccionados y confirma la compra para guardar los cambios.
+4. **Resumen y Lista.** Comprueba las vinculaciones, reposiciones y precios. Elige la lista que quieres actualizar, revisa las cantidades compradas y desmarca lo que quieras conservar pendiente. Si había 6 unidades y compras 2, quedan 4 pendientes; si compras 6 o más, el artículo se marca como comprado. Las cantidades del Catálogo se conservan.
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/TitoTB/Improved-Shopping-List/main/docs/images/revision-ticket.png" alt="Asistente de revisión de ticket en el paso de vinculación de productos del catálogo">
 </p>
 
-También puedes guardar solo las vinculaciones y cerrar, o utilizar las opciones de guardar Stock o precios y cerrar sin completar todos los pasos. Las acciones dependen de lo que hayas seleccionado. Reprocesar los datos de un ticket ya revisado permite completar alternativas y formatos del catálogo sin volver a reponer Stock.
+También puedes guardar solo las vinculaciones y cerrar. Las opciones de revisar reposición o precios llevan al resumen antes de confirmar. Las acciones dependen de lo que hayas seleccionado. Reprocesar los datos de un ticket ya revisado permite completar alternativas y formatos del catálogo sin volver a reponer Stock.
+
+En **Ajustes → Tiendas → Confirmación de compras** puedes elegir **Manual** o **Automática** para cada tienda. Todas empiezan en Manual. La automática repone Stock y actualiza la lista principal para las líneas reconocidas con cantidades utilizables; deja las demás pendientes de revisión en el mismo ticket. No modifica los precios automáticamente. Reabrir esas líneas pendientes no vuelve a aplicar las ya confirmadas.
+
+Si falla el proveedor de la Lista tras guardar Stock, el detalle del ticket muestra la actualización pendiente. Puedes reintentar sin volver a reponer Stock. Si la fila cambió mientras tanto, se conserva su cantidad y puedes resolverlo con **Conservar cantidad actual**. No se fuerza una segunda marca como comprado cuando la respuesta anterior fue incierta.
+
+El modo automático se aplica a nuevos tickets subidos o recuperados, sin confirmar retroactivamente todo el historial al activarlo. Este ajuste no añade nuevos formatos de importación: por ahora los PDF compatibles siguen siendo los de Carrefour; no incluye un lector de tickets PDF de Mercadona.
 
 ### Gastos
 
