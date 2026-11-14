@@ -1,4 +1,4 @@
-# Pendiente de publicar — Lista al reprocesar tickets
+# 0.89.3 — Lista al reprocesar tickets
 
 - Añade revisión de la Lista al reprocesar un ticket: descuenta las líneas recién vinculadas o pendientes de aplicar y conserva las ya gestionadas.
 - Registra por línea los descuentos y las exclusiones; una nueva línea del mismo producto no repite los descuentos anteriores. Las compras antiguas no descuentan artículos añadidos para otra compra posterior.
