@@ -1,14 +1,14 @@
-import { ReplenishmentEditor, replenishmentMarkup } from './replenishment-editor.js?v=0.88.5';
+import { ReplenishmentEditor, replenishmentMarkup } from './replenishment-editor.js?v=0.88.6';
 const priceValue=value=>value==null||value===''?'':Number(Number(value).toFixed(2));
-import { purchaseQuantity, quantityLabel } from "./quantity-client.js?v=0.88.5";
-import { referenceContentControls, barcodeIdentity, validReferenceContent, validReferenceFormat, weightFormat, pendingProductInformation } from "./reference-formats.js?v=0.88.5";
-import { installDialogCloseButtons } from "./dialog-controls.js?v=0.88.5";
-import { CatalogSession } from "./catalog-client.js?v=0.88.5";
-import { matchCatalogProducts } from "./product-matching.js?v=0.88.5";
-import "./category-panel.js?v=0.88.5";
-import "./recipe-editor.js?v=0.88.5";
-import "./icon-picker.js?v=0.88.5";
-import { imageSource, normalizedName, productNameKey, cachedProductPrice, storeProductLink, storeFromProductUrl } from "./product-display.js?v=0.88.5";
+import { purchaseQuantity, quantityLabel } from "./quantity-client.js?v=0.88.6";
+import { referenceContentControls, barcodeIdentity, validReferenceContent, validReferenceFormat, weightFormat, pendingProductInformation } from "./reference-formats.js?v=0.88.6";
+import { installDialogCloseButtons } from "./dialog-controls.js?v=0.88.6";
+import { CatalogSession } from "./catalog-client.js?v=0.88.6";
+import { matchCatalogProducts } from "./product-matching.js?v=0.88.6";
+import "./category-panel.js?v=0.88.6";
+import "./recipe-editor.js?v=0.88.6";
+import "./icon-picker.js?v=0.88.6";
+import { imageSource, normalizedName, productNameKey, cachedProductPrice, productPriceLabel, storeProductLink, storeFromProductUrl } from "./product-display.js?v=0.88.6";
 export { imageSource, normalizedName, productNameKey, cachedProductPrice };
 
 const MONTHS = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
@@ -625,6 +625,7 @@ class ImprovedShoppingCatalog extends HTMLElement {
             <isl-dev-icon-picker class="wide"></isl-dev-icon-picker>
           </section>
           <section id="product-additional" class="fields" aria-label="Alternativas" hidden>
+            <label class="wide">Alternativa preferida<select id="preferred-reference" aria-label="Alternativa preferida"></select><span class="helper">Automática usa la tienda favorita y los formatos disponibles. Si desvinculas la alternativa elegida, vuelve a Automática.</span></label>
             <div class="wide"><div class="store-link-add"><input id="product-link-value" type="url" pattern="https://.*" aria-label="URL del producto" maxlength="2048" placeholder="URL del producto" title="La tienda se detecta automáticamente a partir de la URL."><button id="retrieve-product-data" class="retrieve-option" type="button"><ha-icon icon="mdi:download" aria-hidden="true"></ha-icon>Recuperar datos</button></div><p id="option-lookup-status" class="helper" role="status" aria-live="polite"></p><div id="product-store-links"></div></div>
           </section>
           <section id="product-automation" class="fields" aria-label="Reposición" hidden>
@@ -770,6 +771,7 @@ class ImprovedShoppingCatalog extends HTMLElement {
     for(const kind of ['barcode','nfc'])root.querySelector(`#${kind}-capture-reader`).addEventListener('change',()=>this._renderReaderActions());
     root.querySelector("dialog").addEventListener("cancel", (event) => { if (this._saving) event.preventDefault(); });
     root.querySelector("#product-form").addEventListener("submit", (event) => { event.preventDefault(); void this._saveProduct(); });
+    root.querySelector('#preferred-reference').addEventListener('change',event=>{this._preferredReference=event.target.value===''?null:this._commercialReferences[Number(event.target.value)];});
     this.listName = this._listName;
     this._render();
   }
@@ -1471,14 +1473,14 @@ class ImprovedShoppingCatalog extends HTMLElement {
       const metadata = element("div","row-meta");
       const prices = this._priceData?.offers ?? [];
       const offer = this._priceData?.enabled === false ? null : cachedProductPrice(
-        store ? {...product,price:null} : product,
+        store ? {...product,price:null,preferred_reference:''} : product,
         store ? prices.filter(offer=>offer.store===store) : prices,
         this._priceData?.favorite);
       if (offer) {
         const badge = element("span","row-price");
         badge.title = offer.store ? `Último precio guardado · ${({elcorteingles:"El Corte Inglés",mercadona:"Mercadona",carrefour:"Carrefour",alcampo:"Alcampo",consum:"Consum",lasirena:"La Sirena",eroski:"Eroski",dia:"DIA",lidl:"Lidl"})[offer.store] ?? offer.store}` : "Precio manual";
         const icon = element("ha-icon"); icon.setAttribute("icon","mdi:cash-multiple"); icon.setAttribute("aria-hidden","true");
-        badge.append(icon,element("span","",new Intl.NumberFormat("es-ES",{style:"currency",currency:offer.currency,minimumFractionDigits:2,maximumFractionDigits:2}).format(Number(offer.price))));
+        badge.append(icon,element("span","",productPriceLabel(offer,product)));
         metadata.append(badge);
       }
       if(this._view === 'products')metadata.append(this._quantityControl(product));
@@ -1604,6 +1606,10 @@ class ImprovedShoppingCatalog extends HTMLElement {
     const root = this.shadowRoot, names = {'':'Sin tienda',...STORE_NAMES};
     const receiptStores=this._receiptStores?.[this._editing?.id]??[];
     this._commercialReferences??=[];
+    if(!this._commercialReferences.includes(this._preferredReference)||this._preferredReference?.active===false)this._preferredReference=null;
+    const preferred=root.querySelector('#preferred-reference');
+    preferred.replaceChildren(new Option('Automática',''),...this._commercialReferences.flatMap((ref,index)=>ref.active===false||!ref.store?[]:[new Option(`${names[ref.store]??ref.store} · ${ref.name||ref.reference_id||ref.ean||'Alternativa'} · ${weightFormat(ref)?'Al peso':'Por envase'}`,String(index))]));
+    preferred.value=this._preferredReference?String(this._commercialReferences.indexOf(this._preferredReference)):'';
     for(const code of this._productCodes?.barcode??[]){if(barcodeIdentity(code)&&!this._commercialReferences.some(ref=>ref.ean&&barcodeIdentity(ref.ean)===barcodeIdentity(code)))this._commercialReferences.push({store:'',ean:code,name:'',reference_id:'',url:'',content_quantity:null,content_unit:'',content_confirmed:false});}
     const stores=[...new Set([...Object.keys(this._storeLinks??{}),...receiptStores,...this._commercialReferences.filter(ref=>ref.active!==false).map(ref=>ref.store)])].filter(store=>store in names).sort((a,b)=>names[a].localeCompare(names[b],"es"));
     const options=stores.flatMap(store=>{
@@ -1914,6 +1920,7 @@ class ImprovedShoppingCatalog extends HTMLElement {
     root.querySelector("#delete-product").hidden = !this._editing;
     this._storeLinks = structuredClone(product?.store_links ?? {});
     this._commercialReferences = structuredClone(product?.commercial_references ?? []);
+    this._preferredReference=this._commercialReferences.find(ref=>ref.id===product?.preferred_reference&&ref.active!==false)??null;
     this._optionLinkOrigins = new WeakMap();
     this._expandedOptions = new Set();
     this._expandedEANs = new Set();
@@ -1970,6 +1977,7 @@ class ImprovedShoppingCatalog extends HTMLElement {
     product.quantity_step=this._editing?.quantity_step??1;
     product.store_links = structuredClone(this._storeLinks ?? {});
     product.commercial_references = structuredClone(this._commercialReferences ?? []).map(ref=>({...ref,content_confirmed:validReferenceFormat(ref)}));
+    product.preferred_reference=this._preferredReference?.active!==false&&this._commercialReferences.includes(this._preferredReference)?structuredClone(this._preferredReference):'';
     product.barcode = this._productCodes.barcode[0] ?? "";
     product.barcodes = this._productCodes.barcode.slice(1);
     product.nfc_tags = [...this._productCodes.nfc];

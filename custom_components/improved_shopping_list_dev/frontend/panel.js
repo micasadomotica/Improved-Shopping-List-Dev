@@ -1,12 +1,12 @@
-import { StockSession } from "./stock-client.js?v=0.88.5";
-import { QuantitySession, purchaseQuantity, quantityLabel } from "./quantity-client.js?v=0.88.5";
-import { installDialogCloseButtons } from "./dialog-controls.js?v=0.88.5";
-import { FEATURES, TodoSession, errorMessage, isAvailable, supports } from "./todo-client.js?v=0.88.5";
-import { imageSource, normalizedName, productNameKey, cachedProductPrice } from "./product-display.js?v=0.88.5";
-import { packageCost } from "./reference-formats.js?v=0.88.5";
-import { ListSettingsSession, AttentionSession, gradientTextColor } from "./list-settings-client.js?v=0.88.5";
-import { CatalogSession } from "./catalog-client.js?v=0.88.5";
-import { ReadersSession } from "./readers-client.js?v=0.88.5";
+import { StockSession } from "./stock-client.js?v=0.88.6";
+import { QuantitySession, purchaseQuantity, quantityLabel } from "./quantity-client.js?v=0.88.6";
+import { installDialogCloseButtons } from "./dialog-controls.js?v=0.88.6";
+import { FEATURES, TodoSession, errorMessage, isAvailable, supports } from "./todo-client.js?v=0.88.6";
+import { imageSource, normalizedName, productNameKey, cachedProductPrice, preferredPurchaseCost } from "./product-display.js?v=0.88.6";
+import { packageCost } from "./reference-formats.js?v=0.88.6";
+import { ListSettingsSession, AttentionSession, gradientTextColor } from "./list-settings-client.js?v=0.88.6";
+import { CatalogSession } from "./catalog-client.js?v=0.88.6";
+import { ReadersSession } from "./readers-client.js?v=0.88.6";
 
 const LOGO_URL = new URL("logo.png", import.meta.url).href;
 const STORE_LOGOS = {
@@ -169,13 +169,13 @@ class ImprovedShoppingListPanel extends HTMLElement {
   _loadSection(name) {
     if(this._modules.has(name))return this._modules.get(name);
     const load={
-      stock:()=>import('./stock-panel.js?v=0.88.5'),
-      readers:()=>import('./readers-panel.js?v=0.88.5'),
-      routines:()=>import('./meal-routines.js?v=0.88.5'),
-      catalog:()=>import('./catalog-panel.js?v=0.88.5'),
-      settings:()=>import('./settings-panel.js?v=0.88.5'),
-      purchases:()=>import('./purchases-panel.js?v=0.88.5'),
-      analytics:()=>import('./analytics-panel.js?v=0.88.5'),
+      stock:()=>import('./stock-panel.js?v=0.88.6'),
+      readers:()=>import('./readers-panel.js?v=0.88.6'),
+      routines:()=>import('./meal-routines.js?v=0.88.6'),
+      catalog:()=>import('./catalog-panel.js?v=0.88.6'),
+      settings:()=>import('./settings-panel.js?v=0.88.6'),
+      purchases:()=>import('./purchases-panel.js?v=0.88.6'),
+      analytics:()=>import('./analytics-panel.js?v=0.88.6'),
     }[name];
     const pending=load().then(module=>{
       if(name==='stock')module.installStockView(this);
@@ -452,7 +452,7 @@ class ImprovedShoppingListPanel extends HTMLElement {
       </style>
       <header>
         <button class="menu" aria-label="Abrir menú de Home Assistant"><ha-icon icon="mdi:menu"></ha-icon></button>
-        <div class="branding"><img class="brand-logo" src="${LOGO_URL}" alt="" width="44" height="44"><div class="brand-copy"><span class="brand">Improved Shopping List Dev</span><span class="version">0.88.5</span></div></div>
+        <div class="branding"><img class="brand-logo" src="${LOGO_URL}" alt="" width="44" height="44"><div class="brand-copy"><span class="brand">Improved Shopping List Dev</span><span class="version">0.88.6</span></div></div>
         <nav class="section-nav" aria-label="Apartados">
           <button id="nav-shopping" aria-label="Lista" aria-pressed="true"><ha-icon icon="mdi:shopping" aria-hidden="true"></ha-icon><span class="nav-label">Lista</span></button>
           <button id="nav-catalog" aria-label="Catálogo" aria-pressed="false"><ha-icon icon="mdi:view-grid" aria-hidden="true"></ha-icon><span class="nav-label">Catálogo</span></button>
@@ -994,7 +994,7 @@ class ImprovedShoppingListPanel extends HTMLElement {
       const lines = sorted.map(item => {
         const product = this._catalogProducts.get(productNameKey(item.summary));
         // Store tickets never substitute manual prices or prices from another shop.
-        const offer = this._quantityOffer(item,cachedProductPrice(product ? {...product,price:null} : null,prices,store));
+        const offer = this._quantityOffer(item,cachedProductPrice(product ? {...product,price:null,preferred_reference:''} : null,prices,store),true);
         return {name:item.summary,offer,quantity:this._purchaseQuantity(item,product)};
       });
       return {store,lines,coverage:lines.filter(line => line.offer).length,cents:lines.reduce((sum,line) => sum + (line.offer ? Math.round(Number(line.offer.price)*100) : 0),0)};
@@ -1168,7 +1168,7 @@ class ImprovedShoppingListPanel extends HTMLElement {
           logo.addEventListener("error",()=>logo.remove(),{once:true});price.append(logo);
         }
         const label = document.createElement("span");
-        label.textContent = new Intl.NumberFormat("es-ES",{style:"currency",currency:offer.currency,minimumFractionDigits:2,maximumFractionDigits:2}).format(Number(offer.price));
+        label.textContent = (offer.estimated?"≈ ":"")+new Intl.NumberFormat("es-ES",{style:"currency",currency:offer.currency,minimumFractionDigits:2,maximumFractionDigits:2}).format(Number(offer.price))+(offer.price_basis?(purchase.quantity===1?" / "+offer.price_basis:" total"):"");
         price.title = offer.store ? `Último precio guardado · ${STORE_NAMES[offer.store] ?? offer.store}` : "Precio manual";
         price.append(label); metadata.append(price);
       }
@@ -1230,12 +1230,15 @@ class ImprovedShoppingListPanel extends HTMLElement {
     return purchaseQuantity(product,this._quantities.entries[this._session.entityId]?.[item.uid]);
   }
 
-  _quantityOffer(item,offer) {
+  _quantityOffer(item,offer,storeComparison=false) {
     if(!offer)return null;
     const value=this._purchaseQuantity(item);
-    const product=this._catalogProducts.get(productNameKey(item.summary));
+    const original=this._catalogProducts.get(productNameKey(item.summary));
+    const product=storeComparison?{...original,preferred_reference:''}:original;
     const choices=this._rowPrices.filter(price=>price.store===offer.store&&price.catalog_product_id===product?.id);
     if(choices.length)offer=cachedProductPrice(product,choices,offer.store,value)??offer;
+    const preferred=preferredPurchaseCost(product,offer,value);
+    if(preferred)return {...offer,...preferred};
     const cost=packageCost(offer,value.quantity,value.unit);
     if(cost)return {...offer,...cost};
     if(offer.format_pending||offer.pack_quantity>0)return null;

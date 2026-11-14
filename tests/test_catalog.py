@@ -693,3 +693,23 @@ async def test_recipe_image_can_change_and_clear(hass):
     assert recipe["image_url"] == "https://example.com/arroz.png"
     edited = await catalog.async_save_recipe({"id": recipe["id"], "revision": recipe["revision"], "name": recipe["name"], "image_url": "", "ingredients": recipe["ingredients"]})
     assert edited["image_url"] == ""
+
+
+async def test_preferred_reference_persists_and_old_clients_preserve_it(hass):
+    catalog=Catalog(hass);await catalog.async_load()
+    refs=[{"store":"mercadona","reference_id":identifier,"name":name} for identifier,name in [("3830","Pieza"),("3858","Bandeja")]]
+    product=await catalog.async_save_product({"name":"Aguacate","commercial_references":refs,"preferred_reference":refs[1]})
+    selected=product["commercial_references"][1]["id"]
+    assert product["preferred_reference"]==selected
+    restored=Catalog(hass);await restored.async_load()
+    assert restored.products[0]["preferred_reference"]==selected
+    old_client={"id":product["id"],"revision":product["revision"],"name":"Aguacate"}
+    product=await catalog.async_save_product(old_client)
+    assert product["preferred_reference"]==selected
+    product=await catalog.async_save_product({**old_client,"revision":product["revision"],"preferred_reference":""})
+    assert not product.get("preferred_reference")
+    product=await catalog.async_save_product({**old_client,"revision":product["revision"],"commercial_references":refs,"preferred_reference":refs[1]})
+    updated=product["commercial_references"];updated[1]["active"]=False
+    product=await catalog.async_save_product({**old_client,"revision":product["revision"],"commercial_references":updated})
+    assert not product.get("preferred_reference")
+    with pytest.raises(CatalogError):normalize_product({"name":"Aguacate","preferred_reference":123})

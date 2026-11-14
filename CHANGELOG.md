@@ -1,3 +1,11 @@
+# 0.88.6 — Tienda favorita y alternativa preferida
+
+- Añade corazones a los catálogos, incluido Mercadona. La tienda favorita para precios se guarda independientemente de las cuentas y catálogos activados.
+- Permite elegir una alternativa concreta en cada producto o mantener Automática. La elección explícita tiene prioridad sobre la tienda favorita.
+- Conserva la preferencia al recargar y vuelve a Automática al desvincular la alternativa. Una alternativa elegida sin precio no se sustituye por otra silenciosamente.
+- Muestra el formato junto al precio del catálogo, con el indicador aproximado para piezas y envases de peso variable.
+- Mantiene separados los cálculos por pieza, por envase y por kilo; las comparativas por tienda conservan sus propias alternativas.
+
 # 0.88.5 — Guardado de zona y unidad de las bandejas
 
 - Guarda la zona de Mercadona aunque el formulario se abra con una sesión de ajustes creada antes de actualizar, sin depender de un método ausente en esa instancia.

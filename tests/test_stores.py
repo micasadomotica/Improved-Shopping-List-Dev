@@ -29,11 +29,15 @@ async def test_carrefour_migration_and_favorite_do_not_erase_mercadona(hass):
     await settings.async_favorite_store("carrefour")
     assert settings.snapshot["favorite_store"] == "carrefour"
     await settings.async_update_carrefour(False)
-    assert settings.snapshot["favorite_store"] == "mercadona"
+    assert settings.snapshot["favorite_store"] == "carrefour"
     assert settings.snapshot["stores"]["mercadona"]["warehouse"] == "mad1"
     assert entry.options["unrelated"] is True
+    await settings.async_favorite_store("alcampo")
+    assert not settings.snapshot["stores"]["alcampo"]["enabled"]
+    restored=ListSettings(hass);restored.attach(entry)
+    assert restored.snapshot["favorite_store"]=="alcampo"
     with pytest.raises(StoreError):
-        await settings.async_favorite_store("carrefour")
+        await settings.async_favorite_store("invalid")
 
 
 async def test_resolves_header_even_when_warehouse_changed_is_false(hass, aioclient_mock):

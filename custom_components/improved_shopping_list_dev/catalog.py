@@ -28,7 +28,7 @@ FIELDS = {
     "id", "revision", "name", "category", "tags", "barcode",
     "price", "currency", "image_url", "icon", "notes",
     "barcodes", "nfc_tags", "reader_actions", "recurrence", "store_links",
-    "purchase_unit", "unit_quantity", "quantity_step", "commercial_references",
+    "purchase_unit", "unit_quantity", "quantity_step", "commercial_references", "preferred_reference",
 }
 READER_ACTIONS = {"none", "add_list", "stock_remove", "stock_add"}
 LEGACY_PRODUCT_FIELDS = {"brand", "format"}
@@ -143,6 +143,14 @@ def normalize_product(data: dict[str, Any]) -> dict[str, Any]:
     try:
         product["store_links"] = normalize_links(data.get("store_links", {}))
         product["commercial_references"] = normalized_references(data.get("commercial_references", []))
+        preferred=data.get("preferred_reference","")
+        # New, unsaved alternatives have no canonical ID in the browser yet.
+        # Accept their validated reference; persist only its stable ID.
+        if isinstance(preferred,dict):preferred=normalized_references([preferred])[0]["id"]
+        if not isinstance(preferred,str) or preferred and not re.fullmatch(r"[a-f0-9]{32}",preferred):
+            raise ValueError("La alternativa preferida no es válida.")
+        if preferred and any(ref["id"]==preferred and ref["active"] for ref in product["commercial_references"]):
+            product["preferred_reference"]=preferred
     except ValueError as err:
         raise CatalogError(str(err)) from err
     tags = data.get("tags", [])
@@ -593,6 +601,10 @@ class Catalog:
                 if "commercial_references" not in data:
                     product["commercial_references"] = deepcopy(current.get("commercial_references", []))
             references=product["commercial_references"]
+            if current and "preferred_reference" not in data and current.get("preferred_reference"):
+                product["preferred_reference"]=current["preferred_reference"]
+            if product.get("preferred_reference") and not any(ref["id"]==product["preferred_reference"] and ref.get("active",True) for ref in references):
+                product.pop("preferred_reference",None)
             previous_refs={ref["id"]:ref for ref in (current or {}).get("commercial_references",[])}
             for ref in references:
                 previous=previous_refs.get(ref["id"])

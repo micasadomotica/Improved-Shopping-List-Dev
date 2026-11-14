@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 globalThis.HTMLElement=class {};globalThis.customElements={get:()=>true};
 const {normalizeObservation,analyzeCatalog,analyzePurchase}=await import('../custom_components/improved_shopping_list_dev/frontend/analytics-panel.js');
 const {packageCost,referenceRate,suggestedContent,validReferenceContent,validReferenceFormat,receiptCatalogPrice,pendingProductInformation}=await import('../custom_components/improved_shopping_list_dev/frontend/reference-formats.js');
-const {cachedProductPrice,storeProductLink,storeFromProductUrl}=await import('../custom_components/improved_shopping_list_dev/frontend/product-display.js');
+const {cachedProductPrice,productPriceLabel,preferredPurchaseCost,storeProductLink,storeFromProductUrl}=await import('../custom_components/improved_shopping_list_dev/frontend/product-display.js');
 const now=1800000000,ean='1234567890128';
 const offer=(store,price,extra={})=>({store,product_id:'p',price,currency:'EUR',at:now-3600,ean,...extra});
 const products=[{id:'p',name:'Arroz',category:'Despensa'},{id:'q',name:'Pavo',category:'Fresco'},{id:'none',name:'Sin precio'}];
@@ -234,4 +234,25 @@ test('metres keep their own format and price-comparison dimension',()=>{
  assert.equal(packageCost({price:5,pack_quantity:25,pack_unit:'m'},30,'g'),null);
  const observation=normalizeObservation(offer('carrefour',5,{pack_quantity:25,pack_unit:'m',format_pending:false}));
  assert.equal(observation.unit,'m');assert.equal(observation.rate,.2);
+});
+
+
+test('explicit alternative overrides favorite, keeps formats and separates piece estimates from kg',()=>{
+ const refs=[{id:'l',store:'lidl',reference_id:'l',sale_mode:'package'},
+ {id:'p',store:'mercadona',reference_id:'3830',sale_mode:'weight',content_unit:'kg',last_price:{price:1.42,currency:'EUR',estimated:true}},
+ {id:'t',store:'mercadona',reference_id:'3858',sale_mode:'package'}];
+ const p={id:'avocado',commercial_references:refs};
+ const offers=refs.map((ref,i)=>({catalog_product_id:p.id,commercial_reference_id:ref.id,reference_id:ref.reference_id,store:ref.store,price:[2.49,5.6,3.45][i],currency:'EUR',pack_quantity:1,pack_unit:'kg',estimated:i===2}));
+ assert.equal(cachedProductPrice(p,offers,'lidl').price,2.49);
+ p.preferred_reference='t';let selected=cachedProductPrice(p,offers,'lidl');
+ assert.equal(selected.price,3.45);assert.match(productPriceLabel(selected,p),/≈.*3,45.*envase/);
+ assert.equal(preferredPurchaseCost(p,selected,{quantity:2,unit:'uds'}).price,6.9);
+ p.preferred_reference='p';selected=cachedProductPrice(p,offers,'lidl');
+ assert.equal(selected.price,5.6);assert.match(productPriceLabel(selected,p),/≈.*1,42.*ud/);
+ assert.equal(preferredPurchaseCost(p,selected,{quantity:2,unit:'uds'}).price,2.84);
+ assert.equal(preferredPurchaseCost(p,selected,{quantity:1,unit:'kg'}),null);
+ assert.equal(cachedProductPrice(p,[offers[0]],'lidl'),null);
+ refs[1].active=false;assert.equal(cachedProductPrice(p,offers,'lidl').price,2.49);
+ p.preferred_reference='l';Object.assign(refs[0],{content_quantity:3,content_unit:'uds',content_confirmed:true});
+ assert.equal(preferredPurchaseCost(p,offers[0],{quantity:3,unit:'uds'}),null);
 });

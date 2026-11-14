@@ -17,6 +17,7 @@ from .regional_stores import REGIONAL_STORES
 from .store_location import REFERENCE_LOCATIONS, reference_location
 from . import store_availability
 from .shopping_places import normalize_places
+from .store_links import STORES
 
 DEFAULT_APPEARANCE = {
     "gradient_start": "#ee524f", "gradient_end": "#b52a27",
@@ -137,7 +138,11 @@ class ListSettings:
                 modes[entity_id] = True
         if modes:
             snapshot["description_as_name"] = modes
-        return store_availability.apply_availability(snapshot)
+        snapshot=store_availability.apply_availability(snapshot)
+        # Price preference is independent of account and catalog activation.
+        preferred=self.entry.options.get("price_favorite_store") if self.entry else None
+        if preferred in STORES:snapshot["favorite_store"]=preferred
+        return snapshot
 
     @callback
     def update_name_mode(self, entity_id, enabled):
@@ -208,9 +213,9 @@ class ListSettings:
     async def async_favorite_store(self, store):
         generation = self._generation
         async with self._stores_lock:
-            if generation != self._generation or not self.entry or not self.hass.data.get(DOMAIN, {}).get("active") or not self.snapshot["stores"].get(store, {}).get("enabled"):
-                raise StoreError("Selecciona una tienda habilitada.")
-            self.hass.config_entries.async_update_entry(self.entry, options={**self.entry.options, "favorite_store": store})
+            if generation != self._generation or not self.entry or not self.hass.data.get(DOMAIN, {}).get("active") or store not in STORES:
+                raise StoreError("Selecciona una tienda válida.")
+            self.hass.config_entries.async_update_entry(self.entry, options={**self.entry.options, "favorite_store": store,"price_favorite_store":store})
             self.notify()
             return self.snapshot
 

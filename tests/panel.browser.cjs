@@ -536,6 +536,7 @@ const hass={
       if(window.failCatalog)throw new Error('No se ha podido guardar el catálogo');
       const old=window.catalogProducts.find(product=>product.id===msg.product.id);
       const product={...msg.product,season_months:old?.season_months??[],id:old?.id??crypto.randomUUID(),revision:(old?.revision??0)+1,price_updated_at:new Date().toISOString()};
+      if(product.preferred_reference&&typeof product.preferred_reference==='object')product.preferred_reference=product.preferred_reference.id;
       if(msg.replenishment){
         window.lastReplenishment=structuredClone(msg.replenishment);
         const current=window.stockItems.find(item=>item.catalog_product_id===product.id),config=msg.replenishment.config;
@@ -2840,6 +2841,59 @@ async function checkSavedOptionURL(browser,url,errors){
   }
 }
 
+async function checkPreferredAlternatives(browser,url,errors){
+  const context=await browser.newContext({viewport:{width:390,height:844}});
+  await context.addInitScript(()=>{
+    const refs=[
+      {id:'lidl-choice',store:'lidl',reference_id:'100001',name:'Malla',url:'https://www.lidl.es/aguacates/p100001',sale_mode:'package',content_quantity:3,content_unit:'uds',content_confirmed:true},
+      {id:'piece-choice',store:'mercadona',reference_id:'3830',name:'Pieza',url:'https://tienda.mercadona.es/product/3830',sale_mode:'weight',content_unit:'kg',content_confirmed:true,last_price:{price:1.42,currency:'EUR',estimated:true}},
+      {id:'tray-choice',store:'mercadona',reference_id:'3858',name:'Bandeja',url:'https://tienda.mercadona.es/product/3858',sale_mode:'package',content_unit:'',content_confirmed:false,last_price:{price:3.45,currency:'EUR',estimated:true}}
+    ];
+    if(!localStorage.getItem('catalog-fixture'))localStorage.setItem('catalog-fixture',JSON.stringify([{id:'avocado-choice',revision:1,name:'Aguacate',category:'',tags:[],barcodes:[],commercial_references:refs,store_links:{}}]));
+    if(!localStorage.getItem('settings-fixture'))localStorage.setItem('settings-fixture',JSON.stringify({entities:['todo.bring'],primary_entity:'todo.bring',favorite_store:'lidl',stores:{lidl:{enabled:true},mercadona:{enabled:false}},purchase_detection:{enabled:false,threshold:5,shops:[]}}));
+    window.storePriceFixture=refs.map((ref,i)=>({catalog_product_id:'avocado-choice',commercial_reference_id:ref.id,reference_id:ref.reference_id,store:ref.store,price:[2.49,5.6,3.45][i],currency:'EUR',checked_at:1800000000,pack_quantity:i===0?3:i===1?1:null,pack_unit:i===0?'uds':i===1?'kg':'',format_pending:i===2,estimated:i===2}));
+  });
+  const page=await context.newPage();page.on('pageerror',error=>errors.push(error.message));await page.goto(url);
+  await page.getByRole('button',{name:'Ajustes',exact:true}).click();const settings=page.locator('isl-dev-settings');
+  await settings.getByRole('button',{name:'Tiendas',exact:true}).click();
+  const source=settings.locator('isl-dev-mercadona-catalog'),heart=source.getByRole('button',{name:'Marcar Mercadona como favorita',exact:true});
+  await heart.click();await page.waitForFunction(()=>window.listSettings.favorite_store==='mercadona');
+  assert.equal(await heart.getAttribute('aria-pressed'),'true');
+  assert.equal(await settings.locator('#favorite-lidl').getAttribute('aria-pressed'),'false');
+  assert.equal(await page.evaluate(()=>window.listSettings.stores.mercadona.enabled),false);
+  assert.equal(await page.evaluate(()=>window.wsRequests.filter(type=>type.endsWith('/store_enabled')||type.endsWith('/catalog_sources/set')).length),0);
+  assert.ok(await source.locator('.row').evaluate(el=>el.scrollWidth<=el.clientWidth+1));
+  assert.ok(await source.locator('.row').evaluate(el=>{const name=el.querySelector('.name').getBoundingClientRect(),controls=el.querySelector('.controls').getBoundingClientRect();return name.bottom<=controls.top||name.right<=controls.left;}));
+  await page.screenshot({path:'test-results/catalog-favorite-mobile.png',fullPage:true});
+  await page.reload();await page.getByRole('button',{name:'Ajustes',exact:true}).click();await settings.getByRole('button',{name:'Tiendas',exact:true}).click();
+  assert.equal(await heart.getAttribute('aria-pressed'),'true');
+  await settings.getByRole('button',{name:'Marcar Lidl como favorita',exact:true}).click();
+  await page.getByRole('button',{name:'Catálogo',exact:true}).click();const catalog=page.locator('isl-dev-catalog');
+  await catalog.getByRole('button',{name:'Cambiar a vista de filas',exact:true}).click();
+  const badge=catalog.locator('.product .row-price').first();
+  assert.match(await badge.textContent(),/2,49.*envase/);
+  const form=catalog.getByRole('dialog',{name:'Editar producto',exact:true});
+  const open=async()=>{await catalog.getByRole('button',{name:'Editar Aguacate',exact:true}).click();await form.getByRole('button',{name:'Alternativas',exact:true}).click();};
+  const save=async()=>{await form.getByRole('button',{name:'Guardar producto',exact:true}).click();await form.waitFor({state:'hidden'});};
+  await open();await form.getByLabel('Alternativa preferida',{exact:true}).selectOption('2');await save();
+  assert.match(await badge.textContent(),/≈.*3,45.*envase/);
+  await page.reload();await page.getByRole('button',{name:'Catálogo',exact:true}).click();await open();
+  assert.equal(await form.getByLabel('Alternativa preferida',{exact:true}).inputValue(),'2');
+  await form.getByLabel('Alternativa preferida',{exact:true}).selectOption('1');await save();
+  assert.match(await badge.textContent(),/≈.*1,42.*ud/);
+  await open();await form.getByLabel('Alternativa preferida',{exact:true}).selectOption('');await save();
+  assert.match(await badge.textContent(),/2,49.*envase/);
+  await open();await form.getByLabel('Alternativa preferida',{exact:true}).selectOption('2');
+  const tray=form.locator('.product-option[data-store="mercadona"]').nth(1);await openStoreOption(tray);
+  await page.screenshot({path:'test-results/preferred-alternative-mobile.png',fullPage:true});
+  assert.ok(await form.evaluate(el=>el.scrollWidth<=el.clientWidth+1));
+  page.once('dialog',dialog=>dialog.accept());await tray.getByRole('button',{name:'Desvincular referencia',exact:true}).click();
+  assert.equal(await form.getByLabel('Alternativa preferida',{exact:true}).inputValue(),'');await save();
+  assert.match(await badge.textContent(),/2,49.*envase/);
+  assert.ok(await catalog.locator('.product').first().evaluate(el=>el.scrollWidth<=el.clientWidth+1));
+  await context.close();
+}
+
 async function checkMercadonaLocalReferences(browser,url,errors){
   const context=await browser.newContext({viewport:{width:1280,height:960}});
   await context.addInitScript(()=>{
@@ -3537,6 +3591,7 @@ async function main() {
   let browser;
   try {
     browser = await chromium.launch({ headless: true, channel: process.env.PLAYWRIGHT_CHANNEL || undefined });
+    if(process.argv.includes('--preferences-only')){const errors=[];await checkPreferredAlternatives(browser,`http://127.0.0.1:${server.address().port}`,errors);assert.deepEqual(errors,[]);console.log('Preferred alternatives and catalog favorites passed.');return;}
     if(process.argv.includes('--mercadona-location-only')){const errors=[];await checkMercadonaLocation(browser,`http://127.0.0.1:${server.address().port}`,errors);assert.deepEqual(errors,[]);console.log('Mercadona location browser checks passed.');return;}
     if(process.argv.includes('--mercadona-local-only')){const errors=[];await checkMercadonaLocalReferences(browser,`http://127.0.0.1:${server.address().port}`,errors);assert.deepEqual(errors,[]);console.log('Mercadona local references browser checks passed.');return;}
     if(process.argv.includes('--product-url-only')){const errors=[];const url=`http://127.0.0.1:${server.address().port}`;await checkStagedOptionURL(browser,url,errors);await checkSavedOptionURL(browser,url,errors);assert.deepEqual(errors,[]);console.log('Product URL persistence browser checks passed.');return;}
@@ -5996,6 +6051,7 @@ async function main() {
     await checkSavedOptionURL(browser,url,errors);
     await checkMercadonaLocalReferences(browser,url,errors);
     await checkMercadonaLocation(browser,url,errors);
+    await checkPreferredAlternatives(browser,url,errors);
     await checkLidlMetadata(browser,url,errors);
     await checkLidlReprocessLines(browser,url,errors);
     await checkReferenceFormats(browser,url,errors);

@@ -1,15 +1,15 @@
-import "./shopping-places.js?v=0.88.5";
-import "./dia-prices-settings.js?v=0.88.5";
-import "./alcampo-settings.js?v=0.88.5";
-import "./catalog-sources.js?v=0.88.5";
-import "./carrefour-account.js?v=0.88.5";
-import "./lidl-account.js?v=0.88.5";
-import "./logs-panel.js?v=0.88.5";
-import "./notification-settings.js?v=0.88.5";
-import { installDialogCloseButtons } from "./dialog-controls.js?v=0.88.5";
-import { installToggleStyles } from "./toggle-styles.js?v=0.88.5";
-import { todoEntities, isAvailable } from "./todo-client.js?v=0.88.5";
-import { DEFAULT_APPEARANCE, gradientTextColor, saveMercadonaLocation } from "./list-settings-client.js?v=0.88.5";
+import "./shopping-places.js?v=0.88.6";
+import "./dia-prices-settings.js?v=0.88.6";
+import "./alcampo-settings.js?v=0.88.6";
+import "./catalog-sources.js?v=0.88.6";
+import "./carrefour-account.js?v=0.88.6";
+import "./lidl-account.js?v=0.88.6";
+import "./logs-panel.js?v=0.88.6";
+import "./notification-settings.js?v=0.88.6";
+import { installDialogCloseButtons } from "./dialog-controls.js?v=0.88.6";
+import { installToggleStyles } from "./toggle-styles.js?v=0.88.6";
+import { todoEntities, isAvailable } from "./todo-client.js?v=0.88.6";
+import { DEFAULT_APPEARANCE, gradientTextColor, saveMercadonaLocation } from "./list-settings-client.js?v=0.88.6";
 
 const MERCADONA_LOGO_URL = new URL("mercadona.png", import.meta.url).href;
 
@@ -495,8 +495,8 @@ class ImprovedShoppingSettings extends HTMLElement {
       const linked=(this._data.products??[]).filter(product=>{const link=product.store_links?.[store];return Boolean(typeof link==='string'?link.trim():link?.id||link?.url)||(this._data.receiptStores?.[product.id]??[]).includes(store);}).length;
       count.textContent=linked+(linked===1?' producto':' productos');
       const favorite = root.querySelector(`#favorite-${store}`);
-      favorite.disabled = locked || !settings.stores?.[store]?.enabled;
-      const selected = Boolean(settings.stores?.[store]?.enabled && settings.favoriteStore === store);
+      favorite.disabled = locked;
+      const selected = settings.favoriteStore === store;
       favorite.setAttribute("aria-pressed",String(selected));
       favorite.querySelector("ha-icon").setAttribute("icon",selected ? "mdi:heart" : "mdi:heart-outline");
     }

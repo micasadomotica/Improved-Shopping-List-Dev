@@ -2,7 +2,7 @@
 
 Repositorio: https://github.com/micasadomotica/Improved-Shopping-List-Dev
 
-Versión actual: **0.88.5**, basada en la 0.88.0 de TitoTB, con las correcciones de URL y Mercadona.
+Versión actual: **0.88.6**, basada en la 0.88.0 de TitoTB, con las correcciones de URL y Mercadona.
 
 ## Convivencia con el original
 
@@ -22,7 +22,7 @@ Dev tiene configuración, catálogo, compras, Stock, iconos y preferencias de na
 
 1. Mantén instalado el original. No hace falta desinstalarlo ni sustituir archivos.
 2. En **Ajustes → Marketplace → Añadir desde enlace**, añade `https://github.com/micasadomotica/Improved-Shopping-List-Dev`. Conecta GitHub si se solicita. El tipo es **Integración**.
-3. Abre **Improved Shopping List Dev** e instala **0.88.5**. Es una release normal de este repositorio de desarrollo: no requiere habilitar versiones preliminares.
+3. Abre **Improved Shopping List Dev** e instala **0.88.6**. Es una release normal de este repositorio de desarrollo: no requiere habilitar versiones preliminares.
 4. Sigue el aviso de reinicio si aparece. En **Ajustes → Dispositivos y servicios → Añadir integración**, busca **Improved Shopping List Dev** si no se abre el asistente automáticamente.
 5. Selecciona la lista de pruebas. Abre el panel **Improved Shopping List Dev** y comprueba su versión.
 
@@ -35,6 +35,14 @@ En **Dev → Ajustes → Tiendas → Catálogos → Mercadona (engranaje) → C�
 El código postal se guarda en la configuración local de Home Assistant y se envía a Mercadona para resolver la zona; no se publica en GitHub. No activa la tienda ni modifica los ajustes del original. Los precios y pesos aproximados pueden variar entre zonas.
 
 Después de guardar la zona, abre las alternativas existentes, pulsa **Recuperar datos** en cada URL y guarda el producto. Los precios ya guardados no se cambian automáticamente por abrir este ajuste.
+
+## Favoritos y alternativa preferida
+
+En **Ajustes → Tiendas**, el corazón de una cuenta o catálogo elige la tienda favorita para la selección automática de precios. También está disponible en Mercadona. Marcar una tienda no activa consultas ni conecta cuentas; se usan los precios ya guardados.
+
+En **Catálogo → Editar producto → Alternativas → Alternativa preferida**, selecciona una referencia concreta o **Automática**. Guarda el producto. La elección concreta tiene prioridad sobre la tienda favorita y se conserva al recargar. Si desvinculas la alternativa, vuelve a Automática. Si la alternativa elegida no tiene precio guardado, no se muestra un precio de otra referencia.
+
+El precio del catálogo indica su formato: por envase, por kilo o por unidad aproximada cuando eliges una pieza con esa estimación. Las cantidades con contenido conocido siguen convirtiéndose a envases; una pieza estimada nunca se interpreta como un kilo. La vista de comparación por tiendas continúa mostrando las opciones de cada tienda.
 
 ## Pruebas de las correcciones
 

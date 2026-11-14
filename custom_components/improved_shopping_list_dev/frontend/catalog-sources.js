@@ -1,5 +1,5 @@
-import { installDialogCloseButtons } from './dialog-controls.js?v=0.88.5';
-import { installToggleStyles } from './toggle-styles.js?v=0.88.5';
+import { installDialogCloseButtons } from './dialog-controls.js?v=0.88.6';
+import { installToggleStyles } from './toggle-styles.js?v=0.88.6';
 
 class CatalogSourcesPanel extends HTMLElement {
   constructor(){super();this.attachShadow({mode:'open'});this._state={enabled:false,phase:'idle',total:0,processed:0,errors:[]};this._generation=0;this._stateVersion=0;this._pollGeneration=0;}
@@ -59,7 +59,20 @@ class CatalogSourcesPanel extends HTMLElement {
       const grid=document.createElement('div');grid.className='catalog-grid';
       const row=this.shadowRoot.querySelector('.row');row.before(grid);grid.append(row,...['mercadona','masymas','bm','consum','lasirena','eroski'].map(store=>document.createElement(`isl-dev-${store}-catalog`)));
     }
+    this.shadowRoot.querySelector('style').textContent+='@media(max-width:600px){.row{display:grid;grid-template-columns:56px minmax(0,1fr);gap:12px 16px}.name{min-width:0}.controls{grid-column:2;justify-self:end}}';
     installToggleStyles(this.shadowRoot);installDialogCloseButtons(this.shadowRoot);
+    const favorite=document.createElement('button');favorite.type='button';favorite.id='favorite';
+    const storeName=this.shadowRoot.querySelector('h4').textContent;
+    favorite.setAttribute('aria-label',`Marcar ${storeName} como favorita`);favorite.title='Tienda favorita para la selección automática de precios';
+    favorite.innerHTML='<ha-icon icon="mdi:heart-outline" aria-hidden="true"></ha-icon>';
+    favorite.addEventListener('click',async()=>{
+      if(this._favoriteBusy||this._data?.hass?.user?.is_admin!==true)return;
+      this._favoriteBusy=true;this._error='';this._render();
+      try{await this._data.settings.saveFavoriteStore(this._source??'alcampo');}
+      catch(error){this._error=error.message??'No se ha podido guardar la tienda favorita.';}
+      finally{this._favoriteBusy=false;this._render();}
+    });
+    this.shadowRoot.querySelector('.controls').append(favorite);
     this.shadowRoot.querySelector('#catalog-progress-dialog').addEventListener('close',()=>this._stopProgressPolling());
     this.shadowRoot.querySelector('#enabled').addEventListener('change',()=>void this._toggle());
     this.shadowRoot.querySelector('#configure').addEventListener('click',()=>{this._optionsError='';this._render();this.shadowRoot.querySelector('#catalog-options-dialog').showModal();});
@@ -91,6 +104,10 @@ class CatalogSourcesPanel extends HTMLElement {
     const root=this.shadowRoot,s=this._state,total=s.total??0,done=s.processed??0;
     root.querySelector('#enabled').checked=Boolean(this._pendingEnabled??s.enabled);root.querySelector('#enabled').disabled=this._busy||this._data?.hass?.user?.is_admin!==true;
     root.querySelector('#configure').disabled=this._data?.hass?.user?.is_admin!==true;
+    const favorite=root.querySelector('#favorite'),selected=this._data?.settings?.favoriteStore===(this._source??'alcampo');
+    favorite.disabled=this._favoriteBusy||this._data?.hass?.user?.is_admin!==true;
+    favorite.setAttribute('aria-pressed',String(selected));favorite.style.color=selected?'var(--error-color,#ee524f)':'';
+    favorite.querySelector('ha-icon').setAttribute('icon',selected?'mdi:heart':'mdi:heart-outline');
     const location=root.querySelector('#configure-location');if(location)location.disabled=this._data?.hass?.user?.is_admin!==true;
     root.querySelector('#show-store').checked=Boolean(this._pendingShowStore??s.show_store);root.querySelector('#show-store').disabled=this._settingsBusy||this._data?.hass?.user?.is_admin!==true;
     root.querySelector('#options-error').hidden=!this._optionsError;root.querySelector('#options-error').textContent=this._optionsError??'';
