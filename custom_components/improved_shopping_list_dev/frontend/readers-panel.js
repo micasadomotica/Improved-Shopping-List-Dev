@@ -56,7 +56,7 @@ class ImprovedShoppingReaders extends HTMLElement {
           <h3 class="wide reader-section-title behavior">Comportamiento</h3>
           <div class="wide"><label for="reader-default-action">Acción por defecto</label><select id="reader-default-action" name="default_action"><option value="none">Sin acción</option><option value="add_list">Añadir a la lista de la compra</option><option value="stock_remove">Quitar una unidad al stock</option><option value="stock_add">Añadir una unidad al stock</option></select></div>
           <div><label for="reader-list">Lista de destino</label><select id="reader-list" name="list_entity"><option value="">Usar lista principal</option></select></div>
-          <label>Antirrepetición<span class="reader-number-field"><input name="cooldown" aria-label="Antirrepetición (segundos)" type="number" min="1" max="3600" step="1" value="60" required><span aria-hidden="true">s</span></span></label>
+          <label>Antirrepetición (0: desactivada)<span class="reader-number-field"><input name="cooldown" aria-label="Antirrepetición (segundos)" type="number" min="0" max="3600" step="1" value="1" required><span aria-hidden="true">s</span></span></label>
         </div>
         <div class="form-actions"><button id="cancel-reader" type="button">Cancelar</button><button id="save-reader" class="primary" type="submit">Guardar lector</button></div>
       </form></dialog>
@@ -73,7 +73,12 @@ class ImprovedShoppingReaders extends HTMLElement {
     root.querySelector("#reader-live-dialog").addEventListener("close", () => { this._liveReaderId = null; });
     root.querySelector("#confirm-remove-reader").addEventListener("click", () => void this._remove());
     root.querySelector("#reader-form").addEventListener("submit", event => { event.preventDefault(); void this._save(); });
-    root.querySelector("#reader-kind").addEventListener("change", () => this._sourceFields());
+    root.querySelector("#reader-kind").addEventListener("change", () => {
+      const form=root.querySelector("form");
+      if(!this._editing&&!this._cooldownEdited)form.elements.cooldown.value=form.elements.kind.value==='nfc'?0:1;
+      this._sourceFields();
+    });
+    root.querySelector('[name="cooldown"]').addEventListener("input",()=>{this._cooldownEdited=true;});
     root.querySelector("#reader-source").addEventListener("change", () => this._sourceFields());
     root.querySelectorAll("dialog").forEach(dialog => dialog.addEventListener("cancel", event => { if(this._busy)event.preventDefault(); }));
   }
@@ -166,6 +171,7 @@ class ImprovedShoppingReaders extends HTMLElement {
   _open(reader) {
     if(this._busy)return;
     const root=this.shadowRoot,form=root.querySelector("form");form.reset();this._editing=reader?structuredClone(reader):null;
+    this._cooldownEdited=false;
     root.querySelector("#reader-dialog-title").textContent=reader?"Editar lector":"Añadir lector";root.querySelector("#reader-form-error").hidden=true;
     if(reader){for(const key of ["name","kind","source","entity_id","attribute","device_id","list_entity","cooldown"])form.elements[key].value=reader[key];form.elements.default_action.value=reader.default_action??"none";}
     this._sourceFields();root.querySelector("#reader-dialog").showModal();form.elements.name.focus();

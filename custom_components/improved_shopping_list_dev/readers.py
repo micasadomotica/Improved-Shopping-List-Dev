@@ -46,13 +46,13 @@ def normalize_reader(data: dict, hass: HomeAssistant, settings) -> dict:
         result["entity_id"] = result["attribute"] = ""
     if result["list_entity"] and result["list_entity"] not in settings.snapshot["entities"]:
         raise CatalogError("Añade la lista de destino en Ajustes o utiliza la principal.")
-    result["cooldown"] = data.get("cooldown", 60)
+    result["cooldown"] = data.get("cooldown", 1 if result["kind"] == "barcode" else 0)
     result["enabled"] = data.get("enabled", True)
     result["default_action"] = data.get("default_action", "none")
     if not isinstance(result["default_action"], str) or result["default_action"] not in READER_ACTIONS:
         raise CatalogError("Selecciona una acción por defecto válida para el lector.")
-    if type(result["cooldown"]) is not int or not 1 <= result["cooldown"] <= 3600 or not isinstance(result["enabled"], bool):
-        raise CatalogError("La protección antirrepetición debe estar entre 1 y 3600 segundos.")
+    if type(result["cooldown"]) is not int or not 0 <= result["cooldown"] <= 3600 or not isinstance(result["enabled"], bool):
+        raise CatalogError("La protección antirrepetición debe estar entre 0 y 3600 segundos (0 la desactiva).")
     return result
 
 
@@ -73,6 +73,7 @@ class ReaderManager:
         self._lookup_pending = set()
         self.activity = None
         self.stock = None
+        self.quantities = None
 
     async def async_load(self):
         await self.lookup.async_load()
@@ -404,8 +405,14 @@ class ReaderManager:
         if not isinstance(items, list):
             raise CatalogError("No se ha podido comprobar el contenido de la lista.")
         matches = [item for item in items if normalized_name(item_name(self.settings, target, item)) == normalized_name(product["name"])]
-        if any(item.get("status") != "completed" for item in matches):
-            self._status(reader["id"], code, "El producto ya estaba pendiente en la lista", product["name"])
+        pending = next((item for item in matches if item.get("status") != "completed"), None)
+        if pending:
+            if not pending.get("uid") or self.quantities is None:
+                raise CatalogError("No se puede aumentar la cantidad del producto en la lista.")
+            result = await self.quantities.async_adjust(target, str(pending["uid"]), 1,
+                reader=reader["name"], guard=lambda: self._still_current(reader, product, code, target))
+            value = result["entries"][target][str(pending["uid"])]
+            self._status(reader["id"], code, f"Cantidad en la lista: {value['quantity']} {value['unit']}", product["name"])
             return
         self._still_current(reader, product, code, target)
         state = self.hass.states.get(target)

@@ -74,7 +74,7 @@ class ListQuantities:
             "step": defaults["quantity_step"] if product or not record else record.get("step", 1),
             "unit_quantity": defaults["unit_quantity"]}
 
-    async def async_adjust(self, entity_id, uid, direction):
+    async def async_adjust(self, entity_id, uid, direction, *, reader=None, guard=None):
         async with self._lock:
             if not self._active or entity_id not in self.settings.snapshot["entities"]:
                 raise CatalogError("Selecciona una lista de la compra añadida a la integración.")
@@ -91,10 +91,16 @@ class ListQuantities:
             item = next((item for item in items if str(item.get("uid")) == uid), None) if isinstance(items, list) else None
             if item is None:
                 raise CatalogError("El producto ya no está en la lista. Actualiza la vista.", "not_found")
+            if guard is not None:
+                guard()
+            if reader is not None and item.get("status") != "needs_action":
+                raise CatalogError("El producto ya no está pendiente en la lista.")
             item = named_item(self.settings, entity_id, item)
             value = self.value(entity_id, item)
             try:
-                quantity = positive_quantity(round(value["quantity"] + direction * value["step"], 3))
+                # A scan adds one purchase unit; manual +/- uses the editable step.
+                amount = value["unit_quantity"] if reader is not None else value["step"]
+                quantity = positive_quantity(round(value["quantity"] + direction * amount, 3))
             except ValueError as err:
                 raise CatalogError(str(err)) from err
             entries = deepcopy(self._entries)
@@ -103,7 +109,7 @@ class ListQuantities:
             self._entries = entries
             self._notify()
             self.activity.record("list.quantity", f"Cantidad de compra: {item.get('summary', '')} · {quantity} {value['unit']}",
-                source="manual", product=item.get("summary", ""), list_entity=entity_id,
+                source="reader" if reader is not None else "manual", reader=reader or "", product=item.get("summary", ""), list_entity=entity_id,
                 diagnostics={"quantity": quantity, "unit": value["unit"]})
             return self.snapshot
 

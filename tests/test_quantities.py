@@ -87,6 +87,24 @@ async def test_defaults_and_adjustments_do_not_modify_native_names_or_other_list
     assert env.activity.record.call_args.args[0] == "list.quantity"
 
 
+async def test_scan_adds_purchase_unit_instead_of_manual_step(env):
+    await env.manager.async_adjust("todo.main", "same-uid", 1, reader="NFC")
+    assert env.manager.value("todo.main", item())["quantity"] == 500
+    await env.manager.async_adjust("todo.main", "same-uid", 1)
+    assert env.manager.value("todo.main", item())["quantity"] == 550
+
+
+async def test_scan_revalidates_reader_and_pending_item_before_quantity_write(env):
+    def stale_reader():
+        raise CatalogError("El lector ha cambiado.")
+    with pytest.raises(CatalogError, match="lector"):
+        await env.manager.async_adjust("todo.main", "same-uid", 1, reader="NFC", guard=stale_reader)
+    env.todos["todo.main"].todo_items[0].status = TodoItemStatus.COMPLETED
+    with pytest.raises(CatalogError, match="pendiente"):
+        await env.manager.async_adjust("todo.main", "same-uid", 1, reader="NFC")
+    assert env.manager.snapshot["entries"] == {}
+
+
 async def test_quantity_minimum_and_removed_uid_cleanup(env):
     for _ in range(4): await env.manager.async_adjust("todo.main", "same-uid", -1)
     assert env.manager.value("todo.main", item())["quantity"] == 50

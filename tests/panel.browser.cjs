@@ -2278,7 +2278,7 @@ async function checkReaderEditor(browser,url,errors){
     await readerDialog.getByLabel("Nombre del lector",{exact:true}).fill("Cocina");
     await readerDialog.getByLabel("Entidad del lector",{exact:true}).fill("sensor.lector_cb_codigo_leido");
     await readerDialog.getByLabel("Lista de destino",{exact:true}).selectOption("todo.local");
-    assert.equal(await readerDialog.getByLabel("Antirrepetición (segundos)",{exact:true}).inputValue(),"60");
+    assert.equal(await readerDialog.getByLabel("Antirrepetición (segundos)",{exact:true}).inputValue(),"1");
     for(const width of [1280,390,320]){
       await readerPage.setViewportSize({width,height:960});
       assert.ok(await readerDialog.evaluate(dialog=>dialog.scrollWidth<=dialog.clientWidth+1));
@@ -2295,10 +2295,12 @@ async function checkReaderEditor(browser,url,errors){
     await readersView.getByRole("button",{name:"Añadir lector",exact:true}).click();
     await readerDialog.getByLabel("Nombre del lector",{exact:true}).fill("NFC despensa");
     await readerDialog.getByLabel("Tipo de lector",{exact:true}).selectOption("nfc");
+    assert.equal(await readerDialog.getByLabel("Antirrepetición (segundos)",{exact:true}).inputValue(),"0");
     await readerDialog.getByLabel("Fuente de lectura",{exact:true}).selectOption("tag");
     await readerDialog.getByLabel("Device ID del lector NFC",{exact:true}).fill("nfc-device");
     await readerDialog.getByRole("button",{name:"Guardar lector",exact:true}).click();
     await readersView.getByRole("heading",{name:"NFC despensa",exact:true}).waitFor();
+    assert.equal(await readerPage.evaluate(()=>window.readerFixture.readers.find(reader=>reader.name==='NFC despensa').cooldown),0);
     const barcodeReader=readersView.locator("#readers-grid article").filter({hasText:"Cocina"});
     const nfcReader=readersView.locator("#readers-grid article").filter({hasText:"NFC despensa"});
     assert.equal(await barcodeReader.locator(".reader-type").getAttribute("icon"),"mdi:barcode-scan");

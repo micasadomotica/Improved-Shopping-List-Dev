@@ -1,3 +1,8 @@
+# Pendiente de publicar — Cantidades por escaneo
+
+- Cada lectura aceptada de un producto pendiente suma una unidad de compra en la misma fila, tanto por código de barras como por NFC. Conserva las cantidades por lista y las guarda aunque el panel esté cerrado.
+- Los nuevos lectores usan 1 segundo de antirrepetición para códigos de barras y 0 para NFC. Se admite 0 para desactivar el filtro; los lectores existentes conservan su configuración hasta editarla.
+
 # 0.88.7 — Fichas de pan, guardado y precios de alternativas
 
 - Admite las referencias de Mercadona con punto, como `83202.1` y `83203.1`, conservando la identidad completa de la ficha y su EAN independiente.

@@ -201,7 +201,9 @@ Las tarjetas se ordenan por hora de inicio. Su toggle permite activarlas o desac
 
 Los lectores conectan las lecturas de **códigos de barras/QR** o **etiquetas NFC** con los productos del catálogo. En **Lectores**, pulsa **+**, asigna un nombre y selecciona el tipo y la fuente: una entidad de Home Assistant que reciba el código o, para NFC, el evento **tag_scanned** del dispositivo correspondiente.
 
-Configura la **acción por defecto**, la lista de destino y el intervalo de **antirrepetición**, que inicialmente es de 60 segundos. Este intervalo evita procesar repetidamente una misma lectura por error.
+Configura la **acción por defecto**, la lista de destino y el intervalo de **antirrepetición**. Los nuevos lectores de códigos de barras utilizan 1 segundo y los NFC, 0 segundos (sin antirrepetición). Los lectores existentes conservan su intervalo: puedes cambiarlo en **Editar lector**. El intervalo se aplica al mismo código o producto dentro de ese lector.
+
+Con **Añadir a la lista**, cada lectura aceptada de un producto que ya está pendiente suma una unidad de compra en la misma fila, tanto para códigos de barras como para NFC. Por ejemplo, dos lecturas de Pan dejan 2 uds. Si el producto define una unidad de compra de 250 g, cada lectura suma 250 g; los botones manuales −/+ siguen utilizando el paso configurado. La cantidad se guarda por lista y artículo, sin modificar el nombre ni la descripción del proveedor.
 
 Las entidades de lectores se escuchan también cuando comunican de nuevo el mismo código: se utiliza la fecha y hora del nuevo informe (`last_reported`), manteniendo la protección antirrepetición. La entidad debe comunicar cada escaneo, no actualizarse periódicamente con un código antiguo. Si el dispositivo descarta una lectura antes de enviarla a Home Assistant, será necesario ajustar su configuración.
 

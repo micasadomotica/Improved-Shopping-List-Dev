@@ -3,7 +3,7 @@
 import asyncio
 from copy import deepcopy
 from types import SimpleNamespace
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, Mock
 
 import pytest
 from homeassistant.core import SupportsResponse
@@ -14,6 +14,7 @@ from custom_components.improved_shopping_list_dev.activity import ActivityLog
 from custom_components.improved_shopping_list_dev.const import CONF_TODO_ENTITY, DOMAIN
 from custom_components.improved_shopping_list_dev.list_settings import ListSettings
 from custom_components.improved_shopping_list_dev.readers import ReaderManager
+from custom_components.improved_shopping_list_dev.quantities import ListQuantities
 from custom_components.improved_shopping_list_dev.stock import StockManager
 from custom_components.improved_shopping_list_dev import readers as readers_module
 
@@ -56,9 +57,14 @@ async def reader_env(hass, monkeypatch):
     hass.services.async_register("todo","get_items",get_items,supports_response=SupportsResponse.ONLY)
     hass.services.async_register("todo","add_item",add_item)
     hass.services.async_register("todo","update_item",update_item)
-    env = SimpleNamespace(manager=manager,catalog=catalog,stock=stock,settings=settings,clock=clock,calls=calls,items=items)
+    quantities = ListQuantities(hass, catalog, settings, SimpleNamespace(record=Mock()))
+    await quantities.async_load()
+    quantities.start()
+    manager.quantities = quantities
+    env = SimpleNamespace(manager=manager,catalog=catalog,stock=stock,settings=settings,clock=clock,calls=calls,items=items,quantities=quantities)
     yield env
     await manager.async_stop()
+    await quantities.async_stop()
 
 
 async def add_reader(env, **changes):
@@ -84,6 +90,75 @@ async def test_reader_history_runs_without_open_panel(hass, reader_env):
 
 async def add_product(env, reader, **changes):
     return await env.catalog.async_save_product({"name":"Cacao","barcode":"0012345","barcodes":["0012346"],"nfc_tags":["AA:BB:CC:DD"],"reader_actions":{reader["id"]:"add_list"},**changes})
+
+
+async def test_barcode_repeats_increment_quantity_with_one_second_guard(hass, reader_env):
+    env = reader_env
+    reader = await add_reader(env, default_action="add_list")
+    assert reader["cooldown"] == 1
+    await add_product(env, reader)
+    await env.manager.async_process(reader["id"], "0012345")
+    item = env.items["todo.bring"][0]
+    env.clock[0] += .5
+    await env.manager.async_process(reader["id"], "0012346")
+    assert env.quantities.value("todo.bring", item)["quantity"] == 1
+    env.clock[0] += .5
+    await env.manager.async_process(reader["id"], "0012345")
+    assert env.quantities.value("todo.bring", item)["quantity"] == 2
+    assert len(env.items["todo.bring"]) == len(env.calls) == 1
+    restored = ListQuantities(hass, env.catalog, env.settings, env.quantities.activity)
+    await restored.async_load()
+    assert restored.value("todo.bring", item)["quantity"] == 2
+    assert restored.value("todo.local", item)["quantity"] == 1
+    assert env.quantities.activity.record.call_args.kwargs["source"] == "reader"
+
+
+@pytest.mark.parametrize("source", ["entity", "tag"])
+async def test_each_new_nfc_read_adds_one_without_cooldown(hass, reader_env, source):
+    env = reader_env
+    reader = await add_reader(env, kind="nfc", source=source,
+        device_id="nfc-device" if source == "tag" else "", default_action="add_list")
+    assert reader["cooldown"] == 0
+    await add_product(env, reader)
+    for count in range(1, 4):
+        if source == "tag":
+            hass.bus.async_fire("tag_scanned", {"device_id":"nfc-device", "tag_id":"AA:BB:CC:DD"})
+        else:
+            hass.states.async_set("sensor.scanner", "AA:BB:CC:DD")
+        await hass.async_block_till_done()
+        item = env.items["todo.bring"][0]
+        assert env.quantities.value("todo.bring", item)["quantity"] == count
+        if source == "entity":
+            # Firmware clears after a scan; clearing itself must not add anything.
+            hass.states.async_set("sensor.scanner", "")
+            await hass.async_block_till_done()
+    assert len(env.calls) == len(env.items["todo.bring"]) == 1
+    await env.manager.async_stop()
+    env.manager.start()
+    await hass.async_block_till_done()
+    assert env.quantities.value("todo.bring", item)["quantity"] == 3
+
+
+async def test_concurrent_scans_and_manual_adjustment_keep_all_quantities(reader_env):
+    env = reader_env
+    reader = await add_reader(env, cooldown=0)
+    await add_product(env, reader)
+    await env.manager.async_process(reader["id"], "0012345")
+    item = env.items["todo.bring"][0]
+    await asyncio.gather(env.manager.async_process(reader["id"], "0012345"),
+        env.manager.async_process(reader["id"], "0012346"),
+        env.quantities.async_adjust("todo.bring", item["uid"], 1))
+    assert env.quantities.value("todo.bring", item)["quantity"] == 4
+    assert len(env.calls) == 1
+
+
+async def test_existing_reader_cooldown_is_not_migrated(hass, reader_env):
+    env = reader_env
+    reader = await add_reader(env, cooldown=60)
+    restored = ReaderManager(hass, env.catalog, env.settings)
+    await restored.async_load()
+    assert restored.snapshot["readers"][0]["cooldown"] == 60
+    assert restored.snapshot["readers"][0]["id"] == reader["id"]
 
 
 async def test_reader_matches_full_bring_name_without_duplicate_and_restores_uid(reader_env,monkeypatch):
@@ -301,7 +376,7 @@ async def test_pending_lookup_does_not_block_known_scans_or_restore_dismissed_it
 
 async def test_identical_reports_restore_completed_item_and_respect_cooldown(hass, reader_env, freezer):
     env = reader_env
-    reader = await add_reader(env, default_action="add_list")
+    reader = await add_reader(env, default_action="add_list", cooldown=60)
     await add_product(env, reader, reader_actions={})
     hass.states.async_set("sensor.scanner", "0012345")
     await hass.async_block_till_done()
@@ -413,7 +488,7 @@ async def test_reader_rejects_duplicate_sources_and_invalid_config(reader_env):
     await add_reader(env)
     with pytest.raises(CatalogError,match="Ya hay"):
         await add_reader(env,name="Duplicado")
-    for changes in ({"cooldown":0},{"cooldown":True},{"entity_id":"sensor.missing"},{"kind":"other"},{"list_entity":"todo.missing"},{"source":"tag","kind":"nfc","device_id":""}):
+    for changes in ({"cooldown":-1},{"cooldown":True},{"entity_id":"sensor.missing"},{"kind":"other"},{"list_entity":"todo.missing"},{"source":"tag","kind":"nfc","device_id":""}):
         with pytest.raises(CatalogError):
             await add_reader(env,**changes)
 
@@ -531,7 +606,7 @@ async def test_reader_websocket_admin_and_reload(hass,hass_ws_client,hass_read_o
     client=await hass_ws_client(hass)
     await client.send_json({"id":1,"type":f"{DOMAIN}/readers/save","reader":{"name":"Cocina","entity_id":"sensor.scanner","default_action":"add_list"}})
     saved=(await client.receive_json())["result"]
-    assert saved["cooldown"]==60
+    assert saved["cooldown"]==1
     assert saved["default_action"]=="add_list"
     token=await hass.auth.async_create_refresh_token(hass_read_only_user,client_id="http://test.local")
     readonly=await hass_ws_client(hass,hass.auth.async_create_access_token(token))

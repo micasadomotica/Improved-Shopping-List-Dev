@@ -83,6 +83,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         await meals.async_load()
         quantities = ListQuantities(hass, catalog, settings, activity)
         await quantities.async_load()
+        readers.quantities = quantities
         notifications = NotificationManager(hass, settings, stock, activity, catalog, readers)
         await notifications.async_load()
         gateways = GatewayLists(hass, settings, activity, readers._operation_lock)
