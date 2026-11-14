@@ -164,6 +164,57 @@ def parse_carrefour_invoice(text):
         "total":float(total), "article_count":sum(item["count"] for item in items), "lines":items}
 
 
+def parse_mercadona(text):
+    """Electronic till receipts with an explicit count and optional unit price.
+
+    Descriptions are store-scoped aliases, never fabricated product identifiers.
+    Unknown rows (including unrecognized weight/discount layouts) fail closed.
+    """
+    if not re.search(r"\bMERCADONA\s*,?\s*S\.?A\.?", text, re.I):
+        raise CatalogError("No se reconoce el formato de este ticket de Mercadona.")
+    identity = re.search(r"FACTURA\s+SIMPLIFICADA\s*:\s*(\d+-\d+-\d+)\b", text, re.I)
+    date = re.search(r"\b(\d{2}/\d{2}/\d{4})\s+(\d{2}:\d{2})(?::\d{2})?\b", text)
+    if not identity or not date:
+        raise CatalogError("No se han podido identificar el número y la fecha del ticket de Mercadona.")
+    try:
+        purchased_at = datetime.strptime(f"{date[1]} {date[2]}", "%d/%m/%Y %H:%M").isoformat()
+    except ValueError as err:
+        raise CatalogError("La fecha del ticket no es válida.") from err
+    header = re.compile(r"(?:Cnt\.|Cant\.?|Cantidad)\s+Descripci[óo](?:n)?\s+P\.?\s*Unit\.?\s+Importe?", re.I)
+    row = re.compile(rf"(\d+)\s+(.+?)\s+(?:({MONEY})\s+)?({MONEY})")
+    items, active, total = [], False, None
+    for raw in text.splitlines():
+        line = re.sub(r"\s+", " ", raw).strip()
+        if header.fullmatch(line):
+            active = True
+            continue
+        if not active or not line:
+            continue
+        if match := re.fullmatch(rf"TOTAL\s*\(\s*€\s*\)\s+({MONEY})", line, re.I):
+            total = Decimal(match[1].replace(".", "").replace(",", "."))
+            break
+        match = row.fullmatch(line)
+        if not match:
+            raise CatalogError("Hay una línea del ticket de Mercadona cuyo formato todavía no se reconoce. No se ha importado.")
+        count, description = int(match[1]), match[2]
+        amount = Decimal(match[4].replace(".", "").replace(",", "."))
+        rate = Decimal(match[3].replace(".", "").replace(",", ".")) if match[3] else amount
+        if not 1 <= count <= 1000000 or (count != 1 and not match[3]) or abs(rate * count - amount) > Decimal("0.01"):
+            raise CatalogError("Las cantidades y el importe de una línea del ticket de Mercadona no coinciden.")
+        pack = re.search(r"\b(\d+(?:[,.]\d+)?)\s*(KG|GRS?|G|ML|CL|LITROS?|L)\b", description, re.I)
+        items.append({"id": str(len(items)), "description": description, "count": count,
+            "unit_price": float(rate), "amount": float(amount),
+            "pack_quantity": float(pack[1].replace(",", ".")) if pack else None,
+            "pack_unit": ({"gr": "g", "grs": "g", "litro": "l", "litros": "l"}.get(pack[2].lower(), pack[2].lower()) if pack else "")})
+    if not 1 <= len(items) <= 300 or total is None:
+        raise CatalogError("No se han podido identificar las líneas y el total del ticket de Mercadona.")
+    if sum(Decimal(str(item["amount"])) for item in items) != total:
+        raise CatalogError("El detalle extraído no coincide con el total de Mercadona. No se ha importado el ticket.")
+    return {"store": "mercadona", "store_name": "Mercadona", "purchased_at": purchased_at,
+        "identity": identity[1], "currency": "EUR", "subtotal": float(total), "discount": 0,
+        "total": float(total), "article_count": sum(item["count"] for item in items), "lines": items}
+
+
 def extract_receipt(content):
     """Run in an executor; never retain the PDF's payment/loyalty/customer data."""
     if not content.startswith(b"%PDF-") or not 0 < len(content) <= MAX_PDF_BYTES:
@@ -184,7 +235,12 @@ def extract_receipt(content):
         if len(text.strip()) < 20:
             raise CatalogError("El PDF no contiene texto legible. Los tickets escaneados requieren OCR y todavía no están disponibles.")
         invoice = bool(re.search(r"FECHA\s+FACTURA\s*:", text, re.I))
-        receipt = parse_carrefour_invoice(text) if invoice else parse_carrefour(text)
+        if re.search(r"\bMERCADONA\s*,?\s*S\.?A\.?", text, re.I):
+            receipt = parse_mercadona(text)
+        elif "CARREFOUR" in text.upper():
+            receipt = parse_carrefour_invoice(text) if invoice else parse_carrefour(text)
+        else:
+            raise CatalogError("Este formato de ticket todavía no está disponible. Sube un PDF electrónico de Carrefour o Mercadona.")
     except CatalogError:
         raise
     except Exception as err:

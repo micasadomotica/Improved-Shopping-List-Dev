@@ -16,7 +16,7 @@ from homeassistant.util import dt as dt_util
 
 from custom_components.improved_shopping_list_dev.catalog import Catalog, CatalogError
 from custom_components.improved_shopping_list_dev.const import DOMAIN, CONF_TODO_ENTITY
-from custom_components.improved_shopping_list_dev.receipt_parser import parse_carrefour, parse_carrefour_invoice, extract_receipt, extract_carrefour_account_ticket
+from custom_components.improved_shopping_list_dev.receipt_parser import parse_carrefour, parse_carrefour_invoice, parse_mercadona, extract_receipt, extract_carrefour_account_ticket
 from custom_components.improved_shopping_list_dev.receipts import ReceiptManager, converted_quantity
 from custom_components.improved_shopping_list_dev.stock import StockManager
 
@@ -45,7 +45,7 @@ def pdf_bytes(text):
     page[NameObject('/Resources')]=DictionaryObject({NameObject('/Font'):DictionaryObject({NameObject('/F1'):writer._add_object(font)})})
     content=DecodedStreamObject()
     lines=[line.replace('\\','\\\\').replace('(','\\(').replace(')','\\)') for line in text.splitlines()]
-    content.set_data(('BT /F1 10 Tf 20 760 Td 14 TL '+ ' '.join(f'({line}) Tj T*' for line in lines)+' ET').encode('latin1'))
+    content.set_data(('BT /F1 10 Tf 20 760 Td 14 TL '+ ' '.join(f'({line}) Tj T*' for line in lines)+' ET').encode('cp1252'))
     page[NameObject('/Contents')]=writer._add_object(content)
     output=BytesIO();writer.write(output);return output.getvalue()
 
@@ -89,6 +89,76 @@ async def setup_manager(hass):
     prices=SimpleNamespace(_notify=lambda:None)
     manager=ReceiptManager(hass,stock,automation,prices)
     return SimpleNamespace(manager=manager,stock=stock,item=item,product=product,automation=automation)
+
+
+def mercadona_text():
+    """Invented receipt; no household purchases, address or payment data."""
+    date = (dt_util.now()-timedelta(hours=2)).strftime('%d/%m/%Y %H:%M')
+    return f'''MERCADONA, S.A.
+{date} OP: 999999
+FACTURA SIMPLIFICADA: 9999-999-100001
+Cnt. Descripció                        P. Unit      Import
+1 CRUIXENT 200                                      1,23
+2 BEGUDA CIVADA 1 L                    1,10         2,20
+3 DAUS VEGETALS 250 G                  2,00         6,00
+TOTAL (€)                                          9,43
+TARGETA BANCÀRIA                                    9,43
+PRIVATE_PAYMENT_DATA
+PRIVATE_CUSTOMER
+'''
+
+
+@pytest.mark.parametrize('header', ['Cnt. Descripció', 'Cant. Descripción'])
+def test_mercadona_pdf_counts_prices_formats_and_privacy(header):
+    text = mercadona_text().replace('Cnt. Descripció', header)
+    receipt = extract_receipt(pdf_bytes(text))
+    assert receipt['store'] == 'mercadona' and receipt['total'] == 9.43
+    assert receipt['article_count'] == 6 and len(receipt['lines']) == 3
+    assert [line['count'] for line in receipt['lines']] == [1, 2, 3]
+    assert [line['unit_price'] for line in receipt['lines']] == [1.23, 1.1, 2]
+    assert receipt['lines'][0]['pack_quantity'] is None
+    assert converted_quantity(receipt['lines'][1], 'l') == 2
+    assert converted_quantity(receipt['lines'][2], 'g') == 750
+    assert all(not line.get('ean') and not line.get('reference_id') for line in receipt['lines'])
+    assert 'PRIVATE_' not in str(receipt)
+    assert receipt['id'] == extract_receipt(pdf_bytes(text+'\nExtra footer'))['id']
+
+
+@pytest.mark.parametrize(('old', 'new'), [
+    ('TOTAL (€)                                          9,43', 'TOTAL (€) 8,43'),
+    ('1,10         2,20', '1,10         2,30'),
+    ('2 BEGUDA', '0 BEGUDA'),
+    ('1,10         2,20', '2,20'),
+    ('1 CRUIXENT 200', 'DESCUENTO CRUIXENT'),
+    ('TOTAL (€)', '0,455 kg 3,50 €/kg\nTOTAL (€)'),
+    ('Cnt. Descripció', 'Unknown header'),
+    ('9999-999-100001', 'unknown'),
+])
+def test_mercadona_rejects_unverified_lines_and_totals(old, new):
+    with pytest.raises(CatalogError):
+        parse_mercadona(mercadona_text().replace(old, new))
+
+
+async def test_mercadona_description_link_survives_reload_and_is_store_scoped(hass):
+    env = await setup_manager(hass)
+    before = deepcopy(env.stock.snapshot['items'])
+    draft = await env.manager.async_preview(base64.b64encode(pdf_bytes(mercadona_text())).decode(), 'owner')
+    assert not draft['receipt']['lines'][2]['matched']
+    links = [{'id': line['id'], 'product_id': env.product['id'] if line['id']=='2' else ''} for line in draft['receipt']['lines']]
+    await env.manager.async_link(draft['token'], 'owner', links)
+    env.manager.discard(draft['token'], 'owner')
+    assert env.stock.snapshot['items'] == before
+    restored = StockManager(hass, env.stock.catalog)
+    await restored.async_load()
+    manager = ReceiptManager(hass, restored, env.automation, env.manager.prices)
+    again = await manager.async_preview(base64.b64encode(pdf_bytes(mercadona_text().replace('100001', '100002'))).decode(), 'owner')
+    line = again['receipt']['lines'][2]
+    assert line['matched'] and line['product_id'] == env.product['id'] and line['quantity'] == 750
+    assert not again['receipt']['lines'][0]['matched']
+    other = parse_mercadona(mercadona_text())
+    other.update(store='carrefour', store_name='Carrefour', id='another-store', digest='another-store')
+    other = await manager._prepare_preview(other, 'owner')
+    assert not other['receipt']['lines'][2]['matched']
 
 
 async def test_reviewed_receipt_reprocessing_updates_formats_without_repeating_stock_or_purchase(hass):
@@ -958,3 +1028,32 @@ async def test_automatic_estimates_are_left_pending_for_manual_quantity_review(h
     assert result["receipt"]["pending_review"]
     assert not result["receipt"]["lines"][0]["confirmed"]
     assert env.stock._items[env.item["id"]]["quantity"] == 20
+
+
+async def test_mercadona_manual_default_and_automatic_known_lines_update_stock_and_list(hass):
+    env = await shopping_env(hass)
+    content = base64.b64encode(pdf_bytes(mercadona_text())).decode()
+    draft = await env.manager.async_preview(content, 'owner')
+    assert await env.manager.async_apply_confirmation_policy(draft, 'owner') == draft
+    assert env.stock._items[env.item['id']]['quantity'] == 20
+    assert env.automation.quantities._entries['todo.main']['line']['quantity'] == 6
+    links = [{'id': row['id'], 'product_id': env.product['id'] if row['id']=='2' else ''} for row in draft['receipt']['lines']]
+    await env.manager.async_link(draft['token'], 'owner', links)
+    env.manager.discard(draft['token'], 'owner')
+    env.manager.settings.snapshot['receipt_confirmation']['mercadona'] = 'automatic'
+    draft = await env.manager.async_preview(content, 'owner')
+    result = await env.manager.async_apply_confirmation_policy(draft, 'owner')
+    assert result['automatic'] and result['receipt']['pending_review']
+    assert [row['confirmed'] for row in result['receipt']['lines']] == [False, False, True]
+    assert env.stock._items[env.item['id']]['quantity'] == 770
+    assert env.automation.quantities._entries['todo.main']['line']['quantity'] == 3
+    with pytest.raises(CatalogError):
+        await env.manager.async_preview(content, 'owner')
+    assert env.stock._items[env.item['id']]['quantity'] == 770
+    second = mercadona_text().replace('100001', '100003')
+    second = '\n'.join(line for line in second.splitlines() if not line.startswith(('1 CRUIXENT', '2 BEGUDA'))).replace('9,43', '6,00')
+    draft = await env.manager.async_preview(base64.b64encode(pdf_bytes(second)).decode(), 'owner')
+    result = await env.manager.async_apply_confirmation_policy(draft, 'owner')
+    assert not result['receipt']['pending_review']
+    assert env.todo_items['todo.main'][0]['status'] == 'completed'
+    assert env.stock._items[env.item['id']]['quantity'] == 1520

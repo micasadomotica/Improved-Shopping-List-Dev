@@ -340,6 +340,7 @@ const hass={
       return {id:'list-preview',entity:msg.entity??'todo.bring',entities:['todo.bring','todo.local'],rows:window.receiptListRows??[],links:msg.lines};
     }
     if(msg.type==='improved_shopping_list_dev/settings/receipt_confirmation'){
+      if(window.failReceiptConfirmation)throw new Error('No se pudo guardar la confirmación');
       window.listSettings.receipt_confirmation={...window.listSettings.receipt_confirmation,[msg.store]:msg.mode};window.emitSettings();return structuredClone(window.listSettings);
     }
     if(msg.type==='improved_shopping_list_dev/receipts/confirm'){
@@ -1260,7 +1261,7 @@ async function checkMobileTicketAssociation(browser,url,errors){
 
 async function checkReceiptListReview(browser,url,errors){
   const context=await browser.newContext({viewport:{width:390,height:844}}),page=await context.newPage();
-  page.on('pageerror',error=>errors.push(error.message));await page.goto(url);
+  page.on('pageerror',error=>errors.push(error.message));await context.addInitScript(()=>{if(!localStorage.getItem('settings-fixture'))localStorage.setItem('settings-fixture',JSON.stringify({entities:['todo.bring'],primary_entity:'todo.bring',purchase_detection:{shops:[]}}));});await page.goto(url);
   await page.getByRole('button',{name:'Analítica',exact:true}).click();const purchases=page.locator('isl-dev-purchases');
   await purchases.locator('#ticket-file').waitFor({state:'attached'});
   await purchases.evaluate(el=>{
@@ -1281,11 +1282,28 @@ async function checkReceiptListReview(browser,url,errors){
   await dialog.getByRole('button',{name:'Confirmar compra',exact:true}).click();await dialog.waitFor({state:'hidden'});
   assert.equal(await page.evaluate(()=>window.lastReceiptConfirmation.list_review.rows[0].quantity),1);
   await page.getByRole('button',{name:'Ajustes',exact:true}).click();const settings=page.locator('isl-dev-settings');await settings.getByRole('button',{name:'Tiendas',exact:true}).click();
-  const section=settings.locator('#receipt-confirmation-settings');await section.locator('summary').click();
-  const modes=section.locator('[data-receipt-store]');assert.equal(await modes.count(),11);assert.ok((await modes.evaluateAll(nodes=>nodes.map(el=>el.value))).every(v=>v==='manual'));
-  await section.getByLabel('Confirmación de compras de Lidl',{exact:true}).selectOption('automatic');await page.waitForFunction(()=>window.listSettings.receipt_confirmation?.lidl==='automatic');
-  assert.equal(await section.getByLabel('Confirmación de compras de Mercadona',{exact:true}).inputValue(),'manual');
-  await section.evaluate(el=>el.scrollIntoView({block:'start'}));await page.screenshot({path:'test-results/receipt-confirmation-settings-mobile.png',fullPage:false});assert.ok(await section.evaluate(el=>el.scrollWidth<=el.clientWidth+1));
+  assert.equal(await settings.locator('#receipt-confirmation-settings').count(),0);
+  await settings.locator('#configure-lidl').click();
+  const account=settings.locator('#lidl-dialog'),auto=account.getByRole('switch',{name:'Confirmar compras automáticamente',exact:true});
+  assert.equal(await auto.isChecked(),false);await auto.check();await page.waitForFunction(()=>window.listSettings.receipt_confirmation?.lidl==='automatic');
+  await account.getByRole('button',{name:'Cerrar ventana',exact:true}).click();
+  const source=settings.locator('isl-dev-mercadona-catalog');await source.getByRole('button',{name:'Configurar catálogo de Mercadona',exact:true}).click();
+  const options=source.locator('#catalog-options-dialog'),mercadona=options.getByRole('switch',{name:'Confirmar compras automáticamente',exact:true});
+  assert.equal(await mercadona.isChecked(),false);assert.equal(await options.getByRole('switch',{name:'Mostrar tienda en el catálogo',exact:true}).count(),1);
+  await mercadona.check();await page.waitForFunction(()=>window.listSettings.receipt_confirmation?.mercadona==='automatic');
+  assert.equal(await page.evaluate(()=>window.listSettings.receipt_confirmation.lidl),'automatic');
+  await page.evaluate(()=>{window.failReceiptConfirmation=true;});await mercadona.click();await options.getByRole('alert').filter({hasText:'No se pudo guardar la confirmación'}).waitFor();
+  assert.equal(await mercadona.isChecked(),true);await page.evaluate(()=>{window.failReceiptConfirmation=false;});
+  for(const width of [1280,390,320]){await page.setViewportSize({width,height:844});assert.ok(await options.evaluate(el=>el.scrollWidth<=el.clientWidth+1));await page.screenshot({path:'test-results/store-confirmation-switch-'+width+'.png'});}
+  await options.getByRole('button',{name:'Cerrar ventana',exact:true}).click();await page.reload();
+  await page.getByRole('button',{name:'Ajustes',exact:true}).click();await settings.getByRole('button',{name:'Tiendas',exact:true}).click();
+  await source.getByRole('button',{name:'Configurar catálogo de Mercadona',exact:true}).click();assert.equal(await mercadona.isChecked(),true);
+  await mercadona.uncheck();await page.waitForFunction(()=>window.listSettings.receipt_confirmation?.mercadona==='manual');
+  assert.equal(await page.evaluate(()=>window.listSettings.receipt_confirmation.lidl),'automatic');
+  await options.getByRole('button',{name:'Cerrar ventana',exact:true}).click();
+  await settings.locator('#configure-carrefour').click();const carrefour=settings.locator('#carrefour-dialog').getByRole('switch',{name:'Confirmar compras automáticamente',exact:true});assert.equal(await carrefour.isChecked(),false);
+  await page.evaluate(()=>{window.testPanel._hass={...window.testPanel._hass,user:{is_admin:false}};window.testPanel._renderData();});
+  assert.equal(await carrefour.isDisabled(),true);
   await context.close();
 }
 
@@ -3478,6 +3496,7 @@ async function checkCatalogSources(browser,url,errors){
     await tile.getByRole('button',{name:`Configurar catálogo de ${name}`,exact:true}).click();
     const options=tile.getByRole('dialog',{name:`Catálogo de ${name}`,exact:true});
     assert.equal(await options.getByRole('switch',{name:'Mostrar tienda en el catálogo',exact:true}).isChecked(),false);
+    assert.equal(await options.getByRole('switch',{name:'Confirmar compras automáticamente',exact:true}).isChecked(),false);
     await options.getByRole('button',{name:'Cerrar ventana',exact:true}).click();
     await enabled.check();
     const progress=tile.getByRole('dialog',{name:`Catálogo de ${name}`,exact:true});
@@ -3745,7 +3764,7 @@ async function main() {
     }
     if (pathname === "/") { res.setHeader("content-type", "text/html; charset=utf-8"); res.end(html); return; }
     if (pathname === '/catalog-sources.js') {res.setHeader('content-type','text/javascript; charset=utf-8');res.end(await fs.readFile(path.join(root,'catalog-sources.js')));return;}
-    if (!["/meal-routines.js", "/meal-consumption.js", "/replenishment-editor.js", "/pending-information-refresh.js", "/masymas.png", "/bm.png", "/stock-panel.js", "/product-display.js", "/reference-formats.js", "/zone-map.js", "/vendor/leaflet/leaflet.js", "/vendor/leaflet/leaflet.css", "/vendor/leaflet/images/layers.png", "/vendor/leaflet/images/layers-2x.png", "/lidl-account.js", "/toggle-styles.js", "/shopping-places.js", "/dia-prices-settings.js", "/dia-account.js", "/analytics-panel.js", "/analytics-insights.js", "/alcampo-settings.js", "/carrefour-account.js", "/notification-settings.js", "/recipe-editor.js", "/quantity-client.js", "/panel.js", "/purchases-panel.js", "/stock-client.js", "/dialog-controls.js", "/todo-client.js", "/catalog-panel.js", "/catalog-client.js", "/category-panel.js", "/icon-picker.js", "/list-settings-client.js", "/settings-panel.js", "/readers-client.js", "/readers-panel.js", "/product-matching.js", "/product-names.js", "/logs-panel.js", "/logo.png", "/mercadona.png", "/consum.jpg", "/lasirena.jpg", "/eroski.svg", "/dia.png"].includes(pathname)) { res.writeHead(404).end(); return; }
+    if (!["/receipt-confirmation.js", "/meal-routines.js", "/meal-consumption.js", "/replenishment-editor.js", "/pending-information-refresh.js", "/masymas.png", "/bm.png", "/stock-panel.js", "/product-display.js", "/reference-formats.js", "/zone-map.js", "/vendor/leaflet/leaflet.js", "/vendor/leaflet/leaflet.css", "/vendor/leaflet/images/layers.png", "/vendor/leaflet/images/layers-2x.png", "/lidl-account.js", "/toggle-styles.js", "/shopping-places.js", "/dia-prices-settings.js", "/dia-account.js", "/analytics-panel.js", "/analytics-insights.js", "/alcampo-settings.js", "/carrefour-account.js", "/notification-settings.js", "/recipe-editor.js", "/quantity-client.js", "/panel.js", "/purchases-panel.js", "/stock-client.js", "/dialog-controls.js", "/todo-client.js", "/catalog-panel.js", "/catalog-client.js", "/category-panel.js", "/icon-picker.js", "/list-settings-client.js", "/settings-panel.js", "/readers-client.js", "/readers-panel.js", "/product-matching.js", "/product-names.js", "/logs-panel.js", "/logo.png", "/mercadona.png", "/consum.jpg", "/lasirena.jpg", "/eroski.svg", "/dia.png"].includes(pathname)) { res.writeHead(404).end(); return; }
     res.setHeader("content-type", pathname.endsWith(".css") ? "text/css; charset=utf-8" : pathname.endsWith(".svg") ? "image/svg+xml" : pathname.endsWith(".png") ? "image/png" : pathname.endsWith(".jpg") ? "image/jpeg" : "text/javascript; charset=utf-8");
     res.end(await fs.readFile(path.join(root, pathname.slice(1))));
   });
@@ -5519,7 +5538,8 @@ async function main() {
     await linkedSettings.getByLabel('Habilitar Alcampo',{exact:true}).check();
     await linkedSettings.getByRole('button',{name:'Ajustes de Alcampo',exact:true}).click();
     const alcampoDialog=linkedSettings.getByRole('dialog',{name:'Alcampo',exact:true});
-    assert.equal(await alcampoDialog.getByRole('switch').count(),2);
+    assert.equal(await alcampoDialog.getByRole('switch').count(),3);
+    assert.equal(await alcampoDialog.getByRole('switch',{name:'Confirmar compras automáticamente',exact:true}).isChecked(),false);
     assert.equal(await alcampoDialog.getByRole('spinbutton').count(),1);
     await alcampoDialog.getByRole('button',{name:'Cerrar ventana',exact:true}).click();
     assert.equal(await linkedSettings.getByRole('button',{name:'Código postal de las tiendas',exact:true}).count(),0);

@@ -1,3 +1,4 @@
+import { receiptConfirmationControl } from './receipt-confirmation.js?v=0.89.0';
 import { installDialogCloseButtons } from './dialog-controls.js?v=0.89.0';
 import { installToggleStyles } from './toggle-styles.js?v=0.89.0';
 
@@ -60,6 +61,8 @@ class CatalogSourcesPanel extends HTMLElement {
       const row=this.shadowRoot.querySelector('.row');row.before(grid);grid.append(row,...['mercadona','masymas','bm','consum','lasirena','eroski'].map(store=>document.createElement(`isl-dev-${store}-catalog`)));
     }
     this.shadowRoot.querySelector('style').textContent+='@media(max-width:600px){.row{display:grid;grid-template-columns:56px minmax(0,1fr);gap:12px 16px}.name{min-width:0}.controls{grid-column:2;justify-self:end}}';
+    this._receiptConfirmation=receiptConfirmationControl(this._source??'alcampo',()=>this._data);
+    this.shadowRoot.querySelector('#show-store').closest('label').after(this._receiptConfirmation.element);
     installToggleStyles(this.shadowRoot);installDialogCloseButtons(this.shadowRoot);
     const favorite=document.createElement('button');favorite.type='button';favorite.id='favorite';
     const storeName=this.shadowRoot.querySelector('h4').textContent;
@@ -102,6 +105,7 @@ class CatalogSourcesPanel extends HTMLElement {
     if(!this._built)return;
     for(const child of this.shadowRoot.querySelectorAll('.catalog-grid > :not(.row)')){child.data=this._data;child.active=this._active;}
     const root=this.shadowRoot,s=this._state,total=s.total??0,done=s.processed??0;
+    this._receiptConfirmation?.render(Boolean(this._settingsBusy));
     root.querySelector('#enabled').checked=Boolean(this._pendingEnabled??s.enabled);root.querySelector('#enabled').disabled=this._busy||this._data?.hass?.user?.is_admin!==true;
     root.querySelector('#configure').disabled=this._data?.hass?.user?.is_admin!==true;
     const favorite=root.querySelector('#favorite'),selected=this._data?.settings?.favoriteStore===(this._source??'alcampo');

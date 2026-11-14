@@ -9,6 +9,12 @@ export async function saveMercadonaLocation(session,postalCode) {
   if(generation===session._generation&&revision===session._revision)session._receive(data);
 }
 
+export async function saveReceiptConfirmation(session,store,enabled) {
+  const generation=session._generation,revision=++session._revision;
+  const data=await session.getHass().callWS({type:`${PREFIX}receipt_confirmation`,store,mode:enabled?'automatic':'manual'});
+  if(generation===session._generation&&revision===session._revision)session._receive(data);
+}
+
 export const DEFAULT_APPEARANCE = Object.freeze({ gradient_start: "#ee524f", gradient_end: "#b52a27", completed_gradient_start: "#4faba2", completed_gradient_end: "#26857c", quantity_color:"#267052", recipe_gradient_start:"#66bb6a", recipe_gradient_end:"#2e7d32", stock_gradient_start:"#f59a23", stock_gradient_end:"#c65b0c", columns: 3, mobile_columns: 1 });
 
 export function gradientTextColor(start, end) {

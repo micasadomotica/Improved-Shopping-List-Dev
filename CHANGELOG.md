@@ -1,3 +1,9 @@
+# Pendiente de publicar — Tickets de Mercadona y ajustes por tienda
+
+- Lee tickets electrónicos de Mercadona en catalán y castellano con cantidades e importes verificables. Comprueba el total y reutiliza la vinculación privada entre descripción y producto del catálogo, sin inventar EAN. Los formatos de línea no reconocidos se rechazan antes de importar.
+- Mueve la confirmación automática al diálogo de ajustes de cada cuenta o catálogo, con un interruptor junto a sus opciones. Apagado corresponde a confirmación manual.
+- Conserva el modo guardado de cada tienda y retira el bloque general con desplegables. Un fallo al guardar devuelve el interruptor al estado confirmado.
+
 # 0.89.0 — Cantidades y confirmación de compras
 
 - Añade botones −/+ junto a la cantidad de cada artículo pendiente, en filas y cuadrícula. Ajustan solo el total de la lista y actualizan su precio estimado.
