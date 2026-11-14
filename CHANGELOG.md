@@ -1,4 +1,4 @@
-# Pendiente de publicar — Cantidades por escaneo
+# 0.88.8 — Cantidades por escaneo
 
 - Cada lectura aceptada de un producto pendiente suma una unidad de compra en la misma fila, tanto por código de barras como por NFC. Conserva las cantidades por lista y las guarda aunque el panel esté cerrado.
 - Los nuevos lectores usan 1 segundo de antirrepetición para códigos de barras y 0 para NFC. Se admite 0 para desactivar el filtro; los lectores existentes conservan su configuración hasta editarla.
