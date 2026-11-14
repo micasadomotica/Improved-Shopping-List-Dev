@@ -325,8 +325,17 @@ async def test_reprocess_command_is_registered_and_updates_a_reviewed_receipt(ha
     assert catalog.products[0]['commercial_references'][0]['content_quantity']==500
     assert data['stock']._items==before and len(data['stock'].receipts['history'])==1
     assert data['stock'].receipts['history'][saved['id']]['lines'][0]['unit_price']==3
+    await client.send_json({'id':3,'type':f'{DOMAIN}/receipts/review_saved','receipt_id':saved['id']})
+    token=(await client.receive_json())['result']['token']
+    await client.send_json({'id':4,'type':f'{DOMAIN}/receipts/list_preview','token':token,'entity':'','lines':[{'id':'0','product_id':product['id']}]})
+    review=(await client.receive_json())['result']
+    await client.send_json({'id':5,'type':f'{DOMAIN}/receipts/reprocess','token':token,'list_review':review,
+        'lines':[{'id':'0','product_id':product['id'],'pack_quantity':500,'pack_unit':'g','replenish':False,'quantity':None,'unit':'uds'}]})
+    response=await client.receive_json()
+    assert response['success'] and response['result']['list_reviewed_lines']==['0']
+    assert data['stock']._items==before
     assert await hass.config_entries.async_unload(entry.entry_id)
-    await client.send_json({'id':3,'type':f'{DOMAIN}/receipts/reprocess','token':token,'lines':[]})
+    await client.send_json({'id':6,'type':f'{DOMAIN}/receipts/reprocess','token':token,'lines':[]})
     assert (await client.receive_json())['error']['code']=='not_loaded'
 
 
@@ -1138,3 +1147,96 @@ async def test_reprocess_stock_validation_leaves_history_and_quantities_unchange
     with pytest.raises(CatalogError):
         await env.manager.async_reprocess(draft['token'], 'owner', edits)
     assert env.stock.snapshot == before and env.stock.receipts == receipts
+
+
+@pytest.mark.parametrize('legacy', [False, True])
+async def test_reprocess_new_link_debits_only_new_line_of_same_product(hass, legacy):
+    env = await shopping_env(hass, extra=True)
+    review = await env.manager.async_preview_list(env.draft['token'], 'owner', env.links)
+    saved = await env.manager.async_confirm(env.draft['token'], 'owner', selections(env.draft, env.product, 500), False, review)
+    if legacy:
+        stored = env.stock.receipts['history'][saved['id']]
+        stored.pop('list_reviewed_lines', None)
+        for action in stored['list_actions']: action.pop('line_ids', None)
+    draft = await env.manager.async_review_saved(saved['id'], 'owner')
+    edits = reprocess_selections(draft, {'later': env.product['id']})
+    edits[1].update(replenish=True, quantity=250, unit='g')
+    links = [{key: row[key] for key in ('id', 'product_id')} for row in edits]
+    review = await env.manager.async_preview_list(draft['token'], 'owner', links)
+    assert review['rows'][0]['quantity'] == 1 and review['rows'][0]['before'] == 4
+    assert review['rows'][0]['line_ids'] == ['later']
+    result = await env.manager.async_reprocess(draft['token'], 'owner', edits, review)
+    assert env.stock._items[env.item['id']]['quantity'] == 770
+    assert env.automation.quantities._entries['todo.main']['line']['quantity'] == 3
+    assert [a['line_ids'] for a in result['list_actions']] == [['0'], ['later']]
+    await env.manager.async_retry_list(result['id'], 'owner')
+    assert env.automation.quantities._entries['todo.main']['line']['quantity'] == 3
+    draft = await env.manager.async_review_saved(result['id'], 'owner')
+    review = await env.manager.async_preview_list(draft['token'], 'owner', links)
+    assert review['rows'] == [] and review['covered_lines'] == 2
+    await env.manager.async_reprocess(draft['token'], 'owner', reprocess_selections(draft), review)
+    assert env.stock._items[env.item['id']]['quantity'] == 770
+    assert env.automation.quantities._entries['todo.main']['line']['quantity'] == 3
+
+
+async def test_reprocess_old_stock_only_purchase_can_apply_missing_list_debit(hass):
+    env = await shopping_env(hass)
+    saved = await env.manager.async_confirm(env.draft['token'], 'owner', selections(env.draft, env.product, 500), False)
+    assert env.stock._items[env.item['id']]['quantity'] == 520
+    draft = await env.manager.async_review_saved(saved['id'], 'owner')
+    review = await env.manager.async_preview_list(draft['token'], 'owner', env.links)
+    assert review['rows'][0]['quantity'] == 2
+    await env.manager.async_reprocess(draft['token'], 'owner', reprocess_selections(draft), review)
+    assert env.stock._items[env.item['id']]['quantity'] == 520
+    assert env.automation.quantities._entries['todo.main']['line']['quantity'] == 4
+
+
+@pytest.mark.parametrize('choice', ['excluded', 'no_list', 'absent'])
+async def test_reviewed_old_lines_do_not_reduce_a_later_shopping_trip(hass, choice):
+    env = await shopping_env(hass)
+    if choice == 'absent': env.todo_items['todo.main'] = []
+    review = await env.manager.async_preview_list(env.draft['token'], 'owner', env.links, '' if choice == 'no_list' else None)
+    for row in review['rows']: row['enabled'] = False
+    saved = await env.manager.async_confirm(env.draft['token'], 'owner', selections(env.draft, env.product, 500), False, review)
+    env.todo_items['todo.main'] = [{'uid': 'line', 'summary': env.product['name'], 'status': 'needs_action'}]
+    draft = await env.manager.async_review_saved(saved['id'], 'owner')
+    review = await env.manager.async_preview_list(draft['token'], 'owner', env.links)
+    assert review['rows'] == []
+    assert env.automation.quantities._entries['todo.main']['line']['quantity'] == 6
+
+
+async def test_reprocess_new_link_rejects_stale_list_before_stock_changes(hass):
+    env = await shopping_env(hass, extra=True)
+    saved = await env.manager.async_confirm(env.draft['token'], 'owner', selections(env.draft, env.product, 500), False)
+    draft = await env.manager.async_review_saved(saved['id'], 'owner')
+    edits = reprocess_selections(draft, {'later': env.product['id']})
+    edits[1].update(replenish=True, quantity=250, unit='g')
+    review = await env.manager.async_preview_list(draft['token'], 'owner', [{key: row[key] for key in ('id', 'product_id')} for row in edits])
+    await env.automation.quantities.async_adjust('todo.main', 'line', 1)
+    items, history = deepcopy(env.stock._items), deepcopy(env.stock.receipts)
+    with pytest.raises(CatalogError, match='cantidades'):
+        await env.manager.async_reprocess(draft['token'], 'owner', edits, review)
+    assert env.stock._items == items and env.stock.receipts == history
+
+
+async def test_reprocess_pending_debit_retries_without_second_stock_replenishment(hass, monkeypatch):
+    env = await shopping_env(hass, pending=3, extra=True)
+    review = await env.manager.async_preview_list(env.draft['token'], 'owner', env.links)
+    saved = await env.manager.async_confirm(env.draft['token'], 'owner', selections(env.draft, env.product, 500), False, review)
+    draft = await env.manager.async_review_saved(saved['id'], 'owner')
+    edits = reprocess_selections(draft, {'later': env.product['id']})
+    edits[1].update(replenish=True, quantity=250, unit='g')
+    links = [{key: row[key] for key in ('id', 'product_id')} for row in edits]
+    review = await env.manager.async_preview_list(draft['token'], 'owner', links)
+    original = env.automation.quantities.async_apply_receipt_action
+    monkeypatch.setattr(env.automation.quantities, 'async_apply_receipt_action', AsyncMock(side_effect=OSError('Unavailable')))
+    saved = await env.manager.async_reprocess(draft['token'], 'owner', edits, review)
+    assert saved['list_pending'] and env.stock._items[env.item['id']]['quantity'] == 770
+    draft = await env.manager.async_review_saved(saved['id'], 'owner')
+    with pytest.raises(CatalogError, match='pendiente'):
+        await env.manager.async_preview_list(draft['token'], 'owner', links)
+    monkeypatch.setattr(env.automation.quantities, 'async_apply_receipt_action', original)
+    saved = await env.manager.async_retry_list(saved['id'], 'owner')
+    assert not saved['list_pending'] and env.todo_items['todo.main'][0]['status'] == 'completed'
+    await env.manager.async_retry_list(saved['id'], 'owner')
+    assert env.stock._items[env.item['id']]['quantity'] == 770 and len(env.todo_writes) == 1

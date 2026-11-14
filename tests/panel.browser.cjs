@@ -337,7 +337,7 @@ const hass={
     }
     if(msg.type==='improved_shopping_list_dev/receipts/list_preview'){
       if(window.failListReview)throw new Error('Lista no disponible');
-      return {id:'list-preview',entity:msg.entity??'todo.bring',entities:['todo.bring','todo.local'],rows:window.receiptListRows??[],links:msg.lines};
+      return {id:'list-preview',entity:msg.entity??'todo.bring',entities:['todo.bring','todo.local'],rows:window.receiptListRows??[],links:msg.lines,covered_lines:window.receiptCoveredLines??0};
     }
     if(msg.type==='improved_shopping_list_dev/settings/receipt_confirmation'){
       if(window.failReceiptConfirmation)throw new Error('No se pudo guardar la confirmación');
@@ -1270,6 +1270,7 @@ async function checkReceiptMissingStock(browser,url,errors){
       {...base,id:'0',description:'FORMATO NUEVO',product_id:'new',matched:true,replenished:false},
       {...base,id:'1',description:'FORMATO ANTERIOR',product_id:'old',matched:true,replenished:true,quantity:2,unit:'uds'},
       {...base,id:'2',description:'OTRO FORMATO',product_id:'',matched:false,replenished:false}]};
+    window.receiptListRows=[{product_id:'new',name:'Producto nuevo',uid:'new-list',before:6,quantity:4,unit:'uds',step:1,enabled:true,reason:''}];window.receiptCoveredLines=1;
     el.openPreview({token:'missing-stock',receipt,products,purchases:[],reprocess:true});
   });
   const dialog=purchases.getByRole('dialog',{name:'Reprocesar ticket',exact:true});
@@ -1283,13 +1284,20 @@ async function checkReceiptMissingStock(browser,url,errors){
   const third=dialog.locator('.review-line[data-line-id="2"]');assert.equal(await third.getByRole('button',{name:'Incluir en Stock: Producto nuevo',exact:true}).getAttribute('aria-pressed'),'true');
   await third.getByRole('spinbutton',{name:'Cantidad para OTRO FORMATO'}).fill('3');
   for(const width of [320,390,1280]){await page.setViewportSize({width,height:900});assert.ok(await dialog.evaluate(el=>el.scrollWidth<=el.clientWidth+1));assert.ok(await dialog.locator('.reprocess-stock').evaluateAll(rows=>rows.every(el=>el.scrollWidth<=el.clientWidth+1)));await page.screenshot({path:'test-results/receipt-missing-stock-'+width+'.png',fullPage:true});}
-  await first.getByRole('spinbutton',{name:'Cantidad para FORMATO NUEVO'}).fill('');await dialog.getByRole('button',{name:'Guardar datos',exact:true}).click();await dialog.getByRole('alert').filter({hasText:'Indica cantidades válidas'}).waitFor();
+  await first.getByRole('spinbutton',{name:'Cantidad para FORMATO NUEVO'}).fill('');await dialog.getByRole('button',{name:'Revisar Lista',exact:true}).click();await dialog.getByRole('alert').filter({hasText:'Indica cantidades válidas'}).waitFor();
   assert.equal(await page.evaluate(()=>Boolean(window.lastReceiptReprocess)),false);
   await first.getByRole('spinbutton',{name:'Cantidad para FORMATO NUEVO'}).fill('2');
   const before=await page.evaluate(()=>window.wsRequests.filter(t=>t.endsWith('/list_preview')).length);
+  await dialog.getByRole('button',{name:'Revisar Lista',exact:true}).click();
+  await dialog.getByText('Quedarán 2 uds',{exact:true}).waitFor();
+  assert.match(await dialog.locator('.list-receipt-review').textContent(),/1 línea ya gestionada/);
+  await dialog.getByRole('button',{name:'Anterior',exact:true}).click();await dialog.getByRole('button',{name:'Revisar Lista',exact:true}).click();
+  for(const width of [320,390,1280]){await page.setViewportSize({width,height:900});assert.ok(await dialog.evaluate(el=>el.scrollWidth<=el.clientWidth+1));await page.screenshot({path:'test-results/receipt-reprocess-list-'+width+'.png',fullPage:true});}
+  await dialog.getByRole('spinbutton',{name:'Cantidad comprada de Producto nuevo'}).fill('3');await dialog.getByText('Quedarán 3 uds',{exact:true}).waitFor();
   await dialog.getByRole('button',{name:'Guardar datos',exact:true}).click();await dialog.waitFor({state:'hidden'});
   assert.deepEqual(await page.evaluate(()=>window.lastReceiptReprocess.lines.map(l=>[l.replenish,l.quantity,l.unit])),[[true,2,'uds'],[false,null,'uds'],[true,3,'uds']]);
-  assert.equal(await page.evaluate(()=>window.wsRequests.filter(t=>t.endsWith('/list_preview')).length),before);
+  assert.equal(await page.evaluate(()=>window.wsRequests.filter(t=>t.endsWith('/list_preview')).length),before+2);
+  assert.equal(await page.evaluate(()=>window.lastReceiptReprocess.list_review.rows[0].quantity),3);
   await context.close();
 }
 
@@ -1997,11 +2005,11 @@ async function checkReceiptPackageFormats(browser,url,errors){
   await purchases.locator('#history .ticket-open').first().click();
   await purchases.locator('#purchase-detail').getByRole('button',{name:'Reprocesar datos',exact:true}).click();
   const reprocess=purchases.getByRole('dialog',{name:'Reprocesar ticket',exact:true});
-  await reprocess.getByRole('button',{name:'Guardar datos',exact:true}).waitFor();
+  await reprocess.getByRole('button',{name:'Revisar Lista',exact:true}).waitFor();
   assert.equal(await reprocess.locator('#review-steps').isVisible(),false);
   assert.equal(await reprocess.locator('#stock-only').isVisible(),false);
   await reprocess.locator('.price-line').first().getByLabel('Contenido por envase',{exact:true}).fill('450');
-  await reprocess.getByRole('button',{name:'Guardar datos',exact:true}).click();await reprocess.waitFor({state:'hidden'});
+  await reprocess.getByRole('button',{name:'Revisar Lista',exact:true}).click();await reprocess.getByRole('button',{name:'Guardar datos',exact:true}).click();await reprocess.waitFor({state:'hidden'});
   assert.equal(await page.evaluate(()=>window.lastReceiptReprocess.lines[0].pack_quantity),450);
   assert.equal(await page.evaluate(()=>window.receiptHistory.length),1);
   assert.deepEqual(await page.evaluate(()=>window.lastReceiptConfirmation),saved);
@@ -2115,7 +2123,7 @@ async function checkReceiptPackageFormats(browser,url,errors){
   await purchases.evaluate(el=>el.openPreview({token:'manual-kg-reprocess',receipt:structuredClone(window.receiptDraft),...window.receiptOptionsOverride,reprocess:true}));
   const reprocessRate=purchases.getByRole('dialog',{name:'Reprocesar ticket',exact:true});
   await reprocessRate.getByRole('spinbutton',{name:'Precio por kg de Seitán',exact:true}).fill('7');
-  await reprocessRate.getByRole('button',{name:'Guardar datos',exact:true}).click();await reprocessRate.waitFor({state:'hidden'});
+  await reprocessRate.getByRole('button',{name:'Revisar Lista',exact:true}).click();await reprocessRate.getByRole('button',{name:'Guardar datos',exact:true}).click();await reprocessRate.waitFor({state:'hidden'});
   assert.equal(await page.evaluate(()=>window.lastReceiptReprocess.lines[0].manual_measure_price),7);
   await page.evaluate(()=>{window.receiptOptionsOverride=null;});
   // Reopened receipt proposals arrive with saved links, avoiding quantity calls.
@@ -2292,7 +2300,7 @@ async function checkLidlReprocessLines(browser,url,errors){
   await association.getByRole('button',{name:'Vincular',exact:true}).click();
   assert.match(await dialog.locator('.review-line[data-line-id="1"]').textContent(),/3,95.*kg/);
   assert.equal(await dialog.locator('.review-line[data-line-id="1"]').getByLabel('Contenido por envase',{exact:true}).count(),0);
-  await dialog.getByRole('button',{name:'Guardar datos',exact:true}).click();await dialog.waitFor({state:'hidden'});
+  await dialog.getByRole('button',{name:'Revisar Lista',exact:true}).click();await dialog.getByRole('button',{name:'Guardar datos',exact:true}).click();await dialog.waitFor({state:'hidden'});
   assert.equal(await page.evaluate(()=>window.lastReceiptReprocess.lines[1].product_id),'tomato');
   assert.equal(await page.evaluate(()=>window.lastReceiptReprocess.lines[1].pack_quantity),null);
   await context.close();

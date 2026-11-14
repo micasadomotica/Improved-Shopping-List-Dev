@@ -356,7 +356,7 @@ class ImprovedShoppingPurchases extends HTMLElement {
     this._errorMessage('');return true;
   }
   _goToStep(step){
-    if(this._draft?.reprocess)return;
+    if(this._draft?.reprocess){if(step===2){this._listReview=null;this._step=2;this._renderStep();}return;}
     if(this._busy||!this._draft||!Number.isInteger(step)||step<0||step>=this._step)return;
     this._listReview=null;this._confirmationUpdatePrices=undefined;this._step=step;this._errorMessage('');this._renderStep();
   }
@@ -379,14 +379,14 @@ class ImprovedShoppingPurchases extends HTMLElement {
     ][step];
     if(step===2&&this._draft.receipt.document_type==='invoice'&&this._pricesEnabled)root.querySelector('#step-help').textContent+=' El precio sugerido es el PVP unitario antes de descuentos y no incluye el envío.';
     if(step===2)root.querySelector('#step-help').textContent+=' El contenido corresponde a un envase de ese EAN; si es un pack, indica el contenido total del pack.';
-    if(reprocess)root.querySelector('#step-help').textContent='Revisa los formatos y las cantidades pendientes de añadir a Stock. Puedes desmarcar las que no quieras reponer. Las líneas ya repuestas se conservan y la Lista no se vuelve a descontar. También se guardan las alternativas y los precios si están activados.';
+    if(reprocess)root.querySelector('#step-help').textContent='Revisa los formatos y las cantidades pendientes de añadir a Stock. Puedes desmarcar las que no quieras reponer. Las líneas ya repuestas se conservan. En el siguiente paso revisarás el descuento de las líneas todavía no aplicadas a la Lista. También se guardan las alternativas y los precios si están activados.';
     root.querySelector('#step-help').hidden=step===3;
     root.querySelector('#review-summary').hidden=step===3;
-    root.querySelector('#previous-step').hidden=step===0||reprocess;root.querySelector('#links-only').hidden=step!==0||reprocess;
+    root.querySelector('#previous-step').hidden=step===0||(reprocess&&step!==3);root.querySelector('#links-only').hidden=step!==0||reprocess;
     root.querySelector('#previous-step').textContent=step===1?'Volver a vinculación':'Anterior';
     root.querySelector('#stock-only').hidden=step!==1;
     root.querySelector('#prices-only').hidden=step!==2||!this._pricesEnabled||reprocess;
-    root.querySelector('#confirm-ticket').textContent=reprocess?'Guardar datos':step===3?'Confirmar compra':'Continuar';
+    root.querySelector('#confirm-ticket').textContent=reprocess?(step===3?'Guardar datos':'Revisar Lista'):step===3?'Confirmar compra':'Continuar';
     root.querySelector('#confirm-ticket').classList.toggle('continue',step!==3);
     for(const group of root.querySelectorAll('#review-lines .review-group'))this._reviewGroups[group.dataset.group]=group.open;
     const container=root.querySelector('#review-lines');container.replaceChildren();container.hidden=step===3;
@@ -499,6 +499,7 @@ class ImprovedShoppingPurchases extends HTMLElement {
   _renderListReview(container){
     const review=this._listReview;if(!review)return;
     const section=node('section','list-receipt-review');section.append(node('h3','','Actualizar Lista'));
+    if(this._draft.reprocess)section.append(node('p','note','Solo se descuentan las líneas pendientes de aplicar. Las unidades ya descontadas se conservan.'+(review.covered_lines?' '+review.covered_lines+(review.covered_lines===1?' línea ya gestionada.':' líneas ya gestionadas.'):'')));
     const label=node('label','','Lista de la compra'),select=node('select');select.setAttribute('aria-label','Lista de la compra del ticket');
     select.append(new Option('No actualizar la Lista',''),...review.entities.map(entity=>new Option(this._hass.states[entity]?.attributes?.friendly_name??entity,entity)));select.value=review.entity;label.append(select);section.append(label);
     select.addEventListener('change',()=>void this._prepareListReview(select.value));
@@ -667,13 +668,13 @@ class ImprovedShoppingPurchases extends HTMLElement {
   }
   async _confirm(updatePrices=this._confirmationUpdatePrices??Boolean(this._pricesEnabled)){
     if(this._busy||!this._draft||!this._validateLinks()||!this._validateStock())return;
-    if(!this._draft.reprocess&&!this._listReview){this._confirmationUpdatePrices=updatePrices;if(!updatePrices)for(const edit of this._edits)edit.save_price=false;await this._prepareListReview();return;}
+    if(!this._listReview){this._confirmationUpdatePrices=updatePrices;if(!updatePrices)for(const edit of this._edits)edit.save_price=false;await this._prepareListReview();return;}
     this._setBusy(true);
     try{
       const token=this._draft.token;
       if(this._draft?.token!==token)return;
       if(this._draft.reprocess){
-        await this._hass.callWS({type:'improved_shopping_list_dev/receipts/reprocess',token,lines:this._edits.map(edit=>({id:edit.id,product_id:edit.product_id,replenish:Boolean(edit.product_id&&edit.replenish&&!edit.line.replenished),quantity:edit.replenish?edit.quantity:null,unit:edit.unit,pack_quantity:validReferenceContent(edit.packageFormat)?edit.packageFormat.content_quantity:null,pack_unit:validReferenceFormat(edit.packageFormat)?edit.packageFormat.content_unit:'',...this._manualPricePayload(edit)}))});
+        const saved=await this._hass.callWS({type:'improved_shopping_list_dev/receipts/reprocess',token,list_review:this._listReview,lines:this._edits.map(edit=>({id:edit.id,product_id:edit.product_id,replenish:Boolean(edit.product_id&&edit.replenish&&!edit.line.replenished),quantity:edit.replenish?edit.quantity:null,unit:edit.unit,pack_quantity:validReferenceContent(edit.packageFormat)?edit.packageFormat.content_quantity:null,pack_unit:validReferenceFormat(edit.packageFormat)?edit.packageFormat.content_unit:'',...this._manualPricePayload(edit)}))});this._notice=saved?.list_pending?'Stock guardado. Queda pendiente actualizar la Lista: abre el ticket para revisarlo.':'Datos del ticket guardados.';
       }else {const saved=await this._hass.callWS({type:'improved_shopping_list_dev/receipts/confirm',token:this._draft.token,list_review:this._listReview,update_prices:Boolean(updatePrices&&this._pricesEnabled),
         lines:this._edits.map(edit=>({id:edit.id,product_id:edit.product_id,replenish:Boolean(edit.product_id&&edit.replenish),quantity:edit.replenish?edit.quantity:null,unit:edit.unit,purchase_id:'',save_price:Boolean(edit.product_id&&edit.save_price&&updatePrices&&this._pricesEnabled),quantity_edited:Boolean(edit.quantityEdited),pack_quantity:validReferenceContent(edit.packageFormat)?edit.packageFormat.content_quantity:null,pack_unit:validReferenceFormat(edit.packageFormat)?edit.packageFormat.content_unit:'',...(updatePrices&&this._pricesEnabled?this._manualPricePayload(edit):{})}))});this._notice=saved.list_pending?'Stock guardado. Queda pendiente actualizar la Lista: abre el ticket para revisarlo.':'Compra confirmada.';}
       this._draft=null;this.shadowRoot.querySelector('dialog').close();this.dispatchEvent(new CustomEvent('receipt-imported'));await this._session.refresh();

@@ -372,13 +372,12 @@ class ReceiptManager(ReceiptShopping):
             receipt.pop(key,None)
         return await self._prepare_preview(receipt,owner)
 
-    async def async_reprocess(self, token, owner, selections):
+    async def _async_reprocess_purchase(self, token, owner, selections):
         draft=self._draft(token,owner)
         original=draft.get("reprocess_original")
         if original is None:
             raise CatalogError("Abre un ticket ya revisado para reprocesar sus datos.")
-        await self.automation.async_check()
-        async with self.automation._lock, self.stock._lock:
+        async with self.stock._lock:
             data=deepcopy(self.stock.receipts)
             if data["history"].get(original["id"])!=original:
                 raise CatalogError("La compra ha cambiado. Vuelve a abrir el ticket.","conflict")
@@ -438,6 +437,7 @@ class ReceiptManager(ReceiptShopping):
                             reference_line["ticket_measure_price"].setdefault("source","ticket")
                     references.append((product["id"],receipt["store"],reference_line,quantity is not None))
             items = self._reprocess_replenishments(draft, receipt, selections, data)
+            self._save_list_review(draft, receipt, original)
             await self.stock.catalog.async_bind_receipt_eans([(line["product_id"],line.get("ean","")) for line in receipt["lines"] if line.get("product_id")],references=references)
             data["history"][receipt["id"]]=receipt
             await self.stock._persist(items,receipts=data)
@@ -959,8 +959,7 @@ class ReceiptManager(ReceiptShopping):
             if original:
                 changed = {line["id"]: line for line in receipt["lines"]}
                 receipt["lines"] = [changed.get(line["id"], deepcopy(line)) for line in original["lines"]]
-            receipt["list_actions"] = deepcopy((original or {}).get("list_actions", [])) + draft.get("list_actions", [])
-            receipt["list_pending"] = any(action["state"] not in ("applied", "skipped") for action in receipt["list_actions"])
+            self._save_list_review(draft, receipt, original or {})
             receipt["pending_review"] = any(line.get("confirmed") is False for line in receipt["lines"])
             receipt.update(imported_at=time.time(),prices_enabled=update_prices or (original or {}).get("prices_enabled", False))
             data["history"][receipt["id"]] = receipt

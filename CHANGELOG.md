@@ -1,3 +1,9 @@
+# Pendiente de publicar — Lista al reprocesar tickets
+
+- Añade revisión de la Lista al reprocesar un ticket: descuenta las líneas recién vinculadas o pendientes de aplicar y conserva las ya gestionadas.
+- Registra por línea los descuentos y las exclusiones; una nueva línea del mismo producto no repite los descuentos anteriores. Las compras antiguas no descuentan artículos añadidos para otra compra posterior.
+- Conserva la reposición de Stock y el registro de acciones pendientes junto al ticket. Si falla la Lista, permite reintentar sin duplicar Stock ni descuentos.
+
 # 0.89.2 — Reposición pendiente de tickets
 
 - La revisión manual selecciona los productos vinculados para añadirlos a Stock, también cuando todavía no tienen existencias registradas. Permite revisar las cantidades o desmarcarlos.
