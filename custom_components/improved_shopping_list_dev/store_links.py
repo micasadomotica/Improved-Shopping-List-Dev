@@ -8,6 +8,8 @@ HOSTS = {"masymas":{"tienda.masymas.com"}, "bm":{"www.online.bmsupermercados.es"
          "alcampo": {"www.compraonline.alcampo.es", "compraonline.alcampo.es"},
          "consum": {"tienda.consum.es"}, "lasirena": {"www.lasirena.es"}, "eroski":{"supermercado.eroski.es"}, "dia":{"www.dia.es","dia.es"}}
 
+MERCADONA_ID = r"[0-9]{1,12}(?:\.[0-9]{1,12})?"
+
 
 def normalize_link(store, value):
     if store not in STORES or not isinstance(value, (str, dict)):
@@ -33,7 +35,7 @@ def normalize_link(store, value):
             or any(segment in (".", "..") for segment in parts.path.split("/"))
             or re.search(r"%(?:2f|5c|2e)", parts.path, re.I)):
             raise ValueError(f"Utiliza un enlace HTTPS de {STORES[store]}.")
-        patterns = {"masymas":r"/(?:es/)?p/[^/]+/([0-9]{1,12})/?", "bm":r"/(?:es/)?p/[^/]+/([0-9]{1,12})/?", "elcorteingles":r"/supermercado/(B[0-9]{1,20})-[^/]+/?", "lidl":r"/(?:[^/]+/)*p([0-9]{1,12})/?", "mercadona": r"/product/([0-9]{1,12})(?:/[^/]*)?/?",
+        patterns = {"masymas":r"/(?:es/)?p/[^/]+/([0-9]{1,12})/?", "bm":r"/(?:es/)?p/[^/]+/([0-9]{1,12})/?", "elcorteingles":r"/supermercado/(B[0-9]{1,20})-[^/]+/?", "lidl":r"/(?:[^/]+/)*p([0-9]{1,12})/?", "mercadona": rf"/product/({MERCADONA_ID})(?:/[^/]*)?/?",
             "alcampo": r"/products/[^/]+/([0-9]{1,12})/?",
             "carrefour": r"/supermercado/(?:[^/]+/)?(R-[A-Za-z0-9-]{1,80})/p/?",
             "consum": r"/(?:es/)?p/[^/]+/([0-9]{1,12})/?",
@@ -52,7 +54,7 @@ def normalize_link(store, value):
         if store in ("eroski","elcorteingles"):
             raise ValueError(f"{STORES[store]} necesita el enlace completo de la ficha del producto; la ID sola no es suficiente.")
         identifier = value
-    pattern = r"B[0-9]{1,20}" if store == "elcorteingles" else r"R-[A-Za-z0-9-]{1,80}" if store == "carrefour" else r"[0-9]{1,12}"
+    pattern = r"B[0-9]{1,20}" if store == "elcorteingles" else r"R-[A-Za-z0-9-]{1,80}" if store == "carrefour" else MERCADONA_ID if store == "mercadona" else r"[0-9]{1,12}"
     if not re.fullmatch(pattern, identifier):
         raise ValueError(f"La ID de {STORES[store]} no es válida.")
     defaults = {"masymas":f"https://tienda.masymas.com/es/p/producto/{identifier}", "bm":f"https://www.online.bmsupermercados.es/es/p/producto/{identifier}", "elcorteingles":url, "lidl":"", "mercadona": f"https://tienda.mercadona.es/product/{identifier}",

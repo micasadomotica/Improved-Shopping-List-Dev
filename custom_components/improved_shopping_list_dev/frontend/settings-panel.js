@@ -1,15 +1,15 @@
-import "./shopping-places.js?v=0.88.6";
-import "./dia-prices-settings.js?v=0.88.6";
-import "./alcampo-settings.js?v=0.88.6";
-import "./catalog-sources.js?v=0.88.6";
-import "./carrefour-account.js?v=0.88.6";
-import "./lidl-account.js?v=0.88.6";
-import "./logs-panel.js?v=0.88.6";
-import "./notification-settings.js?v=0.88.6";
-import { installDialogCloseButtons } from "./dialog-controls.js?v=0.88.6";
-import { installToggleStyles } from "./toggle-styles.js?v=0.88.6";
-import { todoEntities, isAvailable } from "./todo-client.js?v=0.88.6";
-import { DEFAULT_APPEARANCE, gradientTextColor, saveMercadonaLocation } from "./list-settings-client.js?v=0.88.6";
+import "./shopping-places.js?v=0.88.7";
+import "./dia-prices-settings.js?v=0.88.7";
+import "./alcampo-settings.js?v=0.88.7";
+import "./catalog-sources.js?v=0.88.7";
+import "./carrefour-account.js?v=0.88.7";
+import "./lidl-account.js?v=0.88.7";
+import "./logs-panel.js?v=0.88.7";
+import "./notification-settings.js?v=0.88.7";
+import { installDialogCloseButtons } from "./dialog-controls.js?v=0.88.7";
+import { installToggleStyles } from "./toggle-styles.js?v=0.88.7";
+import { todoEntities, isAvailable } from "./todo-client.js?v=0.88.7";
+import { DEFAULT_APPEARANCE, gradientTextColor, saveMercadonaLocation } from "./list-settings-client.js?v=0.88.7";
 
 const MERCADONA_LOGO_URL = new URL("mercadona.png", import.meta.url).href;
 

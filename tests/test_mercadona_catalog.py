@@ -22,6 +22,41 @@ WEB='https://tienda.mercadona.es/product/69938'
 API='https://tienda.mercadona.es/api/products/69938/?lang=es&wh=mad1'
 
 
+@pytest.mark.parametrize(('identifier','ean','name','quantity','price'),[
+    ('83202.1','8480000832023','Barra de pan',.25,.50),
+    ('83203.1','8480000832030','3 Barras de pan',.75,1.19),
+])
+async def test_dotted_product_ids_keep_exact_identity_and_save(hass,aioclient_mock,monkeypatch,identifier,ean,name,quantity,price):
+    url=f'https://tienda.mercadona.es/product/{identifier}/pan'
+    data=payload();data.update(id=identifier,ean=ean,display_name=name)
+    data['price_instructions'].update(unit_size=quantity,unit_price=str(price))
+    aioclient_mock.get(f'https://tienda.mercadona.es/api/products/{identifier}/?lang=es&wh=mad1',json=data)
+    assert normalize_link('mercadona',identifier)['id']==identifier
+    lookup=OptionLookup(hass);monkeypatch.setattr(lookup,'_before_request',AsyncMock())
+    try:
+        result=await lookup.retrieve(url)
+        assert result['reference_id']==identifier and result['ean']==ean
+        assert result['price']==price and result['content_quantity']==quantity and result['content_unit']=='kg'
+        catalog=Catalog(hass);await catalog.async_load()
+        saved=await catalog.async_save_product({'name':name,'commercial_references':[{
+            'store':'mercadona','reference_id':identifier,'url':url,'ean':ean,'name':name,
+            'content_quantity':quantity,'content_unit':'kg','content_confirmed':True,
+            'last_price':{'price':price,'currency':'EUR','checked_at':result['checked_at']}}]})
+        restored=Catalog(hass);await restored.async_load()
+        ref=next(p for p in restored.products if p['id']==saved['id'])['commercial_references'][0]
+        assert ref['reference_id']==identifier and ref['ean']==ean and ref['last_price']['price']==price
+        mismatched={**data,'id':identifier.split('.')[0]}
+        with pytest.raises(PriceError,match='no corresponde'):
+            product_data(mismatched,normalize_link('mercadona',url))
+    finally:lookup.close()
+
+
+@pytest.mark.parametrize('identifier',['83202.','83202..1','83202.1.2','83202.a','83202%2e1','../83202.1'])
+def test_dotted_product_ids_reject_malformed_values(identifier):
+    with pytest.raises(ValueError):normalize_link('mercadona',identifier)
+    with pytest.raises(ValueError):normalize_link('mercadona',f'https://tienda.mercadona.es/product/{identifier}')
+
+
 async def test_manual_lookup_cache_is_scoped_to_the_configured_warehouse(hass,aioclient_mock,monkeypatch):
     location={'warehouse':'test-a'}
     hass.data[DOMAIN]={'settings':SimpleNamespace(snapshot={'stores':{'mercadona':location}})}

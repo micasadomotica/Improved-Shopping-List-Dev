@@ -1,6 +1,16 @@
 /** Catalog data lives in Home Assistant storage, shared by every panel session. */
 const PREFIX = "improved_shopping_list_dev/catalog/";
 
+async function catalogRequest(hass, message, timeoutMessage) {
+  let timer;
+  try {
+    return await Promise.race([
+      hass.callWS(message),
+      new Promise((_, reject) => { timer = setTimeout(() => reject(new Error(timeoutMessage)), 20000); }),
+    ]);
+  } finally { clearTimeout(timer); }
+}
+
 export class CatalogSession {
   constructor(getHass, onChange) {
     this.getHass = getHass;
@@ -62,7 +72,7 @@ export class CatalogSession {
     const generation = this._generation;
     const revision = ++this._revision;
     try {
-      const data = await this.getHass().callWS({ type: `${PREFIX}get` });
+      const data = await catalogRequest(this.getHass(), { type: `${PREFIX}get` }, "Home Assistant no ha respondido al cargar el catálogo. Comprueba la conexión y vuelve a abrirlo.");
       if (generation !== this._generation || revision !== this._revision) return;
       this.products = data.products ?? [];
       this.recipes = data.recipes ?? [];
@@ -83,7 +93,8 @@ export class CatalogSession {
 
   async save(product, replenishment) {
     const generation = this._generation;
-    const result = await this.getHass().callWS({ type: `${PREFIX}save`, product, ...(replenishment ? {replenishment} : {}) });
+    const result = await catalogRequest(this.getHass(), { type: `${PREFIX}save`, product, ...(replenishment ? {replenishment} : {}) },
+      "No se ha podido confirmar el guardado. Puede haberse guardado en Home Assistant. Comprueba la conexión y cierra y vuelve a abrir la ficha antes de intentarlo de nuevo.");
     if (generation === this._generation) await this.refresh();
     return result.product;
   }

@@ -2676,6 +2676,50 @@ async function checkPurchaseQuantities(browser,url,errors){
     await quantityContext.close();
 }
 
+async function checkRemoveOnlyEAN(browser,url,errors){
+  for(const lostResponse of [false,true]){
+  const context=await browser.newContext();
+  await context.addInitScript(()=>{
+    if(!localStorage.getItem('catalog-fixture'))localStorage.setItem('catalog-fixture',JSON.stringify([{id:'bread',revision:1,name:'Pan',category:'',tags:[],nfc_tags:[],barcode:'4006381333931',barcodes:[],currency:'EUR',image_url:'',icon:'',store_links:{},commercial_references:[{id:'bread-ean',store:'',ean:'4006381333931',name:'Pan',reference_id:'',url:'',content_quantity:null,content_unit:'',content_confirmed:false}]}]));
+    localStorage.setItem('reader-fixture',JSON.stringify({readers:[{id:'reader',name:'Lector de prueba',kind:'barcode',enabled:true,default_action:'add_list'}],pending:[]}));
+  });
+  const page=await context.newPage();page.on('pageerror',error=>{errors.push(error.message);console.error(error.message);});await page.goto(url);
+  await page.getByRole('button',{name:'Catálogo',exact:true}).click();const catalog=page.locator('isl-dev-catalog');
+  await editCatalogProduct(catalog,'Editar Pan');const form=catalog.getByRole('dialog',{name:'Editar producto',exact:true});
+  await form.getByRole('button',{name:'Alternativas',exact:true}).click();
+  const option=form.locator('.product-option');await openStoreOption(option);
+  page.once('dialog',dialog=>dialog.accept());await option.getByRole('button',{name:'Desvincular referencia',exact:true}).click();
+  assert.equal(await form.locator('.product-option').count(),0);
+  if(lostResponse){
+    await page.clock.install();
+    await page.evaluate(()=>{
+      const hass=window.testPanel._hass,call=hass.callWS.bind(hass);
+      hass.callWS=async message=>{const result=await call(message);if(message.type.endsWith('/catalog/save'))return new Promise(resolve=>{window.finishLostSave=()=>resolve(result);});return result;};
+      window.restoreCatalogConnection=()=>{hass.callWS=call;};
+    });
+  }
+  await form.getByRole('button',{name:'Guardar producto',exact:true}).click();
+  if(lostResponse){
+    await page.waitForFunction(()=>Boolean(window.finishLostSave));
+    await page.clock.fastForward(20001);
+    await form.locator('#product-error').filter({hasText:'Puede haberse guardado'}).waitFor();
+    assert.equal(await form.getByRole('button',{name:'Guardar producto',exact:true}).isEnabled(),true);
+    await page.evaluate(()=>window.restoreCatalogConnection());
+    await form.getByRole('button',{name:'Cerrar ventana',exact:true}).click();
+  }
+  await form.waitFor({state:'hidden',timeout:5000});
+  assert.equal(await page.evaluate(()=>window.catalogProducts[0].barcode),'');
+  assert.deepEqual(await page.evaluate(()=>window.catalogProducts[0].barcodes),[]);
+  await editCatalogProduct(catalog,'Editar Pan');await form.getByRole('button',{name:'Alternativas',exact:true}).click();
+  assert.equal(await form.locator('.product-option').count(),0);
+  if(lostResponse){await page.evaluate(()=>window.finishLostSave());assert.equal(await form.isVisible(),true);}
+  await captureProductCode(page,form,'barcode','3017620422003');
+  await form.getByRole('button',{name:'Guardar producto',exact:true}).click();await form.waitFor({state:'hidden'});
+  assert.equal(await page.evaluate(()=>window.catalogProducts[0].barcode),'3017620422003');
+  await context.close();
+  }
+}
+
 async function checkRemovedTicketAlternative(browser,url,errors){
   const context=await browser.newContext({viewport:{width:390,height:844}});
   await context.addInitScript(()=>localStorage.setItem('catalog-fixture',JSON.stringify([{id:'ham',revision:1,name:'Jamón',category:'',tags:[],nfc_tags:[],barcode:'',currency:'EUR',image_url:'',icon:'',barcodes:['8410422111086'],store_links:{},commercial_references:['lidl','carrefour'].map(store=>({id:store,store,ean:'8410422111086',name:'Jamón de teruel',reference_id:'ham-'+store,url:'',content_quantity:100,content_unit:'g',content_confirmed:true}))}])));
@@ -2875,7 +2919,14 @@ async function checkPreferredAlternatives(browser,url,errors){
   const form=catalog.getByRole('dialog',{name:'Editar producto',exact:true});
   const open=async()=>{await catalog.getByRole('button',{name:'Editar Aguacate',exact:true}).click();await form.getByRole('button',{name:'Alternativas',exact:true}).click();};
   const save=async()=>{await form.getByRole('button',{name:'Guardar producto',exact:true}).click();await form.waitFor({state:'hidden'});};
-  await open();await form.getByLabel('Alternativa preferida',{exact:true}).selectOption('2');await save();
+  await open();
+  const preferred=form.getByLabel('Alternativa preferida',{exact:true});
+  const labels=await preferred.locator('option').allTextContents();
+  assert.equal(labels[0],'Automática');
+  assert.match(labels[1],/Lidl · Malla · 2,49.*\/ envase/);
+  assert.match(labels[2],/Mercadona · Pieza · ≈ 1,42.*\/ ud\./);
+  assert.match(labels[3],/Mercadona · Bandeja · ≈ 3,45.*\/ envase/);
+  await preferred.selectOption('2');await save();
   assert.match(await badge.textContent(),/≈.*3,45.*envase/);
   await page.reload();await page.getByRole('button',{name:'Catálogo',exact:true}).click();await open();
   assert.equal(await form.getByLabel('Alternativa preferida',{exact:true}).inputValue(),'2');
@@ -2885,6 +2936,13 @@ async function checkPreferredAlternatives(browser,url,errors){
   assert.match(await badge.textContent(),/2,49.*envase/);
   await open();await form.getByLabel('Alternativa preferida',{exact:true}).selectOption('2');
   const tray=form.locator('.product-option[data-store="mercadona"]').nth(1);await openStoreOption(tray);
+  const trayPrice=tray.getByRole('spinbutton',{name:'Precio por envase',exact:true});
+  await trayPrice.fill('3.60');
+  assert.match(await preferred.locator('option[value="2"]').textContent(),/Bandeja · 3,60.*\/ envase/);
+  assert.equal(await preferred.inputValue(),'2');
+  await trayPrice.fill('');
+  assert.match(await preferred.locator('option[value="2"]').textContent(),/Bandeja · Sin precio$/);
+  await trayPrice.fill('3.45');
   await page.screenshot({path:'test-results/preferred-alternative-mobile.png',fullPage:true});
   assert.ok(await form.evaluate(el=>el.scrollWidth<=el.clientWidth+1));
   page.once('dialog',dialog=>dialog.accept());await tray.getByRole('button',{name:'Desvincular referencia',exact:true}).click();
@@ -3591,6 +3649,7 @@ async function main() {
   let browser;
   try {
     browser = await chromium.launch({ headless: true, channel: process.env.PLAYWRIGHT_CHANNEL || undefined });
+    if(process.argv.includes('--remove-ean-only')){const errors=[];await checkRemoveOnlyEAN(browser,`http://127.0.0.1:${server.address().port}`,errors);assert.deepEqual(errors,[]);console.log('Removing the only EAN passed.');return;}
     if(process.argv.includes('--preferences-only')){const errors=[];await checkPreferredAlternatives(browser,`http://127.0.0.1:${server.address().port}`,errors);assert.deepEqual(errors,[]);console.log('Preferred alternatives and catalog favorites passed.');return;}
     if(process.argv.includes('--mercadona-location-only')){const errors=[];await checkMercadonaLocation(browser,`http://127.0.0.1:${server.address().port}`,errors);assert.deepEqual(errors,[]);console.log('Mercadona location browser checks passed.');return;}
     if(process.argv.includes('--mercadona-local-only')){const errors=[];await checkMercadonaLocalReferences(browser,`http://127.0.0.1:${server.address().port}`,errors);assert.deepEqual(errors,[]);console.log('Mercadona local references browser checks passed.');return;}
@@ -6051,6 +6110,7 @@ async function main() {
     await checkSavedOptionURL(browser,url,errors);
     await checkMercadonaLocalReferences(browser,url,errors);
     await checkMercadonaLocation(browser,url,errors);
+    await checkRemoveOnlyEAN(browser,url,errors);
     await checkPreferredAlternatives(browser,url,errors);
     await checkLidlMetadata(browser,url,errors);
     await checkLidlReprocessLines(browser,url,errors);

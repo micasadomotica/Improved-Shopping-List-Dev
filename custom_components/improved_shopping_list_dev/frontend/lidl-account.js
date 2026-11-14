@@ -1,4 +1,4 @@
-import { CarrefourAccountPanel } from './carrefour-account.js?v=0.88.6';
+import { CarrefourAccountPanel } from './carrefour-account.js?v=0.88.7';
 
 // Only the matching native callback is submitted; a selected HAR stays in this browser.
 export function callbackFromHar(har, state) {

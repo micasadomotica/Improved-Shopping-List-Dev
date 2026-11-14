@@ -1,3 +1,9 @@
+# 0.88.7 — Fichas de pan, guardado y precios de alternativas
+
+- Admite las referencias de Mercadona con punto, como `83202.1` y `83203.1`, conservando la identidad completa de la ficha y su EAN independiente.
+- Limita la espera al guardar o refrescar el catálogo. Si no llega la confirmación, el editor vuelve a responder y avisa de que el cambio puede haberse guardado; no lo reenvía automáticamente.
+- Muestra el precio por unidad, envase o kilo en el desplegable de alternativa preferida. Conserva el indicador aproximado, muestra «Sin precio» cuando falta y actualiza el texto al editar la alternativa. La selección Automática sigue disponible.
+
 # 0.88.6 — Tienda favorita y alternativa preferida
 
 - Añade corazones a los catálogos, incluido Mercadona. La tienda favorita para precios se guarda independientemente de las cuentas y catálogos activados.

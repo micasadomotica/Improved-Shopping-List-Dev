@@ -1,14 +1,14 @@
-import { ReplenishmentEditor, replenishmentMarkup } from './replenishment-editor.js?v=0.88.6';
+import { ReplenishmentEditor, replenishmentMarkup } from './replenishment-editor.js?v=0.88.7';
 const priceValue=value=>value==null||value===''?'':Number(Number(value).toFixed(2));
-import { purchaseQuantity, quantityLabel } from "./quantity-client.js?v=0.88.6";
-import { referenceContentControls, barcodeIdentity, validReferenceContent, validReferenceFormat, weightFormat, pendingProductInformation } from "./reference-formats.js?v=0.88.6";
-import { installDialogCloseButtons } from "./dialog-controls.js?v=0.88.6";
-import { CatalogSession } from "./catalog-client.js?v=0.88.6";
-import { matchCatalogProducts } from "./product-matching.js?v=0.88.6";
-import "./category-panel.js?v=0.88.6";
-import "./recipe-editor.js?v=0.88.6";
-import "./icon-picker.js?v=0.88.6";
-import { imageSource, normalizedName, productNameKey, cachedProductPrice, productPriceLabel, storeProductLink, storeFromProductUrl } from "./product-display.js?v=0.88.6";
+import { purchaseQuantity, quantityLabel } from "./quantity-client.js?v=0.88.7";
+import { referenceContentControls, barcodeIdentity, validReferenceContent, validReferenceFormat, weightFormat, pendingProductInformation } from "./reference-formats.js?v=0.88.7";
+import { installDialogCloseButtons } from "./dialog-controls.js?v=0.88.7";
+import { CatalogSession } from "./catalog-client.js?v=0.88.7";
+import { matchCatalogProducts } from "./product-matching.js?v=0.88.7";
+import "./category-panel.js?v=0.88.7";
+import "./recipe-editor.js?v=0.88.7";
+import "./icon-picker.js?v=0.88.7";
+import { imageSource, normalizedName, productNameKey, cachedProductPrice, productPriceLabel, storeProductLink, storeFromProductUrl } from "./product-display.js?v=0.88.7";
 export { imageSource, normalizedName, productNameKey, cachedProductPrice };
 
 const MONTHS = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
@@ -1633,6 +1633,13 @@ class ImprovedShoppingCatalog extends HTMLElement {
       const ean=element('small','option-ean');
       const priceSummary=element('span','option-summary-price');priceSummary.hidden=true;
       const updateSummary=()=>{title.textContent=names[store]||'Sin tienda';ean.textContent=ref?.ean?'EAN: '+ref.ean:'';ean.hidden=!ref?.ean;const input=card.querySelector('.option-price input'),weighed=weightFormat(ref),money=value=>new Intl.NumberFormat('es-ES',{style:'currency',currency:'EUR',maximumFractionDigits:2}).format(value);priceSummary.hidden=(!input||input.value==='')&&!(weighed&&ref?.last_price?.estimated);if(!priceSummary.hidden){const rate=input&&input.value!==''?money(input.valueAsNumber)+(weighed?' / kg':' / envase'):'';priceSummary.textContent=weighed&&ref.last_price?.estimated?'≈ '+money(ref.last_price.price)+' / ud.'+(rate?' · '+rate:''):(!weighed&&ref?.last_price?.estimated?'≈ ':'')+rate;}card.dispatchEvent(new Event('option-summary-change'));};updateSummary();
+      card.addEventListener('option-summary-change',()=>{
+        const choice=preferred.querySelector(`option[value="${this._commercialReferences.indexOf(ref)}"]`);
+        if(!choice)return;
+        // Reuse the alternative's displayed price, including draft edits and estimates.
+        const price=priceSummary.hidden?'Sin precio':priceSummary.textContent.split(' · ')[0];
+        choice.textContent=`${names[store]??store} · ${ref.name||ref.reference_id||ref.ean||'Alternativa'} · ${price}`;
+      });
       const edit=iconButton('mdi:pencil','Editar alternativa de '+(names[store]||'la tienda'),'option-store-edit');edit.setAttribute('aria-expanded',String(card.open));edit.addEventListener('click',event=>{event.preventDefault();event.stopPropagation();card.open=!card.open;edit.setAttribute('aria-expanded',String(card.open));});
       heading.append(title);summary.append(reference,heading,priceSummary,edit);
       card.append(summary);

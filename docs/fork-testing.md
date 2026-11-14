@@ -2,7 +2,7 @@
 
 Repositorio: https://github.com/micasadomotica/Improved-Shopping-List-Dev
 
-Versión actual: **0.88.6**, basada en la 0.88.0 de TitoTB, con las correcciones de URL y Mercadona.
+Versión actual: **0.88.7**, basada en la 0.88.0 de TitoTB, con las correcciones de URL y Mercadona.
 
 ## Convivencia con el original
 
@@ -22,7 +22,7 @@ Dev tiene configuración, catálogo, compras, Stock, iconos y preferencias de na
 
 1. Mantén instalado el original. No hace falta desinstalarlo ni sustituir archivos.
 2. En **Ajustes → Marketplace → Añadir desde enlace**, añade `https://github.com/micasadomotica/Improved-Shopping-List-Dev`. Conecta GitHub si se solicita. El tipo es **Integración**.
-3. Abre **Improved Shopping List Dev** e instala **0.88.6**. Es una release normal de este repositorio de desarrollo: no requiere habilitar versiones preliminares.
+3. Abre **Improved Shopping List Dev** e instala **0.88.7**. Es una release normal de este repositorio de desarrollo: no requiere habilitar versiones preliminares.
 4. Sigue el aviso de reinicio si aparece. En **Ajustes → Dispositivos y servicios → Añadir integración**, busca **Improved Shopping List Dev** si no se abre el asistente automáticamente.
 5. Selecciona la lista de pruebas. Abre el panel **Improved Shopping List Dev** y comprueba su versión.
 
@@ -43,6 +43,10 @@ En **Ajustes → Tiendas**, el corazón de una cuenta o catálogo elige la tiend
 En **Catálogo → Editar producto → Alternativas → Alternativa preferida**, selecciona una referencia concreta o **Automática**. Guarda el producto. La elección concreta tiene prioridad sobre la tienda favorita y se conserva al recargar. Si desvinculas la alternativa, vuelve a Automática. Si la alternativa elegida no tiene precio guardado, no se muestra un precio de otra referencia.
 
 El precio del catálogo indica su formato: por envase, por kilo o por unidad aproximada cuando eliges una pieza con esa estimación. Las cantidades con contenido conocido siguen convirtiéndose a envases; una pieza estimada nunca se interpreta como un kilo. La vista de comparación por tiendas continúa mostrando las opciones de cada tienda.
+
+El desplegable de alternativa preferida también muestra el precio y su formato. Si editas un precio, su etiqueta se actualiza antes de guardar. Las alternativas sin precio se identifican con «Sin precio».
+
+Las fichas de Mercadona con referencias como `83202.1` (barra de pan) y `83203.1` (tres barras) conservan el identificador completo, separado del EAN. Si se pierde la respuesta al guardar un producto, el editor avisa tras 20 segundos: el cambio puede haberse guardado. Comprueba la conexión y vuelve a abrir la ficha antes de repetirlo.
 
 ## Pruebas de las correcciones
 
