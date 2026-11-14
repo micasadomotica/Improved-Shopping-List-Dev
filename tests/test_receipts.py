@@ -1057,3 +1057,84 @@ async def test_mercadona_manual_default_and_automatic_known_lines_update_stock_a
     assert not result['receipt']['pending_review']
     assert env.todo_items['todo.main'][0]['status'] == 'completed'
     assert env.stock._items[env.item['id']]['quantity'] == 1520
+
+
+def reprocess_selections(draft, links=None):
+    return [{
+        'id': line['id'], 'product_id': (links or {}).get(line['id'], line.get('product_id', '')),
+        'pack_quantity': line.get('pack_quantity'), 'pack_unit': line.get('pack_unit', ''),
+        'replenish': False, 'quantity': None, 'unit': 'uds',
+    } for line in draft['receipt']['lines']]
+
+
+async def test_reprocess_adds_missing_stock_once_without_second_list_debit(hass):
+    env = await shopping_env(hass)
+    review = await env.manager.async_preview_list(env.draft['token'], 'owner', env.links)
+    edits = selections(env.draft, env.product)
+    edits[0].update(replenish=False, quantity=None)
+    saved = await env.manager.async_confirm(env.draft['token'], 'owner', edits, False, review)
+    assert not saved['lines'][0]['replenished']
+    assert env.automation.quantities._entries['todo.main']['line']['quantity'] == 4
+    list_before = deepcopy(env.automation.quantities._entries)
+    draft = await env.manager.async_review_saved(saved['id'], 'owner')
+    other = await env.manager.async_review_saved(saved['id'], 'owner')
+    edits = reprocess_selections(draft)
+    edits[0].update(replenish=True, quantity=500, unit='g')
+    result = await env.manager.async_reprocess(draft['token'], 'owner', edits)
+    assert result['lines'][0]['replenished'] and result['lines'][0]['quantity'] == 500
+    assert env.stock._items[env.item['id']]['quantity'] == 520
+    assert result['list_actions'] == saved['list_actions']
+    assert env.automation.quantities._entries == list_before and not env.todo_writes
+    with pytest.raises(CatalogError, match='cambiado'):
+        await env.manager.async_reprocess(other['token'], 'owner', edits)
+    restored = StockManager(hass, env.stock.catalog)
+    await restored.async_load()
+    assert restored.receipts['history'][saved['id']]['lines'][0]['replenished']
+    draft = await env.manager.async_review_saved(saved['id'], 'owner')
+    with pytest.raises(CatalogError, match='dos veces'):
+        await env.manager.async_reprocess(draft['token'], 'owner', edits)
+    assert env.stock._items[env.item['id']]['quantity'] == 520
+    assert len(env.stock.receipts['purchases']) == 1
+
+
+async def test_reprocess_can_link_unmatched_lines_and_create_one_stock_item(hass):
+    env = await setup_manager(hass)
+    draft = await preview(env)
+    saved = await env.manager.async_confirm(draft['token'], 'owner', selections(draft, env.product), False)
+    fresh = await env.stock.catalog.async_save_product({'name': 'Producto nuevo'})
+    draft = await env.manager.async_review_saved(saved['id'], 'owner')
+    edits = reprocess_selections(draft, {'1': fresh['id'], '2': fresh['id']})
+    edits[1].update(replenish=True, quantity=2)
+    edits[2].update(replenish=True, quantity=1)
+    result = await env.manager.async_reprocess(draft['token'], 'owner', edits)
+    new = env.stock.item_for(fresh)
+    assert new['quantity'] == 3 and new['unit'] == 'uds'
+    assert len(env.stock._items) == 2
+    assert env.stock._items[env.item['id']]['quantity'] == 270
+    assert {key: result['lines'][0][key] for key in ('replenished', 'quantity', 'unit', 'product_id', 'count')} == {key: draft['receipt']['lines'][0][key] for key in ('replenished', 'quantity', 'unit', 'product_id', 'count')}
+    assert [line['replenished'] for line in result['lines']] == [True, True, True]
+    assert result['lines'][1]['product_name'] == fresh['name']
+    assert sum(p['quantity'] for p in env.stock.receipts['purchases'].values() if p['item_id'] == new['id']) == 3
+
+
+@pytest.mark.parametrize('case', ['invalid_quantity', 'wrong_unit', 'stale_stock', 'missing_product', 'non_boolean', 'partial_fields'])
+async def test_reprocess_stock_validation_leaves_history_and_quantities_unchanged(hass, case):
+    env = await setup_manager(hass)
+    draft = await preview(env)
+    edits = selections(draft, env.product)
+    edits[0].update(replenish=False, quantity=None)
+    saved = await env.manager.async_confirm(draft['token'], 'owner', edits, False)
+    draft = await env.manager.async_review_saved(saved['id'], 'owner')
+    edits = reprocess_selections(draft)
+    edits[0].update(replenish=True, quantity=250, unit='g')
+    if case == 'invalid_quantity': edits[0]['quantity'] = -1
+    if case == 'wrong_unit': edits[0]['unit'] = 'l'
+    if case == 'stale_stock': env.stock._items[env.item['id']]['revision'] += 1
+    if case == 'missing_product': edits[1].update(replenish=True, quantity=1)
+    if case == 'non_boolean': edits[0]['replenish'] = 1
+    if case == 'partial_fields': del edits[0]['unit']
+    before = deepcopy(env.stock.snapshot)
+    receipts = deepcopy(env.stock.receipts)
+    with pytest.raises(CatalogError):
+        await env.manager.async_reprocess(draft['token'], 'owner', edits)
+    assert env.stock.snapshot == before and env.stock.receipts == receipts

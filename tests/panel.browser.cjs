@@ -1259,6 +1259,40 @@ async function checkMobileTicketAssociation(browser,url,errors){
 }
 
 
+async function checkReceiptMissingStock(browser,url,errors){
+  const context=await browser.newContext({viewport:{width:390,height:844}}),page=await context.newPage();
+  page.on('pageerror',error=>errors.push(error.message));await page.goto(url);await page.getByRole('button',{name:'Analítica',exact:true}).click();
+  const purchases=page.locator('isl-dev-purchases');await purchases.locator('#ticket-file').waitFor({state:'attached'});
+  await purchases.evaluate(el=>{
+    const products=[{id:'new',name:'Producto nuevo',unit:'uds',refill_quantity:1,stock_id:'',commercial_references:[]},{id:'old',name:'Producto repuesto',unit:'uds',refill_quantity:1,stock_id:'old-stock',revision:1,commercial_references:[]}];
+    const base={count:2,unit_price:1,amount:2,pack_quantity:null,pack_unit:''};
+    const receipt={id:'missing-stock',store:'mercadona',store_name:'Mercadona',purchased_at:new Date().toISOString(),total:6,lines:[
+      {...base,id:'0',description:'FORMATO NUEVO',product_id:'new',matched:true,replenished:false},
+      {...base,id:'1',description:'FORMATO ANTERIOR',product_id:'old',matched:true,replenished:true,quantity:2,unit:'uds'},
+      {...base,id:'2',description:'OTRO FORMATO',product_id:'',matched:false,replenished:false}]};
+    el.openPreview({token:'missing-stock',receipt,products,purchases:[],reprocess:true});
+  });
+  const dialog=purchases.getByRole('dialog',{name:'Reprocesar ticket',exact:true});
+  const first=dialog.locator('.review-line[data-line-id="0"]');
+  assert.equal(await first.getByRole('button',{name:'Incluir en Stock: Producto nuevo',exact:true}).getAttribute('aria-pressed'),'true');
+  assert.equal(await first.getByRole('spinbutton',{name:'Cantidad para FORMATO NUEVO'}).inputValue(),'2');
+  assert.equal(await dialog.getByRole('button',{name:'Reponer stock: Producto repuesto',exact:true}).count(),0);
+  await dialog.getByText('Stock ya aplicado: 2 uds. No se volverá a añadir.',{exact:true}).waitFor();
+  await dialog.getByRole('button',{name:'Vincular producto para OTRO FORMATO',exact:true}).click();
+  const association=purchases.locator('#association-dialog');await association.getByLabel('Producto del catálogo',{exact:true}).fill('Producto nuevo');await association.getByRole('button',{name:'Vincular',exact:true}).click();
+  const third=dialog.locator('.review-line[data-line-id="2"]');assert.equal(await third.getByRole('button',{name:'Incluir en Stock: Producto nuevo',exact:true}).getAttribute('aria-pressed'),'true');
+  await third.getByRole('spinbutton',{name:'Cantidad para OTRO FORMATO'}).fill('3');
+  for(const width of [320,390,1280]){await page.setViewportSize({width,height:900});assert.ok(await dialog.evaluate(el=>el.scrollWidth<=el.clientWidth+1));assert.ok(await dialog.locator('.reprocess-stock').evaluateAll(rows=>rows.every(el=>el.scrollWidth<=el.clientWidth+1)));await page.screenshot({path:'test-results/receipt-missing-stock-'+width+'.png',fullPage:true});}
+  await first.getByRole('spinbutton',{name:'Cantidad para FORMATO NUEVO'}).fill('');await dialog.getByRole('button',{name:'Guardar datos',exact:true}).click();await dialog.getByRole('alert').filter({hasText:'Indica cantidades válidas'}).waitFor();
+  assert.equal(await page.evaluate(()=>Boolean(window.lastReceiptReprocess)),false);
+  await first.getByRole('spinbutton',{name:'Cantidad para FORMATO NUEVO'}).fill('2');
+  const before=await page.evaluate(()=>window.wsRequests.filter(t=>t.endsWith('/list_preview')).length);
+  await dialog.getByRole('button',{name:'Guardar datos',exact:true}).click();await dialog.waitFor({state:'hidden'});
+  assert.deepEqual(await page.evaluate(()=>window.lastReceiptReprocess.lines.map(l=>[l.replenish,l.quantity,l.unit])),[[true,2,'uds'],[false,null,'uds'],[true,3,'uds']]);
+  assert.equal(await page.evaluate(()=>window.wsRequests.filter(t=>t.endsWith('/list_preview')).length),before);
+  await context.close();
+}
+
 async function checkReceiptListReview(browser,url,errors){
   const context=await browser.newContext({viewport:{width:390,height:844}}),page=await context.newPage();
   page.on('pageerror',error=>errors.push(error.message));await context.addInitScript(()=>{if(!localStorage.getItem('settings-fixture'))localStorage.setItem('settings-fixture',JSON.stringify({entities:['todo.bring'],primary_entity:'todo.bring',purchase_detection:{shops:[]}}));});await page.goto(url);
@@ -1330,7 +1364,7 @@ async function checkRepeatedReceiptProduct(browser,url,errors){
   await dialog.getByRole('button',{name:'Continuar',exact:true}).click();
   await dialog.locator('#unregistered-stock-group > summary').click();
   for(const [id,quantity] of [['0','2'],['1','3']]){
-    const row=dialog.locator(`[data-line-id="${id}"]`);await row.getByRole('button',{name:'Incluir en Stock: Pan',exact:true}).click();await row.getByRole('spinbutton').fill(quantity);
+    const row=dialog.locator(`[data-line-id="${id}"]`);assert.equal(await row.getByRole('button',{name:'Incluir en Stock: Pan',exact:true}).getAttribute('aria-pressed'),'true');await row.getByRole('spinbutton').fill(quantity);
   }
   await dialog.getByRole('button',{name:'Continuar',exact:true}).click();
   assert.equal(await dialog.locator('.price-line').count(),2);
@@ -2028,7 +2062,7 @@ async function checkReceiptPackageFormats(browser,url,errors){
   await skip.click();await preparing.waitFor({state:'hidden'});
   assert.equal(await dialog.getByLabel('Cantidad para a',{exact:true}).inputValue(),'1');
   await dialog.locator('.review-group > summary').click();
-  await dialog.getByRole('button',{name:'Incluir en Stock: a',exact:true}).click();
+  assert.equal(await dialog.getByRole('button',{name:'Incluir en Stock: a',exact:true}).getAttribute('aria-pressed'),'true');
   await dialog.getByRole('button',{name:'Revisar reposición',exact:true}).click();await dialog.getByRole('button',{name:'Confirmar compra',exact:true}).click();await dialog.waitFor({state:'hidden'});
   await page.evaluate(()=>{window.finishQuantity();window.quantityWait=null;});await page.waitForTimeout(100);
   assert.equal(await page.evaluate(()=>window.quantityCalls.length),1);
@@ -3772,6 +3806,7 @@ async function main() {
   let browser;
   try {
     browser = await chromium.launch({ headless: true, channel: process.env.PLAYWRIGHT_CHANNEL || undefined });
+    if(process.argv.includes('--receipt-missing-stock-only')){const errors=[];await checkReceiptMissingStock(browser,`http://127.0.0.1:${server.address().port}`,errors);assert.deepEqual(errors,[]);console.log('Missing receipt stock review passed.');return;}
     if(process.argv.includes('--receipt-list-only')){const errors=[];await checkReceiptListReview(browser,`http://127.0.0.1:${server.address().port}`,errors);assert.deepEqual(errors,[]);console.log('Receipt List review and per-store confirmation passed.');return;}
     if(process.argv.includes('--receipt-formats-only')){const errors=[];await checkReceiptPackageFormats(browser,`http://127.0.0.1:${server.address().port}`,errors);assert.deepEqual(errors,[]);console.log('Receipt formats passed.');return;}
     if(process.argv.includes('--remove-ean-only')){const errors=[];await checkRemoveOnlyEAN(browser,`http://127.0.0.1:${server.address().port}`,errors);assert.deepEqual(errors,[]);console.log('Removing the only EAN passed.');return;}
@@ -5320,17 +5355,19 @@ async function main() {
     await review.getByRole('button',{name:'Continuar',exact:true}).click();
     await review.locator('#stock-only').waitFor();
     assert.equal(await review.locator('#step-title').isVisible(),false);
-    assert.equal(await review.locator('#step-help').textContent(),'Marca aquellos productos que quieres añadir al registro de stock.');
+    assert.equal(await review.locator('#step-help').textContent(),'Revisa las cantidades que se añadirán a Stock. Los productos vinculados están seleccionados; desmarca los que no quieras reponer.');
     assert.equal(await review.getByRole('button',{name:'Volver a vinculación',exact:true}).isVisible(),true);
     assert.equal(await review.locator('#unregistered-stock-group').evaluate(group=>group.open),false);
     assert.deepEqual(await review.locator('.review-line').evaluateAll(rows=>rows.map(row=>row.dataset.lineId)),['0','1']);
     assert.equal(await review.locator('[data-line-id="0"] .stock-select').getAttribute('aria-pressed'),'true');
     await review.locator('#unregistered-stock-group > summary').click();
-    assert.equal(await cerealLine.locator('.stock-select').getAttribute('aria-pressed'),'false');
+    assert.equal(await cerealLine.locator('.stock-select').getAttribute('aria-pressed'),'true');
     assert.equal(await cerealLine.locator('input[type=checkbox],.original').count(),0);
     assert.equal(await cerealLine.textContent().then(text=>text.includes('€')),false);
     assert.equal(await review.locator('#stock-only').evaluate(button=>getComputedStyle(button).backgroundColor),'rgb(38, 112, 82)');
     assert.equal(await review.locator('#confirm-ticket').evaluate(button=>getComputedStyle(button).backgroundColor),'rgb(33, 150, 243)');
+    await cerealLine.click({position:{x:8,y:8}});
+    assert.equal(await cerealLine.locator('.stock-select').getAttribute('aria-pressed'),'false');
     await cerealLine.click({position:{x:8,y:8}});
     assert.equal(await cerealLine.locator('.stock-select').getAttribute('aria-pressed'),'true');
     assert.equal(await cerealLine.evaluate(row=>getComputedStyle(row).borderColor),'rgb(255, 152, 0)');
@@ -6244,6 +6281,7 @@ async function main() {
     await checkLidlReprocessLines(browser,url,errors);
     await checkReferenceFormats(browser,url,errors);
     await checkReceiptPackageFormats(browser,url,errors);
+    await checkReceiptMissingStock(browser,`http://127.0.0.1:${server.address().port}`,errors);
     await checkReceiptListReview(browser,`http://127.0.0.1:${server.address().port}`,errors);
     await checkRepeatedReceiptProduct(browser,url,errors);
     await checkReplenishmentLayout(browser,`http://127.0.0.1:${server.address().port}`,errors);

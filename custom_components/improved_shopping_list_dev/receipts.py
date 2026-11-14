@@ -377,7 +377,8 @@ class ReceiptManager(ReceiptShopping):
         original=draft.get("reprocess_original")
         if original is None:
             raise CatalogError("Abre un ticket ya revisado para reprocesar sus datos.")
-        async with self.stock._lock:
+        await self.automation.async_check()
+        async with self.automation._lock, self.stock._lock:
             data=deepcopy(self.stock.receipts)
             if data["history"].get(original["id"])!=original:
                 raise CatalogError("La compra ha cambiado. Vuelve a abrir el ticket.","conflict")
@@ -391,8 +392,11 @@ class ReceiptManager(ReceiptShopping):
             date=dt_util.parse_datetime(receipt["purchased_at"])
             price_at=dt_util.as_utc(date.replace(tzinfo=dt_util.DEFAULT_TIME_ZONE) if date.tzinfo is None else date).timestamp() if date else None
             for selection in selections:
-                if not isinstance(selection,dict) or set(selection)-{"manual_measure_price"} not in ({"id","pack_quantity","pack_unit"},{"id","product_id","pack_quantity","pack_unit"}):
+                if not isinstance(selection,dict) or set(selection)-{"manual_measure_price","replenish","quantity","unit"} not in ({"id","pack_quantity","pack_unit"},{"id","product_id","pack_quantity","pack_unit"}):
                     raise CatalogError("Los datos del envase no son válidos.")
+                stock_fields = set(selection) & {"replenish", "quantity", "unit"}
+                if stock_fields and (stock_fields != {"replenish", "quantity", "unit"} or type(selection["replenish"]) is not bool):
+                    raise CatalogError("Revisa las cantidades pendientes de añadir a Stock.")
                 line=next((line for line in receipt["lines"] if line["id"]==selection["id"]),None)
                 if not line or line["id"] in seen:
                     raise CatalogError("Los datos del envase no son válidos.")
@@ -410,7 +414,7 @@ class ReceiptManager(ReceiptShopping):
                 if product_id and not product:
                     raise CatalogError("El producto vinculado ya no existe.","conflict")
                 if product:
-                    line.update(product_id=product_id,matched=True)
+                    line.update(product_id=product_id,product_name=product["name"],matched=True)
                     self._remember_alias(data,receipt["store"],line,product)
                 self._apply_lidl_metadata(draft,line,product)
                 reference=matching_reference(product,receipt["store"],line) if product else None
@@ -433,14 +437,77 @@ class ReceiptManager(ReceiptShopping):
                             reference_line["ticket_measure_price"].setdefault("checked_at",price_at)
                             reference_line["ticket_measure_price"].setdefault("source","ticket")
                     references.append((product["id"],receipt["store"],reference_line,quantity is not None))
+            items = self._reprocess_replenishments(draft, receipt, selections, data)
             await self.stock.catalog.async_bind_receipt_eans([(line["product_id"],line.get("ean","")) for line in receipt["lines"] if line.get("product_id")],references=references)
             data["history"][receipt["id"]]=receipt
-            await self.stock._persist(deepcopy(self.stock._items),receipts=data)
+            await self.stock._persist(items,receipts=data)
             self._drafts.pop(token,None)
         self.prices._notify()
         if self.stock.activity:
             self.stock.activity.record("stock.receipt_reprocessed",f'Datos del ticket de {receipt["store_name"]} reprocesados',source="manual",diagnostics={"receipt_id":receipt["id"],"options":len(references)})
         return deepcopy(receipt)
+
+    def _reprocess_replenishments(self, draft, receipt, selections, data):
+        """Apply only explicitly reviewed, unapplied stock lines; never touch Todo.
+
+        Called under the stock lock; line markers, purchases and quantities are
+        persisted together. The original receipt is the concurrent-edit guard.
+        """
+        items, groups = deepcopy(self.stock._items), {}
+        for selection in selections:
+            if not selection.get("replenish", False):
+                continue
+            line = next(row for row in receipt["lines"] if row["id"] == selection["id"])
+            if line.get("replenished"):
+                raise CatalogError("Esta línea ya se añadió a Stock. No se puede reponer dos veces.", "conflict")
+            product = next((p for p in self.stock.catalog.products if p["id"] == line.get("product_id")), None)
+            expected = next((p for p in draft["products"] if product and p["id"] == product["id"]), None)
+            stock = self.stock.item_for(product) if product else None
+            if not expected or stock and stock["revision"] != expected["revision"] or not stock and expected["stock_id"]:
+                raise CatalogError("El stock ha cambiado. Vuelve a abrir el ticket para revisar las cantidades.", "conflict")
+            quantity = quantity_value(selection["quantity"], positive=True)
+            unit = selection["unit"]
+            if not isinstance(unit, str) or not unit.strip() or len(unit.strip()) > 32 or any(ord(char) < 32 for char in unit):
+                raise CatalogError("Indica una unidad de hasta 32 caracteres.")
+            # Several receipt descriptions may refer to the same new stock item.
+            stock = items.get(stock["id"]) if stock else next((s for s in items.values() if s.get("catalog_product_id") == product["id"]), None)
+            if not stock:
+                stock = {**deepcopy(DEFAULT_CONFIG), "id": str(uuid4()), "name": product["name"], "catalog_product_id": product["id"],
+                    "quantity": 0, "revision": 0, "unit": unit.strip(), "refill_quantity": quantity, "configured": True, "config_revision": 1}
+                items[stock["id"]] = stock
+            converted = stock_quantity(quantity, unit, stock["unit"])
+            if converted is None:
+                raise CatalogError(f'No se pueden sumar las cantidades de «{product["name"]}»: {unit} y {stock["unit"]}. Indica unidades compatibles.')
+            quantity = quantity_value(converted, positive=True)
+            groups[stock["id"]] = quantity_value(round(groups.get(stock["id"], 0) + quantity, 3), positive=True)
+            line.update(replenished=True, quantity=quantity, unit=stock["unit"])
+            data["aliases"][receipt["store"]+":"+normalized_name(line["description"])] = {
+                "product_id": product["id"], "per_unit": quantity/line["count"], "unit": stock["unit"]}
+        if not groups:
+            return items
+        date = dt_util.parse_datetime(receipt["purchased_at"])
+        if not date:
+            raise CatalogError("La fecha del ticket no es válida.")
+        purchased_at = dt_util.as_utc(date.replace(tzinfo=dt_util.DEFAULT_TIME_ZONE) if date.tzinfo is None else date).timestamp()
+        if purchased_at > time.time()+DAY:
+            raise CatalogError("La fecha del ticket está en el futuro.")
+        for identifier, quantity in groups.items():
+            item = items[identifier] = materialized_stock(items[identifier])
+            data["coverage"].pop("awaiting:"+identifier, None)
+            item["quantity"] = quantity_value(round(item["quantity"]+quantity, 3))
+            item["full_quantity"] = item["quantity"]
+            item["revision"] += 1
+            if item["mode"] == "perishable" and (not item.get("expires_at") or purchased_at+item["days"]*DAY >= item["expires_at"]-2*DAY):
+                item.update(expires_at=purchased_at+item["days"]*DAY, expired=False)
+            purchase_id = "receipt:"+receipt["id"]+":"+identifier
+            previous = data["purchases"].get(purchase_id)
+            previous_quantity = stock_quantity(previous["quantity"], previous["unit"], item["unit"]) if previous else 0
+            if previous_quantity is None:
+                purchase_id += ":" + str(uuid4())
+                previous_quantity = 0
+            data["purchases"][purchase_id] = {"id": purchase_id, "at": purchased_at, "item_id": identifier,
+                "quantity": round(previous_quantity+quantity, 3), "unit": item["unit"], "receipt_id": receipt["id"], "list_entity": "", "uid": ""}
+        return items
 
     async def async_lidl_metadata(self,token,owner,line_id,product_id):
         draft=self._draft(token,owner)

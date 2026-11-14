@@ -1,3 +1,9 @@
+# Pendiente de publicar — Reposición pendiente de tickets
+
+- La revisión manual selecciona los productos vinculados para añadirlos a Stock, también cuando todavía no tienen existencias registradas. Permite revisar las cantidades o desmarcarlos.
+- «Reprocesar datos» permite vincular líneas y guardar su reposición pendiente. Conserva las líneas ya repuestas y no vuelve a descontar la Lista.
+- Guarda las cantidades y las marcas de reposición juntas, valida unidades y detecta cambios de Stock o del ticket antes de aplicar.
+
 # 0.89.1 — Tickets de Mercadona y ajustes por tienda
 
 - Lee tickets electrónicos de Mercadona en catalán y castellano con cantidades e importes verificables. Comprueba el total y reutiliza la vinculación privada entre descripción y producto del catálogo, sin inventar EAN. Los formatos de línea no reconocidos se rechazan antes de importar.

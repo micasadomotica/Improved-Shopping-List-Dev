@@ -52,6 +52,7 @@ class ImprovedShoppingPurchases extends HTMLElement {
   _build(){
     this._built=true;
     this.shadowRoot.innerHTML=`<style>
+      @media(max-width:550px){dialog.reprocessing #review-lines{grid-template-columns:minmax(0,1fr)}}
       .price-line { flex-wrap:wrap; }.reference-content-controls { position:relative;z-index:1;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;margin-top:12px;flex:1 0 100%;width:100%;min-width:0; }
       .reference-content-controls label { min-width:0;margin:0;font-size:12px; }.reference-content-controls input,.reference-content-controls select { min-width:0;width:100%; }
       .reference-confirm { grid-column:1/-1;display:flex!important;align-items:center;gap:8px; }.reference-confirm input { width:auto!important;min-height:0!important;margin:0!important; }
@@ -182,7 +183,7 @@ class ImprovedShoppingPurchases extends HTMLElement {
     this._edits=receipt.lines.map(line=>{
       const candidate=products.find(p=>p.id===line.product_id),product=line.matched===false?null:candidate;
       return {line,id:line.id,product_id:product?.id??'',search:candidate?.name??'',
-        replenish:!this._draft.reprocess&&Boolean(product?.stock_id),quantity:product?this._defaultQuantity(line,product):null,
+        replenish:Boolean(product)&&!(this._draft.reprocess&&line.replenished),quantity:product?this._defaultQuantity(line,product):null,
         unit:product?.unit??'uds',save_price:Boolean(this._pricesEnabled),packageFormat:this._lineFormat(line,product)};
     });
     root.querySelector('#review-error').hidden=true;this._renderStep();if(this._draft.warning)this._errorMessage(this._draft.warning);
@@ -330,7 +331,7 @@ class ImprovedShoppingPurchases extends HTMLElement {
     for(const edit of this._edits){
       const before=this._product(edit),after=options.products.find(p=>p.id===edit.product_id);
       if(after&&before&&(before.unit!==after.unit||before.stock_id!==after.stock_id)){
-        edit.unit=after.unit;edit.quantity=this._defaultQuantity(edit.line,after);edit.replenish=Boolean(after.stock_id);
+        edit.unit=after.unit;edit.quantity=this._defaultQuantity(edit.line,after);edit.replenish=edit.replenish&&!(this._draft.reprocess&&edit.line.replenished);
       }
     }
     Object.assign(this._draft,options);
@@ -351,7 +352,7 @@ class ImprovedShoppingPurchases extends HTMLElement {
   }
   _chooseProduct(edit,product){
     const changed=edit.product_id!==(product?.id??'');edit.product_id=product?.id??'';
-    if(changed){delete edit.manualPrice;delete edit.manualPriceInitialized;if(edit.line.quantity_estimated){delete edit.line.purchased_quantity;delete edit.line.purchased_unit;delete edit.line.quantity_estimated;}edit.quantityEdited=false;edit.quantityEstimated=false;edit.unit=product?.unit??'uds';edit.quantity=product?this._defaultQuantity(edit.line,product):null;edit.replenish=Boolean(product?.stock_id);edit.packageFormat=this._lineFormat(edit.line,product);}
+    if(changed){delete edit.manualPrice;delete edit.manualPriceInitialized;if(edit.line.quantity_estimated){delete edit.line.purchased_quantity;delete edit.line.purchased_unit;delete edit.line.quantity_estimated;}edit.quantityEdited=false;edit.quantityEstimated=false;edit.unit=product?.unit??'uds';edit.quantity=product?this._defaultQuantity(edit.line,product):null;edit.replenish=Boolean(product)&&!(this._draft.reprocess&&edit.line.replenished);edit.packageFormat=this._lineFormat(edit.line,product);}
     this._errorMessage('');return true;
   }
   _goToStep(step){
@@ -363,6 +364,7 @@ class ImprovedShoppingPurchases extends HTMLElement {
     if(!this._draft)return;
     const root=this.shadowRoot,step=this._step;
     const reprocess=Boolean(this._draft.reprocess);
+    root.querySelector('dialog').classList.toggle('reprocessing',reprocess);
     root.querySelector('#review-steps').hidden=reprocess;
     root.querySelectorAll('#review-steps button').forEach((button,index)=>{
       if(index===step)button.setAttribute('aria-current','step');else button.removeAttribute('aria-current');
@@ -372,12 +374,12 @@ class ImprovedShoppingPurchases extends HTMLElement {
     root.querySelector('#step-title').textContent='';
     root.querySelector('#step-help').textContent=[
       'Vincula los productos detectados en el ticket con los de tu catálogo. Si no existen, puedes crear un producto nuevo o simplemente ignorarlos.',
-      'Marca aquellos productos que quieres añadir al registro de stock.',
+      'Revisa las cantidades que se añadirán a Stock. Los productos vinculados están seleccionados; desmarca los que no quieras reponer.',
       this._pricesEnabled?'Selecciona los productos cuyo precio quieres actualizar en el catálogo, para esta tienda.':'Los precios están desactivados en Ajustes. Puedes confirmar las vinculaciones y la reposición sin guardar precios.'
     ][step];
     if(step===2&&this._draft.receipt.document_type==='invoice'&&this._pricesEnabled)root.querySelector('#step-help').textContent+=' El precio sugerido es el PVP unitario antes de descuentos y no incluye el envío.';
     if(step===2)root.querySelector('#step-help').textContent+=' El contenido corresponde a un envase de ese EAN; si es un pack, indica el contenido total del pack.';
-    if(reprocess)root.querySelector('#step-help').textContent='Revisa el contenido de un envase de cada EAN. En los packs, indica su contenido total. Se guardarán sus alternativas en el catálogo y, si los precios están activados, el precio del ticket, conservando cualquier precio más reciente.';
+    if(reprocess)root.querySelector('#step-help').textContent='Revisa los formatos y las cantidades pendientes de añadir a Stock. Puedes desmarcar las que no quieras reponer. Las líneas ya repuestas se conservan y la Lista no se vuelve a descontar. También se guardan las alternativas y los precios si están activados.';
     root.querySelector('#step-help').hidden=step===3;
     root.querySelector('#review-summary').hidden=step===3;
     root.querySelector('#previous-step').hidden=step===0||reprocess;root.querySelector('#links-only').hidden=step!==0||reprocess;
@@ -435,6 +437,10 @@ class ImprovedShoppingPurchases extends HTMLElement {
         if(edit.line.ticket_measure_price){const rate=edit.line.ticket_measure_price;row.append(node('p','note',edit.line.purchased_quantity+' '+edit.line.purchased_unit+' · '+money(rate.price)+'/'+rate.unit));}
         else if(!retained)row.append(referenceContentControls(edit.packageFormat,()=>{edit.packageEdited=true;}));
         if(edit.lidlMetadata?.url)row.append(node('p','note',edit.lidlMetadata.format_provisional?'Formato propuesto desde una oferta de Lidl. Confirma que coincide con el envase comprado.':'Datos recuperados de la ficha de Lidl.'));
+        if(reprocess){
+          if(edit.line.replenished)row.append(node('p','note','Stock ya aplicado: '+edit.line.quantity+' '+edit.line.unit+'. No se volverá a añadir.'));
+          else{const stock=node('section','reprocess-stock');stock.style.cssText='flex:1 0 100%;width:100%;min-width:0;padding:12px;border:1px solid var(--divider-color,#ccc);border-radius:8px';stock.dataset.lineId=edit.id;this._stockRow(stock,edit,product);row.append(stock);}
+        }
       }
       if(grouped&&(step===0?Boolean(product):!product?.stock_id))groupedContent.append(row);
       else container.append(row);
@@ -660,14 +666,14 @@ class ImprovedShoppingPurchases extends HTMLElement {
     await this._confirm();
   }
   async _confirm(updatePrices=this._confirmationUpdatePrices??Boolean(this._pricesEnabled)){
-    if(this._busy||!this._draft||!this._validateLinks()||(!this._draft.reprocess&&!this._validateStock()))return;
+    if(this._busy||!this._draft||!this._validateLinks()||!this._validateStock())return;
     if(!this._draft.reprocess&&!this._listReview){this._confirmationUpdatePrices=updatePrices;if(!updatePrices)for(const edit of this._edits)edit.save_price=false;await this._prepareListReview();return;}
     this._setBusy(true);
     try{
       const token=this._draft.token;
       if(this._draft?.token!==token)return;
       if(this._draft.reprocess){
-        await this._hass.callWS({type:'improved_shopping_list_dev/receipts/reprocess',token,lines:this._edits.map(edit=>({id:edit.id,product_id:edit.product_id,pack_quantity:validReferenceContent(edit.packageFormat)?edit.packageFormat.content_quantity:null,pack_unit:validReferenceFormat(edit.packageFormat)?edit.packageFormat.content_unit:'',...this._manualPricePayload(edit)}))});
+        await this._hass.callWS({type:'improved_shopping_list_dev/receipts/reprocess',token,lines:this._edits.map(edit=>({id:edit.id,product_id:edit.product_id,replenish:Boolean(edit.product_id&&edit.replenish&&!edit.line.replenished),quantity:edit.replenish?edit.quantity:null,unit:edit.unit,pack_quantity:validReferenceContent(edit.packageFormat)?edit.packageFormat.content_quantity:null,pack_unit:validReferenceFormat(edit.packageFormat)?edit.packageFormat.content_unit:'',...this._manualPricePayload(edit)}))});
       }else {const saved=await this._hass.callWS({type:'improved_shopping_list_dev/receipts/confirm',token:this._draft.token,list_review:this._listReview,update_prices:Boolean(updatePrices&&this._pricesEnabled),
         lines:this._edits.map(edit=>({id:edit.id,product_id:edit.product_id,replenish:Boolean(edit.product_id&&edit.replenish),quantity:edit.replenish?edit.quantity:null,unit:edit.unit,purchase_id:'',save_price:Boolean(edit.product_id&&edit.save_price&&updatePrices&&this._pricesEnabled),quantity_edited:Boolean(edit.quantityEdited),pack_quantity:validReferenceContent(edit.packageFormat)?edit.packageFormat.content_quantity:null,pack_unit:validReferenceFormat(edit.packageFormat)?edit.packageFormat.content_unit:'',...(updatePrices&&this._pricesEnabled?this._manualPricePayload(edit):{})}))});this._notice=saved.list_pending?'Stock guardado. Queda pendiente actualizar la Lista: abre el ticket para revisarlo.':'Compra confirmada.';}
       this._draft=null;this.shadowRoot.querySelector('dialog').close();this.dispatchEvent(new CustomEvent('receipt-imported'));await this._session.refresh();
