@@ -117,6 +117,7 @@ def async_register_commands(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, ws_personalization)
     websocket_api.async_register_command(hass, ws_notifications)
     websocket_api.async_register_command(hass, ws_store_update)
+    websocket_api.async_register_command(hass, ws_mercadona_location)
     websocket_api.async_register_command(hass, ws_resolve_store)
     websocket_api.async_register_command(hass, ws_store_products)
     websocket_api.async_register_command(hass, ws_store_progress)
@@ -730,6 +731,18 @@ async def ws_store_update(hass, connection, msg):
         connection.send_error(msg["id"], "invalid_store", str(err))
     else:
         connection.send_result(msg["id"], result)
+
+
+@websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/settings/mercadona_location", vol.Required("postal_code"): str})
+@websocket_api.require_admin
+@websocket_api.async_response
+async def ws_mercadona_location(hass,connection,msg):
+    if not _catalog(hass,connection,msg):return
+    try:
+        result=await hass.data[DOMAIN]["settings"].async_set_mercadona_location(msg["postal_code"])
+    except StoreError as err:
+        connection.send_error(msg["id"],"invalid_location",str(err))
+    else:connection.send_result(msg["id"],result)
 
 
 @websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/settings/resolve_store",

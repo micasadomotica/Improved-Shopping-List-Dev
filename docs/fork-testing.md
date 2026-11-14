@@ -2,7 +2,7 @@
 
 Repositorio: https://github.com/micasadomotica/Improved-Shopping-List-Dev
 
-Versión inicial: **0.88.2**, basada en la 0.88.0 de TitoTB, con las correcciones de URL y Mercadona.
+Versión actual: **0.88.3**, basada en la 0.88.0 de TitoTB, con las correcciones de URL y Mercadona.
 
 ## Convivencia con el original
 
@@ -22,11 +22,19 @@ Dev tiene configuración, catálogo, compras, Stock, iconos y preferencias de na
 
 1. Mantén instalado el original. No hace falta desinstalarlo ni sustituir archivos.
 2. En **Ajustes → Marketplace → Añadir desde enlace**, añade `https://github.com/micasadomotica/Improved-Shopping-List-Dev`. Conecta GitHub si se solicita. El tipo es **Integración**.
-3. Abre **Improved Shopping List Dev** e instala **0.88.2**. Es una release normal de este repositorio de desarrollo: no requiere habilitar versiones preliminares.
+3. Abre **Improved Shopping List Dev** e instala **0.88.3**. Es una release normal de este repositorio de desarrollo: no requiere habilitar versiones preliminares.
 4. Sigue el aviso de reinicio si aparece. En **Ajustes → Dispositivos y servicios → Añadir integración**, busca **Improved Shopping List Dev** si no se abre el asistente automáticamente.
 5. Selecciona la lista de pruebas. Abre el panel **Improved Shopping List Dev** y comprueba su versión.
 
 Estas instrucciones corresponden a Marketplace de Home Assistant 2026.11 o posterior. El código conserva su compatibilidad mínima con Core 2026.10. El archivo técnico `hacs.json` sigue siendo necesario en Marketplace.
+
+## Zona de Mercadona
+
+En **Dev → Ajustes → Tiendas → Mercadona (engranaje)**, indica el mismo código postal de entrega que en su web y pulsa **Guardar zona**. Se consulta el almacén correspondiente sin iniciar sesión y se conserva la zona anterior si Mercadona no puede confirmarla. Dejar el campo vacío restablece la zona de referencia predeterminada.
+
+El código postal se guarda en la configuración local de Home Assistant y se envía a Mercadona para resolver la zona; no se publica en GitHub. No activa la tienda ni modifica los ajustes del original. Los precios y pesos aproximados pueden variar entre zonas.
+
+Después de guardar la zona, abre las alternativas existentes, pulsa **Recuperar datos** en cada URL y guarda el producto. Los precios ya guardados no se cambian automáticamente por abrir este ajuste.
 
 ## Pruebas de las correcciones
 
@@ -35,6 +43,7 @@ Estas instrucciones corresponden a Marketplace de Home Assistant 2026.11 o poste
 - Recupera esa ficha: la alternativa de Mercadona debe usar la referencia `3830` y dejar vacío el EAN compartido.
 - Añade `https://tienda.mercadona.es/product/3858/aguacates-bandeja`: debe ser otra alternativa, con referencia `3858`.
 - La pieza debe mostrar Al peso / kg, el precio estimado por unidad y la tarifa por kilo. La bandeja debe mostrar Por envase y su precio estimado por pack. No se inventan gramos exactos ni piezas de la bandeja. Recuperar de nuevo la ficha corrige una bandeja guardada antes como Al peso.
+- Desvincula una alternativa de Mercadona, guarda y vuelve a añadir la misma URL: debe recuperarse sin duplicarla ni impedir el guardado.
 - Una alternativa existente con EAN, por ejemplo de Lidl, debe conservar sus datos al recuperar una URL de Mercadona: el resultado crea o reutiliza una alternativa separada.
 - Abre el panel original y el de Dev en la misma sesión de navegador. Comprueba que conservan sus catálogos, ajustes y listas seleccionadas.
 

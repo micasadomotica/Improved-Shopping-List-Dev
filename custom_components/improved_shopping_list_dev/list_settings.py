@@ -62,12 +62,18 @@ def list_options(entry: ConfigEntry) -> dict:
         detection['shops']=[{'id':'legacy-'+store,'name':names.get(store,store),'image_url':'','color':'#267052',
             'account':'carrefour' if store=='carrefour' else '', 'zones':zones}
             for store,zones in detection.get('store_zones',{}).items() if zones]
+    stores={key: {**deepcopy(defaults), "enabled": bool(entry.options.get("stores", {}).get(key, {}).get("enabled", False))} for key, defaults in DEFAULT_STORES.items()}
+    location=entry.options.get("mercadona_location")
+    if (isinstance(location,dict) and isinstance(location.get("postal_code"),str)
+            and re.fullmatch(r"(?:0[1-9]|[1-4][0-9]|5[0-2])[0-9]{3}",location["postal_code"])
+            and isinstance(location.get("warehouse"),str) and re.fullmatch(r"[a-zA-Z0-9_-]{1,32}",location["warehouse"])):
+        stores["mercadona"].update(postal_code=location["postal_code"],warehouse=location["warehouse"])
     return {"entities": entities, "primary_entity": primary if primary in entities else next(iter(entities), ""),
             "purchase_detection": detection,
             "gateway_lists": deepcopy(entry.options.get("gateway_lists", [])),
             "notifications": notification_options(entry.options.get("notifications")),
             "appearance": {**DEFAULT_APPEARANCE, **entry.options.get("appearance", {})},
-            "stores": {key: {**deepcopy(defaults), "enabled": bool(entry.options.get("stores", {}).get(key, {}).get("enabled", False))} for key, defaults in DEFAULT_STORES.items()},
+            "stores": stores,
             "favorite_store": entry.options.get("favorite_store", ""), "price_update_time":entry.options.get("price_update_time", "01:00"),
             "price_updates_enabled":entry.options.get("price_updates_enabled",True), "price_update_days":entry.options.get("price_update_days",1)}
 
@@ -88,7 +94,8 @@ class ListSettings:
     def attach(self, entry: ConfigEntry) -> None:
         self._generation += 1
         self.entry = entry
-        # Drop all historical user locations and coverage errors atomically.
+        # Drop legacy locations and coverage errors; keep an explicitly
+        # configured Mercadona area through list_options.
         # Keep store activation, lists, favorite and unrelated preferences.
         stores = list_options(entry)["stores"]
         favorite = entry.options.get("favorite_store", "")
@@ -143,7 +150,7 @@ class ListSettings:
         return self.snapshot
 
     async def async_toggle_located_store(self, store, enabled):
-        """Enable a fixed reference without postal discovery or HTTP requests."""
+        """Toggle a store without postal discovery or HTTP requests."""
         if store not in DEFAULT_STORES:
             raise StoreError("Tienda no compatible.")
         if enabled and store not in store_availability.AVAILABLE_STORES:
@@ -160,7 +167,7 @@ class ListSettings:
             return self.snapshot
 
     async def async_ensure_store_location(self, store):
-        """Return the canonical reference; obsolete saved locations cannot leak in."""
+        """Return the current area without reviving obsolete legacy locations."""
         if not self.entry or not self.hass.data.get(DOMAIN, {}).get("active"):
             raise StoreError("La integración no está activa.")
         current = self.snapshot["stores"].get(store, {})
@@ -171,6 +178,24 @@ class ListSettings:
     async def async_update_store(self, enabled: bool, postal_code: str = "", verify: bool = False) -> dict:
         """Compatibility for older clients: location parameters no longer apply."""
         return await self.async_toggle_located_store("mercadona", enabled)
+
+    async def async_set_mercadona_location(self, postal_code: str) -> dict:
+        """Resolve anonymously before saving; a failed lookup keeps the old area."""
+        from .stores import async_resolve_mercadona
+        generation=self._generation
+        async with self._stores_lock:
+            entry=self.entry
+            if not entry or generation!=self._generation or not self.hass.data.get(DOMAIN,{}).get("active"):
+                raise StoreError("La integración no está activa.")
+            warehouse=await async_resolve_mercadona(self.hass,postal_code) if postal_code else ""
+            if entry is not self.entry or generation!=self._generation or not self.hass.data.get(DOMAIN,{}).get("active"):
+                raise StoreError("La integración se ha detenido.")
+            options=dict(entry.options)
+            if postal_code:options["mercadona_location"]={"postal_code":postal_code,"warehouse":warehouse}
+            else:options.pop("mercadona_location",None)
+            self.hass.config_entries.async_update_entry(entry,options=options)
+            self.notify()
+            return self.snapshot
 
     def _favorite(self, stores):
         active = [key for key, value in stores.items() if value.get("enabled") and key in store_availability.AVAILABLE_STORES]

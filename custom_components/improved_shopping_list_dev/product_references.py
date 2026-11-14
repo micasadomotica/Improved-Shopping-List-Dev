@@ -189,6 +189,12 @@ def normalized_references(values):
                 raise ValueError("El Nutri-Score de la opción no es válido.")
             row["nutriscore"] = {"grade":nutrition["grade"],"checked_at":nutrition["checked_at"]}
         if row["id"] in seen:
+            # Older clients append a new active row when re-adding an unlinked
+            # option. Reuse its stable identity; historical receipts keep it.
+            previous=next(item for item in result if item["id"]==row["id"])
+            if previous["active"]!=row["active"]:
+                if row["active"]:result[result.index(previous)]=row
+                continue
             raise ValueError("Esta referencia comercial está repetida.")
         seen.add(row["id"]);result.append(row)
     return result

@@ -375,6 +375,12 @@ const hass={
       if(msg.force&&window.holdStoreRefresh)await new Promise(resolve=>window.finishStoreRefresh=resolve);
       return {warehouse:'mad3',enabled:true,products:[{name:'Tomate',ean:'8430543025611',store_name:'Tomate rallado',store_product_id:'69938',price:msg.force?1.55:1.45,reference_price:5,reference_unit:'kg',checked_at:1800000000}],error:window.failStoreProducts?'Mercadona ha rechazado la consulta (HTTP 403)':'',automatic_refresh_blocked:!!window.failStoreProducts,remaining:window.failStoreProducts?20:0,processed:0,total:20,retry_at:window.failStoreProducts?Date.now()/1000+900:0};
     }
+    if(msg.type==='improved_shopping_list_dev/settings/mercadona_location'){
+      if(window.failMercadonaLocation)throw new Error('No se ha podido confirmar la zona');
+      window.listSettings.stores??={};
+      window.listSettings.stores.mercadona={...window.listSettings.stores.mercadona,postal_code:msg.postal_code||'28024',warehouse:msg.postal_code?'test-shop':'mad1'};
+      window.emitSettings();return structuredClone(window.listSettings);
+    }
     if(msg.type==='improved_shopping_list_dev/settings/store_enabled'){
       if(window.failSettings)throw new Error('No se ha podido guardar la tienda');
       (window.storePostalCalls??=[]).push(structuredClone(msg));
@@ -2887,6 +2893,51 @@ async function checkMercadonaLocalReferences(browser,url,errors){
   assert.deepEqual(local.map(ref=>ref.last_price.price),[1.01,3.87]);
   assert.ok(local.every(ref=>ref.last_price.estimated===true));
   assert.deepEqual([saved.barcode,...saved.barcodes],['8410422111086']);
+  // Removing and saving keeps historical references inactive. Re-adding must
+  // reactivate them, rather than append colliding active copies.
+  await catalog.getByRole('button',{name:'Editar Aguacate',exact:true}).click();
+  await form.getByRole('button',{name:'Alternativas',exact:true}).click();
+  for(let i=0;i<2;i++){
+    const option=form.locator('.product-option[data-store="mercadona"]').first();
+    await openStoreOption(option);page.once('dialog',dialog=>dialog.accept());
+    await option.getByRole('button',{name:'Desvincular referencia',exact:true}).click();
+  }
+  await form.getByRole('button',{name:'Guardar producto',exact:true}).click();await form.waitFor({state:'hidden'});
+  assert.equal(await page.evaluate(()=>window.catalogProducts[0].commercial_references.filter(ref=>ref.active===false).length),2);
+  await catalog.getByRole('button',{name:'Editar Aguacate',exact:true}).click();
+  await form.getByRole('button',{name:'Alternativas',exact:true}).click();
+  for(const identifier of ['3830','3858']){
+    await page.evaluate(identifier=>{window.optionLookupFixture={...window.optionLookupFixture,reference_id:identifier,url:'https://tienda.mercadona.es/product/'+identifier,name:identifier==='3830'?'Aguacate pieza':'Aguacates bandeja'};},identifier);
+    await form.locator('#product-link-value').fill('https://tienda.mercadona.es/product/'+identifier);
+    await form.locator('#retrieve-product-data').click();
+    await form.getByText('Datos recuperados. Guarda el producto para conservarlos.',{exact:true}).waitFor();
+  }
+  await form.getByRole('button',{name:'Guardar producto',exact:true}).click();await form.waitFor({state:'hidden'});
+  const restored=await page.evaluate(()=>window.catalogProducts[0].commercial_references);
+  assert.equal(restored.length,3);assert.ok(restored.every(ref=>ref.active!==false));
+  assert.deepEqual(restored.filter(ref=>ref.store==='mercadona').map(ref=>ref.reference_id),['3830','3858']);
+  await context.close();
+}
+
+async function checkMercadonaLocation(browser,url,errors){
+  const context=await browser.newContext({viewport:{width:390,height:844}}),page=await context.newPage();
+  page.on('pageerror',error=>errors.push(error.message));await page.goto(url);
+  await page.getByRole('button',{name:'Ajustes',exact:true}).click();
+  const settings=page.locator('isl-dev-settings');
+  await settings.getByRole('button',{name:'Tiendas',exact:true}).click();
+  await settings.getByRole('button',{name:'Ajustes de Mercadona',exact:true}).click();
+  const dialog=settings.locator('#store-dialog'),postal=dialog.getByLabel('Código postal de entrega',{exact:true});
+  await postal.fill('28001');await dialog.getByRole('button',{name:'Guardar zona',exact:true}).click();
+  await dialog.getByText('Zona guardada. Recupera de nuevo las fichas para actualizar sus precios.',{exact:true}).waitFor();
+  assert.equal(await page.evaluate(()=>window.listSettings.stores.mercadona.postal_code),'28001');
+  assert.ok(await dialog.evaluate(el=>el.scrollWidth<=el.clientWidth+1));
+  await dialog.getByRole('button',{name:'Cerrar ventana',exact:true}).click();
+  await settings.getByRole('button',{name:'Ajustes de Mercadona',exact:true}).click();
+  assert.equal(await postal.inputValue(),'28001');
+  await page.evaluate(()=>{window.failMercadonaLocation=true;});
+  await postal.fill('28002');await dialog.getByRole('button',{name:'Guardar zona',exact:true}).click();
+  await dialog.getByText('No se ha podido confirmar la zona',{exact:true}).waitFor();
+  assert.equal(await page.evaluate(()=>window.listSettings.stores.mercadona.postal_code),'28001');
   await context.close();
 }
 
@@ -3470,6 +3521,7 @@ async function main() {
   let browser;
   try {
     browser = await chromium.launch({ headless: true, channel: process.env.PLAYWRIGHT_CHANNEL || undefined });
+    if(process.argv.includes('--mercadona-location-only')){const errors=[];await checkMercadonaLocation(browser,`http://127.0.0.1:${server.address().port}`,errors);assert.deepEqual(errors,[]);console.log('Mercadona location browser checks passed.');return;}
     if(process.argv.includes('--mercadona-local-only')){const errors=[];await checkMercadonaLocalReferences(browser,`http://127.0.0.1:${server.address().port}`,errors);assert.deepEqual(errors,[]);console.log('Mercadona local references browser checks passed.');return;}
     if(process.argv.includes('--product-url-only')){const errors=[];const url=`http://127.0.0.1:${server.address().port}`;await checkStagedOptionURL(browser,url,errors);await checkSavedOptionURL(browser,url,errors);assert.deepEqual(errors,[]);console.log('Product URL persistence browser checks passed.');return;}
     if(process.argv.includes('--lidl-prices-only')){const errors=[];await checkLidlCatalogPrices(browser,`http://127.0.0.1:${server.address().port}`,errors);assert.deepEqual(errors,[]);console.log('Lidl catalog prices passed.');return;}
@@ -5927,6 +5979,7 @@ async function main() {
     await checkStagedOptionURL(browser,url,errors);
     await checkSavedOptionURL(browser,url,errors);
     await checkMercadonaLocalReferences(browser,url,errors);
+    await checkMercadonaLocation(browser,url,errors);
     await checkLidlMetadata(browser,url,errors);
     await checkLidlReprocessLines(browser,url,errors);
     await checkReferenceFormats(browser,url,errors);

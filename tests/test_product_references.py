@@ -13,6 +13,18 @@ refs=importlib.util.module_from_spec(spec);spec.loader.exec_module(refs)
 
 
 class ReferenceTests(unittest.TestCase):
+    def test_readding_unlinked_reference_reuses_identity_in_either_order(self):
+        inactive={'store':'mercadona','reference_id':'3858','name':'Old tray','active':False}
+        active={**inactive,'name':'Tray','active':True,'sale_mode':'package'}
+        original_id=refs.normalized_references([inactive])[0]['id']
+        for rows in ([inactive,active],[active,inactive]):
+            result=refs.normalized_references(rows)
+            self.assertEqual(len(result),1)
+            self.assertEqual(result[0]['id'],original_id)
+            self.assertEqual(result[0]['name'],'Tray')
+            self.assertTrue(result[0]['active'])
+        with self.assertRaises(ValueError):refs.normalized_references([active,active])
+
     def test_estimated_package_price_is_distinct_from_kilogram_rate(self):
         reference={'store':'mercadona','reference_id':'3858','sale_mode':'package',
             'content_unit':'kg','last_price':{'price':3.87,'currency':'EUR','checked_at':1800000000,'estimated':True},

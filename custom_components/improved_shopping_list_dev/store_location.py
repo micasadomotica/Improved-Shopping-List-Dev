@@ -21,3 +21,10 @@ REFERENCE_LOCATIONS = {
 def reference_location(store: str) -> dict:
     """Return a fresh configuration so callers cannot modify the references."""
     return deepcopy(REFERENCE_LOCATIONS[store])
+
+
+def mercadona_location(hass) -> dict:
+    """Use the explicitly configured delivery area, or the public reference."""
+    from .const import DOMAIN
+    settings=hass.data.get(DOMAIN,{}).get("settings")
+    return deepcopy(settings.snapshot["stores"]["mercadona"]) if settings else reference_location("mercadona")

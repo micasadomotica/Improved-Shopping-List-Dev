@@ -190,6 +190,12 @@ export class ListSettingsSession {
     if (generation === this._generation && revision === this._revision) this._receive(data);
   }
 
+  async saveMercadonaLocation(postalCode) {
+    const generation=this._generation,revision=++this._revision;
+    const data=await this.getHass().callWS({type:`${PREFIX}mercadona_location`,postal_code:postalCode});
+    if(generation===this._generation&&revision===this._revision)this._receive(data);
+  }
+
 
   stop() {
     this._generation += 1;

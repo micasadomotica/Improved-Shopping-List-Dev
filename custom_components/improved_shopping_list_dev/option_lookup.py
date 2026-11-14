@@ -14,7 +14,7 @@ from .price_sources import PriceError, PriceSources, amount
 from .product_references import brand_name, content, gtin, inferred_content
 from .public_http import retry_seconds as public_retry_seconds
 from .store_links import HOSTS, normalize_link
-from .store_location import reference_location
+from .store_location import reference_location, mercadona_location
 from .receipt_quantities import measure_price
 
 
@@ -299,7 +299,8 @@ class OptionLookup:
         if not link["url"]:
             raise PriceError("Indica el enlace completo de la ficha del producto.")
         async with self._lock:
-            cached = self._cache.get((store, link["id"]))
+            cache_key=(store,link["id"],mercadona_location(self.hass)["warehouse"]) if store=="mercadona" else (store,link["id"])
+            cached = self._cache.get(cache_key)
             if not force and cached and cached[0] > time.monotonic() and not (store == "eroski" and expected_ean and not cached[1].get("ean")):
                 result = deepcopy(cached[1])
             else:
@@ -357,7 +358,7 @@ class OptionLookup:
                 if rate:=web_measure_price(result):
                     result["measure_price"]=rate
                 normalize_sale_mode(result)
-                self._cache[(store, link["id"])] = (time.monotonic()+60, deepcopy(result))
+                self._cache[cache_key] = (time.monotonic()+60, deepcopy(result))
                 self._cache = dict(list(self._cache.items())[-100:])
             if expected_ean and (result.get("ean") or store=="mercadona") and (not gtin(result.get("ean")) or gtin(expected_ean) != gtin(result.get("ean"))):
                 raise PriceError("El EAN de la web no coincide con esta opción. Revisa el enlace antes de vincularlo.", response_class="ean_mismatch")

@@ -1,3 +1,11 @@
+# 0.88.3 — Zona de Mercadona y alternativas recuperadas
+
+- Permite guardar el código postal de entrega desde Ajustes → Tiendas → Mercadona para consultar los precios de esa zona sin iniciar sesión.
+- Conserva la zona al recargar la integración y mantiene la anterior si falla su validación.
+- Separa la caché de consultas por almacén y descarta respuestas si la zona cambia mientras se consulta una ficha.
+- Reutiliza las alternativas desvinculadas al recuperar su URL y evita el error de referencia repetida al guardar, conservando su identidad histórica.
+- Tras cambiar la zona, recupera de nuevo los datos de las alternativas y guarda el producto para actualizar sus precios.
+
 # 0.88.2 — Formatos y precios de Mercadona
 
 - Distingue la pieza al peso de la bandeja vendida por envase, incluso si su peso es variable.

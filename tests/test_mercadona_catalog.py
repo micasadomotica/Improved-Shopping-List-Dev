@@ -21,6 +21,37 @@ OTHER='8410199023094'
 WEB='https://tienda.mercadona.es/product/69938'
 API='https://tienda.mercadona.es/api/products/69938/?lang=es&wh=mad1'
 
+
+async def test_manual_lookup_cache_is_scoped_to_the_configured_warehouse(hass,aioclient_mock,monkeypatch):
+    location={'warehouse':'test-a'}
+    hass.data[DOMAIN]={'settings':SimpleNamespace(snapshot={'stores':{'mercadona':location}})}
+    first=payload();second=payload();second['price_instructions']['unit_price']='1.60'
+    for warehouse,data in [('test-a',first),('test-b',second)]:
+        aioclient_mock.get(f'https://tienda.mercadona.es/api/products/69938/?lang=es&wh={warehouse}',json=data)
+    lookup=OptionLookup(hass);monkeypatch.setattr(lookup,'_before_request',AsyncMock())
+    try:
+        assert (await lookup.retrieve(WEB))['price']==1.45
+        location['warehouse']='test-b'
+        assert (await lookup.retrieve(WEB))['price']==1.60
+        assert (await lookup.retrieve(WEB))['price']==1.60
+        assert aioclient_mock.call_count==2
+    finally:lookup.close()
+
+
+async def test_manual_lookup_rejects_response_if_area_changes_during_request(hass,aioclient_mock,monkeypatch):
+    location={'warehouse':'test-a'}
+    hass.data[DOMAIN]={'settings':SimpleNamespace(snapshot={'stores':{'mercadona':location}})}
+    aioclient_mock.get('https://tienda.mercadona.es/api/products/69938/?lang=es&wh=test-a',json=payload())
+    async def change_area():
+        location['warehouse']='test-b'
+    lookup=OptionLookup(hass);monkeypatch.setattr(lookup,'_before_request',change_area)
+    try:
+        with pytest.raises(PriceError,match='La zona de Mercadona ha cambiado'):
+            await lookup.retrieve(WEB)
+        assert not lookup._cache
+    finally:lookup.close()
+
+
 def payload():
     return {'id':'69938','ean':EAN,'display_name':'Tomate rallado','brand':None,'details':{'brand':'marca'},
         'published':True,'is_bulk':False,'is_variable_weight':False,

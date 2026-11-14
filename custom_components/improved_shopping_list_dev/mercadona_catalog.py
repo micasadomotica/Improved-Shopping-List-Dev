@@ -13,7 +13,7 @@ from .price_sources import PriceError, amount
 from .product_references import brand_name, content, gtin
 from .receipt_quantities import measure_price
 from .store_links import normalize_link
-from .store_location import reference_location
+from .store_location import mercadona_location
 from .mercadona_index import MercadonaIndex
 from .ean_links import product_eans
 
@@ -82,7 +82,7 @@ def product_data(data,link,expected_ean=""):
 
 async def retrieve(hass,url,before_request,expected_ean=""):
     link=normalize_link(STORE,url)
-    warehouse=reference_location(STORE)["warehouse"]
+    warehouse=mercadona_location(hass)["warehouse"]
     endpoint=f"https://tienda.mercadona.es/api/products/{link['id']}/?lang=es&wh={warehouse}"
     session=async_create_clientsession(hass,auto_cleanup=False,cookie_jar=aiohttp.DummyCookieJar())
     try:
@@ -102,6 +102,8 @@ async def retrieve(hass,url,before_request,expected_ean=""):
             try:payload=json.loads(raw)
             except (ValueError,UnicodeError) as err:
                 raise PriceError("Mercadona no ha devuelto una ficha reconocida.",**diagnostics,response_class="invalid_response") from err
+            if warehouse!=mercadona_location(hass)["warehouse"]:
+                raise PriceError("La zona de Mercadona ha cambiado. Recupera la ficha de nuevo.",response_class="location_changed")
             return product_data(payload,link,expected_ean)
     except (aiohttp.ClientError,TimeoutError) as err:
         raise PriceError("No se ha podido conectar con Mercadona.",endpoint=endpoint.split("?",1)[0],

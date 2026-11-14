@@ -1,14 +1,14 @@
-import { ReplenishmentEditor, replenishmentMarkup } from './replenishment-editor.js?v=0.88.2';
+import { ReplenishmentEditor, replenishmentMarkup } from './replenishment-editor.js?v=0.88.3';
 const priceValue=value=>value==null||value===''?'':Number(Number(value).toFixed(2));
-import { purchaseQuantity, quantityLabel } from "./quantity-client.js?v=0.88.2";
-import { referenceContentControls, barcodeIdentity, validReferenceContent, validReferenceFormat, weightFormat, pendingProductInformation } from "./reference-formats.js?v=0.88.2";
-import { installDialogCloseButtons } from "./dialog-controls.js?v=0.88.2";
-import { CatalogSession } from "./catalog-client.js?v=0.88.2";
-import { matchCatalogProducts } from "./product-matching.js?v=0.88.2";
-import "./category-panel.js?v=0.88.2";
-import "./recipe-editor.js?v=0.88.2";
-import "./icon-picker.js?v=0.88.2";
-import { imageSource, normalizedName, productNameKey, cachedProductPrice, storeProductLink, storeFromProductUrl } from "./product-display.js?v=0.88.2";
+import { purchaseQuantity, quantityLabel } from "./quantity-client.js?v=0.88.3";
+import { referenceContentControls, barcodeIdentity, validReferenceContent, validReferenceFormat, weightFormat, pendingProductInformation } from "./reference-formats.js?v=0.88.3";
+import { installDialogCloseButtons } from "./dialog-controls.js?v=0.88.3";
+import { CatalogSession } from "./catalog-client.js?v=0.88.3";
+import { matchCatalogProducts } from "./product-matching.js?v=0.88.3";
+import "./category-panel.js?v=0.88.3";
+import "./recipe-editor.js?v=0.88.3";
+import "./icon-picker.js?v=0.88.3";
+import { imageSource, normalizedName, productNameKey, cachedProductPrice, storeProductLink, storeFromProductUrl } from "./product-display.js?v=0.88.3";
 export { imageSource, normalizedName, productNameKey, cachedProductPrice };
 
 const MONTHS = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
@@ -1792,7 +1792,7 @@ class ImprovedShoppingCatalog extends HTMLElement {
           const primary=this._storeLinks[original.store];
           if((typeof primary==='string'?primary===data.url:primary?.url===data.url||primary?.id===data.reference_id))delete this._storeLinks[original.store];
         }
-        ref=this._commercialReferences.find(item=>item!==original&&item.active!==false&&item.store===data.store&&barcodeIdentity(item.ean??'')===barcodeIdentity(data.ean)&&
+        ref=this._commercialReferences.find(item=>item!==original&&item.store===data.store&&barcodeIdentity(item.ean??'')===barcodeIdentity(data.ean)&&
           (item.reference_id===data.reference_id||item.url===data.url||!item.reference_id&&!item.url));
         if(!ref){ref={store:data.store,ean:data.ean||'',name:'',reference_id:'',url:'',brand:'',content_quantity:null,content_unit:'',content_confirmed:false};this._commercialReferences.push(ref);}
       }
@@ -1803,7 +1803,7 @@ class ImprovedShoppingCatalog extends HTMLElement {
         // IDs and last prices are store-specific; keep historical observations intact.
         delete ref.id;delete ref.last_price;delete ref.measure_price;delete ref.ticket_reference_id;
       }
-      const existing=this._commercialReferences.find(item=>item!==ref&&item.active!==false&&item.store===data.store&&
+      const existing=this._commercialReferences.find(item=>item!==ref&&item.store===data.store&&
         (data.store==='mercadona'&&!barcodeIdentity(data.ean??'')?!barcodeIdentity(item.ean??''):!item.ean||!data.ean||barcodeIdentity(item.ean)===barcodeIdentity(data.ean))&&(item.reference_id===data.reference_id||item.url===data.url));
       if(existing){this._commercialReferences=this._commercialReferences.filter(item=>item!==ref);ref=existing;}
       else if(newOption)this._commercialReferences.push(ref);

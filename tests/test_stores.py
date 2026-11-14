@@ -142,3 +142,40 @@ async def test_store_progress_subscription_and_cleanup(hass, hass_ws_client):
     await client.send_json({"id": 2, "type": "unsubscribe_events", "subscription": 1})
     assert (await client.receive_json())["success"]
     assert service.manager._listeners == background_listeners
+
+
+async def test_explicit_mercadona_area_survives_reload_and_failed_resolution(hass,hass_ws_client,aioclient_mock,monkeypatch):
+    entry=MockConfigEntry(domain=DOMAIN,data={CONF_TODO_ENTITY:'todo.bring'})
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    client=await hass_ws_client(hass)
+    aioclient_mock.put(POSTAL_URL,json={'warehouse_changed':True},headers={'x-customer-wh':'test-shop','x-customer-pc':'28001'})
+    await client.send_json({'id':1,'type':f'{DOMAIN}/settings/mercadona_location','postal_code':'28001'})
+    result=await client.receive_json()
+    assert result['success'] and result['result']['stores']['mercadona']['warehouse']=='test-shop'
+    assert not result['result']['stores']['mercadona']['enabled']
+    assert entry.options['mercadona_location']=={'postal_code':'28001','warehouse':'test-shop'}
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    settings=hass.data[DOMAIN]['settings']
+    assert settings.snapshot['stores']['mercadona']['warehouse']=='test-shop'
+    monkeypatch.setattr('custom_components.improved_shopping_list_dev.stores.async_resolve_mercadona',AsyncMock(side_effect=StoreError('Unavailable')))
+    await client.send_json({'id':2,'type':f'{DOMAIN}/settings/mercadona_location','postal_code':'28002'})
+    assert not (await client.receive_json())['success']
+    assert settings.snapshot['stores']['mercadona']['warehouse']=='test-shop'
+    await settings.async_toggle_located_store('mercadona',True)
+    assert settings.snapshot['stores']['mercadona']['warehouse']=='test-shop'
+    await client.send_json({'id':3,'type':f'{DOMAIN}/settings/mercadona_location','postal_code':''})
+    assert (await client.receive_json())['result']['stores']['mercadona']['warehouse']=='mad1'
+    assert 'mercadona_location' not in entry.options
+
+
+async def test_mercadona_area_rejects_read_only_users(hass,hass_ws_client,hass_read_only_user,aioclient_mock):
+    entry=MockConfigEntry(domain=DOMAIN,data={CONF_TODO_ENTITY:'todo.bring'})
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    refresh=await hass.auth.async_create_refresh_token(hass_read_only_user,client_id='http://test.local')
+    client=await hass_ws_client(hass,hass.auth.async_create_access_token(refresh))
+    await client.send_json({'id':1,'type':f'{DOMAIN}/settings/mercadona_location','postal_code':'28001'})
+    assert (await client.receive_json())['error']['code']=='unauthorized'
+    assert aioclient_mock.call_count==0
