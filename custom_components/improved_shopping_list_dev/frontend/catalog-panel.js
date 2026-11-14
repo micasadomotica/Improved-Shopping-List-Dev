@@ -1,14 +1,14 @@
-import { ReplenishmentEditor, replenishmentMarkup } from './replenishment-editor.js?v=0.88.8';
+import { ReplenishmentEditor, replenishmentMarkup } from './replenishment-editor.js?v=0.88.9';
 const priceValue=value=>value==null||value===''?'':Number(Number(value).toFixed(2));
-import { purchaseQuantity, quantityLabel } from "./quantity-client.js?v=0.88.8";
-import { referenceContentControls, barcodeIdentity, validReferenceContent, validReferenceFormat, weightFormat, pendingProductInformation } from "./reference-formats.js?v=0.88.8";
-import { installDialogCloseButtons } from "./dialog-controls.js?v=0.88.8";
-import { CatalogSession } from "./catalog-client.js?v=0.88.8";
-import { matchCatalogProducts } from "./product-matching.js?v=0.88.8";
-import "./category-panel.js?v=0.88.8";
-import "./recipe-editor.js?v=0.88.8";
-import "./icon-picker.js?v=0.88.8";
-import { imageSource, normalizedName, productNameKey, cachedProductPrice, productPriceLabel, storeProductLink, storeFromProductUrl } from "./product-display.js?v=0.88.8";
+import { purchaseQuantity, quantityLabel } from "./quantity-client.js?v=0.88.9";
+import { referenceContentControls, barcodeIdentity, validReferenceContent, validReferenceFormat, weightFormat, pendingProductInformation } from "./reference-formats.js?v=0.88.9";
+import { installDialogCloseButtons } from "./dialog-controls.js?v=0.88.9";
+import { CatalogSession } from "./catalog-client.js?v=0.88.9";
+import { matchCatalogProducts } from "./product-matching.js?v=0.88.9";
+import "./category-panel.js?v=0.88.9";
+import "./recipe-editor.js?v=0.88.9";
+import "./icon-picker.js?v=0.88.9";
+import { imageSource, normalizedName, productNameKey, cachedProductPrice, productPriceLabel, storeProductLink, storeFromProductUrl } from "./product-display.js?v=0.88.9";
 export { imageSource, normalizedName, productNameKey, cachedProductPrice };
 
 const MONTHS = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];

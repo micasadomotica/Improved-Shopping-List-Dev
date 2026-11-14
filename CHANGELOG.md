@@ -1,4 +1,4 @@
-# Pendiente de publicar — Cantidad configurada y total de compra
+# 0.88.9 — Cantidad configurada y total de compra
 
 - El control −/+ del Catálogo configura la cantidad por escaneo de código de barras o NFC. Conserva ese valor aunque aumente la cantidad en la Lista y permite configurarlo antes de añadir el producto.
 - La Lista mantiene el total acumulado y calcula su precio sin cambiar la base del precio por unidad. Editar la cantidad por escaneo no altera artículos ya añadidos.
