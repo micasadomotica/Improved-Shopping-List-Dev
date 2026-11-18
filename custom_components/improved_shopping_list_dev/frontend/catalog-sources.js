@@ -1,6 +1,6 @@
-import { receiptConfirmationControl } from './receipt-confirmation.js?v=0.89.3';
-import { installDialogCloseButtons } from './dialog-controls.js?v=0.89.3';
-import { installToggleStyles } from './toggle-styles.js?v=0.89.3';
+import { receiptConfirmationControl } from './receipt-confirmation.js?v=0.89.4';
+import { installDialogCloseButtons } from './dialog-controls.js?v=0.89.4';
+import { installToggleStyles } from './toggle-styles.js?v=0.89.4';
 
 class CatalogSourcesPanel extends HTMLElement {
   constructor(){super();this.attachShadow({mode:'open'});this._state={enabled:false,phase:'idle',total:0,processed:0,errors:[]};this._generation=0;this._stateVersion=0;this._pollGeneration=0;}
