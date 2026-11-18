@@ -65,6 +65,8 @@ def async_register_commands(hass: HomeAssistant) -> None:
     register_dia(hass)
     from .lidl_websocket import register as register_lidl
     register_lidl(hass)
+    from .mercadona_websocket import register as register_mercadona
+    register_mercadona(hass)
     from .catalog_sources_websocket import register as register_catalog_sources
     register_catalog_sources(hass)
     from .pending_information_websocket import register as register_pending_information

@@ -84,7 +84,7 @@ class ReceiptManager(ReceiptShopping):
 
     async def async_import_account_purchases(self, purchases, store):
         """Store account summaries only: never replenish stock or generate prices."""
-        if store not in ("carrefour","dia","lidl"):
+        if store not in ("carrefour","dia","lidl","mercadona"):
             raise CatalogError("La tienda no admite tickets de cuenta.")
         added = 0
         async with self.stock._lock:
@@ -746,6 +746,18 @@ class ReceiptManager(ReceiptShopping):
             receipt = await self.hass.async_add_executor_job(extract_dia_account_ticket,detail,params,expected_total)
         receipt["account_key"] = self._account_key(reference_id(params),"dia")
         return await self._prepare_preview(receipt,owner)
+
+    async def async_preview_mercadona_pdf(self, content, reference, expected_total, owner):
+        """A digital-ticket PDF read from the linked mailbox, checked against its saved summary."""
+        if self._parse_lock.locked():
+            raise CatalogError("Ya se está leyendo un ticket. Espera a que termine.")
+        async with self._parse_lock:
+            receipt = await self.hass.async_add_executor_job(extract_receipt, content)
+        if (receipt["store"]!="mercadona" or reference!="ticket:"+str(receipt.get("identity") or "")
+                or (expected_total is not None and abs(receipt["total"]-expected_total)>.02)):
+            raise CatalogError("El ticket del correo no coincide con la compra de Mercadona seleccionada.","receipt_purchase_mismatch")
+        receipt["account_key"] = self._account_key(reference, "mercadona")
+        return await self._prepare_preview(receipt, owner)
 
     async def async_preview_lidl_ticket(self, detail, reference, expected_total, expected_date, owner):
         if self._parse_lock.locked():

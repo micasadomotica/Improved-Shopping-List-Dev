@@ -1,3 +1,12 @@
+# 0.90.0 — Cuenta de Mercadona
+
+- Añade la cuenta de Mercadona en Ajustes → Tiendas → Mercadona, con dos opciones independientes: **Ticket digital** (compras en tienda) y **Tienda online**. Se puede conectar una, la otra o ambas.
+- Ticket digital: lee en solo lectura el buzón que recibe los tickets en PDF de Mercadona (Gmail por defecto u otro proveedor IMAP con servidor, puerto y carpeta). No marca, mueve ni borra correos y solo descarga los PDF de Mercadona. Recupera los tickets de los últimos 12 meses, descarga automáticamente el último tras una compra y permite la recuperación manual por día, como las demás cuentas.
+- Asistente por pasos para el ticket digital: aviso de usar un correo dedicado en lugar del personal, enlaces para crear una cuenta de Gmail y su contraseña de aplicación, enlace al WhatsApp de Mercadona para cambiar el correo del Ticket Digital y a sus condiciones.
+- Tienda online: inicio de sesión con la API privada de tienda.mercadona.es. La contraseña no se guarda; solo se conserva la sesión renovable. Muestra cuántos pedidos online tiene la cuenta y avisa cuando todavía no hay ninguno. La importación del detalle de los pedidos se activará cuando se verifique su formato; incluye un comando de diagnóstico que solo devuelve la estructura de los datos, sin valores personales.
+- Mercadona se puede vincular a las tiendas físicas para la detección de compras y aparece en la recuperación de tickets de Analítica → Compras.
+- Los tickets del correo reutilizan el lector de tickets electrónicos de Mercadona: comprueban número, fecha y total, y no se duplican con los subidos a mano.
+
 # 0.89.4 — Catálogo para asistentes
 
 - Añade el comando `catalog/summary`: resumen compacto del Catálogo con id, revisión, categoría, precio y referencias de tienda de cada producto. Permite filtrar por categoría (vacía para los productos sin categoría) o por nombre, y omitir las referencias.

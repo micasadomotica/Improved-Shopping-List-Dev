@@ -361,7 +361,7 @@ async def test_receipt_api_is_admin_only_and_inactive_guard(hass,hass_ws_client,
     await client.close()
     admin=await hass_ws_client(hass)
     await admin.send_json({'id':1,'type':f'{DOMAIN}/receipts/get'})
-    assert (await admin.receive_json())['result']=={'receipts':[],'shops':[],'persons':[],'ticket_accounts':{'carrefour':False,'lidl':False}}
+    assert (await admin.receive_json())['result']=={'receipts':[],'shops':[],'persons':[],'ticket_accounts':{'carrefour':False,'lidl':False,'mercadona':False}}
     assert await hass.config_entries.async_unload(entry.entry_id)
     await admin.send_json({'id':2,'type':f'{DOMAIN}/receipts/get'})
     assert (await admin.receive_json())['error']['code']=='not_loaded'

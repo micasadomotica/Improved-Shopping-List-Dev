@@ -35,6 +35,7 @@ from .receipts import ReceiptManager
 from .carrefour_account import CarrefourAccount
 from .dia_account import DiaAccount
 from .lidl_account import LidlAccount
+from .mercadona_account import MercadonaAccount
 from .ticket_accounts import TicketAccounts
 from .purchase_detection import PurchaseDetection
 from .alcampo import AlcampoManager
@@ -108,19 +109,24 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         await lidl_account.async_load()
         receipts.lidl_account = lidl_account
         lidl_account.settings = settings
-        ticket_accounts = TicketAccounts({"carrefour":carrefour_account, "lidl":lidl_account},activity,hass)
+        mercadona_account = MercadonaAccount(hass, receipts, activity)
+        await mercadona_account.async_load()
+        mercadona_account.settings = settings
+        ticket_accounts = TicketAccounts({"carrefour":carrefour_account, "lidl":lidl_account, "mercadona":mercadona_account},activity,hass)
         await ticket_accounts.async_load()
         receipts.ticket_accounts = ticket_accounts
         stock_automation.ticket_accounts = ticket_accounts
         carrefour_account.ticket_accounts = ticket_accounts
         dia_account.ticket_accounts = ticket_accounts
         lidl_account.ticket_accounts = ticket_accounts
+        mercadona_account.ticket_accounts = ticket_accounts
         purchase_detection = PurchaseDetection(hass,settings,receipts,activity,ticket_accounts)
         await purchase_detection.async_load()
         stock_automation.purchase_detection = purchase_detection
         carrefour_account.purchase_detection = purchase_detection
         dia_account.purchase_detection = purchase_detection
         lidl_account.purchase_detection = purchase_detection
+        mercadona_account.purchase_detection = purchase_detection
         ticket_accounts.purchase_detection = purchase_detection
         prices.receipts = receipts
         alcampo = AlcampoManager(hass, catalog, settings, prices, receipts, activity)
@@ -151,6 +157,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         hass.data[DOMAIN]["carrefour_account"] = carrefour_account
         hass.data[DOMAIN]["dia_account"] = dia_account
         hass.data[DOMAIN]["lidl_account"] = lidl_account
+        hass.data[DOMAIN]["mercadona_account"] = mercadona_account
         hass.data[DOMAIN]["ticket_accounts"] = ticket_accounts
         hass.data[DOMAIN]["alcampo"] = alcampo
         hass.data[DOMAIN]["dia_prices"] = dia_prices
@@ -199,6 +206,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.data[DOMAIN]["active"] = True
     hass.data[DOMAIN]["carrefour_account"].start()
     hass.data[DOMAIN]["lidl_account"].start()
+    hass.data[DOMAIN]["mercadona_account"].start()
     hass.data[DOMAIN]["dia_prices"].start()
     hass.data[DOMAIN]["activity"].start()
     hass.data[DOMAIN]["quantities"].start()
@@ -262,6 +270,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await hass.data[DOMAIN]["carrefour_account"].async_stop()
     await hass.data[DOMAIN]["dia_account"].async_stop()
     await hass.data[DOMAIN]["lidl_account"].async_stop()
+    await hass.data[DOMAIN]["mercadona_account"].async_stop()
     await hass.data[DOMAIN]["dia_prices"].async_stop()
     await hass.data[DOMAIN]["quantities"].async_stop()
     await hass.data[DOMAIN]["gateway_lists"].async_stop()
