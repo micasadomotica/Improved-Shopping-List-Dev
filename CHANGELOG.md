@@ -1,3 +1,9 @@
+# Pendiente de publicar — Catálogo para asistentes
+
+- Añade el comando `catalog/summary`: resumen compacto del Catálogo con id, revisión, categoría, precio y referencias de tienda de cada producto. Permite filtrar por categoría (vacía para los productos sin categoría) o por nombre, y omitir las referencias.
+- Añade el comando `catalog/product/set_category`: cambia la categoría de un producto por su id o nombre, sin distinguir acentos ni mayúsculas. Conserva el resto de campos guardados, no guarda si la categoría no cambia y una categoría vacía la retira.
+- Los asistentes conectados por MCP pueden usar ambos comandos sin enviar el producto completo ni conocer su revisión.
+
 # 0.89.3 — Lista al reprocesar tickets
 
 - Añade revisión de la Lista al reprocesar un ticket: descuenta las líneas recién vinculadas o pendientes de aplicar y conserva las ya gestionadas.

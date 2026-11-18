@@ -90,6 +90,28 @@ def normalize_category(data: dict[str, Any]) -> dict[str, Any]:
     return {"name": name, "icon": icon, "color": color.lower()}
 
 
+def _price_summary(reference: dict[str, Any] | None) -> dict[str, Any] | None:
+    """Last known price of one reference, without its internal bookkeeping."""
+    price = (reference or {}).get("last_price")
+    if not price:
+        return None
+    result = {"price": price.get("price"), "currency": price.get("currency", "EUR"),
+              "store": reference.get("store", ""), "checked_at": price.get("checked_at")}
+    if price.get("estimated"):
+        result["estimated"] = True
+    return result
+
+
+def _reference_summary(reference: dict[str, Any], preferred: bool) -> dict[str, Any]:
+    result = {key: reference.get(key, "") for key in ("store", "name", "brand", "reference_id", "ean", "url")}
+    result.update({"content_quantity": reference.get("content_quantity"), "content_unit": reference.get("content_unit", ""),
+                   "preferred": preferred, "price": _price_summary(reference)})
+    if measure := reference.get("measure_price"):
+        result["measure_price"] = {"price": measure.get("price"), "unit": measure.get("unit", ""),
+                                   "currency": measure.get("currency", "EUR")}
+    return result
+
+
 class CatalogError(ValueError):
     """An actionable catalog validation or concurrency error."""
 
@@ -322,6 +344,75 @@ class Catalog:
         return {"products": self.products, "categories": self.categories,
                 "recommendation_categories": self.recommendation_categories, "recipes": self.recipes,
                 "dismissed_suggestions": sorted(self._dismissed_suggestions)}
+
+    def summary(self, *, include_references: bool = True, category: str | None = None,
+                query: str = "") -> dict[str, Any]:
+        """Compact read model for assistants: names, categories, prices and store references."""
+        wanted = category.casefold() if category is not None else None
+        needle = normalized_name(query) if query else ""
+        products = []
+        for product in self.products:
+            if wanted is not None and product["category"].casefold() != wanted:
+                continue
+            if needle and needle not in normalized_name(product["name"]):
+                continue
+            references = [ref for ref in product.get("commercial_references", []) if ref.get("active", True)]
+            preferred = next((ref for ref in references if ref["id"] == product.get("preferred_reference")), None)
+            priced = preferred if preferred and preferred.get("last_price") else next(
+                (ref for ref in references if ref.get("last_price")), None)
+            item = {
+                "id": product["id"], "revision": product["revision"], "name": product["name"],
+                "category": product["category"], "purchase_unit": product.get("purchase_unit", ""),
+                "price": _price_summary(priced),
+            }
+            if include_references:
+                item["references"] = [_reference_summary(ref, ref is preferred) for ref in references]
+            products.append(item)
+        return {
+            "product_count": len(products),
+            "uncategorized": [item["name"] for item in products if not item["category"]],
+            "categories": [{key: item[key] for key in ("id", "revision", "name", "icon", "color", "product_count")}
+                           for item in self.categories],
+            "products": products,
+        }
+
+    def resolve_product(self, value: str) -> dict[str, Any]:
+        """Find one product by id or by name, ignoring accents, case and spacing."""
+        if value in self._products:
+            return deepcopy(self._products[value])
+        key = normalized_name(value)
+        matches = [item for item in self._products.values() if normalized_name(item["name"]) == key]
+        if len(matches) != 1:
+            raise CatalogError(
+                "No existe ningún producto con ese nombre." if not matches
+                else "Hay varios productos con ese nombre. Usa su identificador.", "not_found")
+        return deepcopy(matches[0])
+
+    async def async_set_product_category(self, product: str, category: str) -> dict[str, Any]:
+        """Change only a product's category, keeping every other field as stored."""
+        if not isinstance(category, str) or len(category.strip()) > 80:
+            raise CatalogError("La categoría debe ser un texto de hasta 80 caracteres.")
+        wanted = category.strip()
+        match = next((item for item in self._categories.values() if item["id"] == wanted), None) or next(
+            (item for item in self._categories.values() if normalized_name(item["name"]) == normalized_name(wanted)), None)
+        if wanted and match is None:
+            raise CatalogError("La categoría no existe. Créala antes en Categorías.", "category_not_found")
+        name = match["name"] if match else ""
+        for _attempt in range(2):
+            current = self.resolve_product(product)
+            previous = current["category"]
+            if previous == name:
+                return {"product": current, "previous_category": previous, "changed": False}
+            data = {key: current[key] for key in FIELDS if key in current}
+            data["category"] = name
+            try:
+                saved = await self.async_save_product(data)
+            except CatalogError as err:
+                if err.code == "conflict":
+                    continue
+                raise
+            return {"product": saved, "previous_category": previous, "changed": True}
+        raise CatalogError("Otra sesión está modificando este producto. Inténtalo de nuevo.", "conflict")
 
     async def _persist(self, products, categories, dismissed=None, recommendation_categories=None, recipes=None, source_options=None) -> None:
         """Commit related category and product changes together under the lock."""

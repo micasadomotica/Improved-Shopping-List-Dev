@@ -713,3 +713,73 @@ async def test_preferred_reference_persists_and_old_clients_preserve_it(hass):
     product=await catalog.async_save_product({**old_client,"revision":product["revision"],"commercial_references":updated})
     assert not product.get("preferred_reference")
     with pytest.raises(CatalogError):normalize_product({"name":"Aguacate","preferred_reference":123})
+
+
+async def test_set_product_category_keeps_other_fields_and_summary_is_compact(hass):
+    catalog = Catalog(hass)
+    await catalog.async_load()
+    await catalog.async_save_category({"name": "Fruta"})
+    await catalog.async_save_category({"name": "Verdura", "icon": "mdi:carrot", "color": "#2E7D32"})
+    refs = [{"store": "mercadona", "reference_id": "3830", "name": "Aguacate pieza",
+             "last_price": {"price": 1.42, "currency": "EUR", "checked_at": 1794650698, "estimated": True}},
+            {"store": "lidl", "reference_id": "11029903", "name": "Aguacate malla",
+             "last_price": {"price": 2.49, "currency": "EUR", "checked_at": 1794591315}}]
+    product = await catalog.async_save_product({
+        "name": "Aguacate", "category": "Fruta", "notes": "Maduro", "tags": ["Cena"], "barcode": "0012345",
+        "nfc_tags": ["4B-F7-4D-05"], "commercial_references": refs, "preferred_reference": refs[1]})
+    result = await catalog.async_set_product_category("  AGUACATE ", "verdura")
+    updated = result["product"]
+    assert result["changed"] and result["previous_category"] == "Fruta"
+    assert updated["category"] == "Verdura" and updated["revision"] == product["revision"] + 1
+    for key in ("notes", "tags", "barcode", "nfc_tags", "commercial_references", "preferred_reference", "name_en"):
+        assert updated[key] == product[key]
+    same = await catalog.async_set_product_category(product["id"], "Verdura")
+    assert not same["changed"] and same["product"]["revision"] == updated["revision"]
+    cleared = await catalog.async_set_product_category(product["id"], "")
+    assert cleared["product"]["category"] == ""
+    with pytest.raises(CatalogError) as err:
+        await catalog.async_set_product_category("Aguacate", "Inexistente")
+    assert err.value.code == "category_not_found"
+    with pytest.raises(CatalogError) as err:
+        await catalog.async_set_product_category("Pera", "Fruta")
+    assert err.value.code == "not_found"
+
+    summary = catalog.summary()
+    assert summary["uncategorized"] == ["Aguacate"] and summary["product_count"] == 1
+    assert [item["name"] for item in summary["categories"]] == ["Fruta", "Verdura"]
+    item = summary["products"][0]
+    assert item["price"] == {"price": 2.49, "currency": "EUR", "store": "lidl", "checked_at": 1794591315}
+    assert [ref["store"] for ref in item["references"]] == ["mercadona", "lidl"]
+    assert [ref["preferred"] for ref in item["references"]] == [False, True]
+    assert item["references"][0]["price"]["estimated"] is True
+    assert "id" not in item["references"][0] and "nfc_tags" not in item
+    assert "references" not in catalog.summary(include_references=False)["products"][0]
+    assert catalog.summary(category="Fruta")["products"] == []
+    assert catalog.summary(category="")["product_count"] == 1
+    assert catalog.summary(query="aguacáte")["product_count"] == 1
+
+
+async def test_summary_and_set_category_websocket_commands(hass, hass_ws_client):
+    hass.states.async_set("todo.bring", "1", {"friendly_name": "Compra"})
+    entry = MockConfigEntry(domain=DOMAIN, data={CONF_TODO_ENTITY: "todo.bring"})
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    catalog = hass.data[DOMAIN]["catalog"]
+    await catalog.async_save_category({"name": "Panadería"})
+    product = await catalog.async_save_product({"name": "Pan"})
+    client = await hass_ws_client(hass)
+    await client.send_json({"id": 1, "type": f"{DOMAIN}/catalog/product/set_category", "product": "pan", "category": "Bollería"})
+    response = await client.receive_json()
+    assert response["error"]["code"] == "category_not_found"
+    await client.send_json({"id": 2, "type": f"{DOMAIN}/catalog/product/set_category", "product": "pan", "category": "panaderia"})
+    response = await client.receive_json()
+    assert response["success"] and response["result"] == {
+        "id": product["id"], "name": "Pan", "revision": product["revision"] + 1,
+        "category": "Panadería", "previous_category": "", "changed": True}
+    await client.send_json({"id": 3, "type": f"{DOMAIN}/catalog/summary", "include_references": False})
+    response = await client.receive_json()
+    assert response["result"]["products"][0]["category"] == "Panadería"
+    assert "references" not in response["result"]["products"][0]
+    await hass.config_entries.async_unload(entry.entry_id)
+    await client.send_json({"id": 4, "type": f"{DOMAIN}/catalog/summary"})
+    assert (await client.receive_json())["error"]["code"] == "not_loaded"

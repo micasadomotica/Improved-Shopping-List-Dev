@@ -79,6 +79,8 @@ def async_register_commands(hass: HomeAssistant) -> None:
                     ws_carrefour_account_verify, ws_carrefour_account_disconnect, ws_carrefour_account_purchases, ws_carrefour_account_sync_history, ws_carrefour_account_options, ws_carrefour_account_preview, ws_carrefour_account_preview_saved):
         websocket_api.async_register_command(hass, command)
     websocket_api.async_register_command(hass, ws_catalog_get)
+    websocket_api.async_register_command(hass, ws_catalog_summary)
+    websocket_api.async_register_command(hass, ws_product_set_category)
     websocket_api.async_register_command(hass, ws_option_retrieve)
     websocket_api.async_register_command(hass, ws_attention_get)
     websocket_api.async_register_command(hass, ws_attention_subscribe)
@@ -1135,6 +1137,45 @@ async def ws_category_save(hass: HomeAssistant, connection, msg: dict[str, Any])
         connection.send_error(msg["id"], "storage_error", "No se ha podido guardar la categoría.")
     else:
         connection.send_result(msg["id"], {"category": category})
+
+
+@websocket_api.websocket_command({
+    vol.Required("type"): f"{DOMAIN}/catalog/summary",
+    vol.Optional("include_references", default=True): bool,
+    vol.Optional("category"): str,
+    vol.Optional("query", default=""): str,
+})
+@callback
+def ws_catalog_summary(hass: HomeAssistant, connection, msg: dict[str, Any]) -> None:
+    """Compact catalog for assistants and automations; `category: ""` lists uncategorized products."""
+    if catalog := _catalog(hass, connection, msg):
+        connection.send_result(msg["id"], catalog.summary(
+            include_references=msg["include_references"], category=msg.get("category"), query=msg["query"]))
+
+
+@websocket_api.websocket_command({
+    vol.Required("type"): f"{DOMAIN}/catalog/product/set_category",
+    vol.Required("product"): str,
+    vol.Required("category"): str,
+})
+@websocket_api.async_response
+async def ws_product_set_category(hass: HomeAssistant, connection, msg: dict[str, Any]) -> None:
+    """Change one product's category by product id or name; an empty category removes it."""
+    if not (catalog := _catalog(hass, connection, msg)):
+        return
+    try:
+        result = await catalog.async_set_product_category(msg["product"], msg["category"])
+    except CatalogError as err:
+        connection.send_error(msg["id"], err.code, str(err))
+    except (OSError, HomeAssistantError):
+        _LOGGER.exception("Could not change product category")
+        connection.send_error(msg["id"], "storage_error", "No se ha podido guardar el catálogo. Inténtalo de nuevo.")
+    else:
+        product = result["product"]
+        connection.send_result(msg["id"], {
+            "id": product["id"], "name": product["name"], "revision": product["revision"],
+            "category": product["category"], "previous_category": result["previous_category"],
+            "changed": result["changed"]})
 
 
 @websocket_api.websocket_command({
