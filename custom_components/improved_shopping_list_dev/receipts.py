@@ -83,7 +83,7 @@ class ReceiptManager(ReceiptShopping):
         return await self.async_import_account_purchases(purchases,"carrefour")
 
     async def async_import_account_purchases(self, purchases, store):
-        """Store account summaries only: never replenish stock or generate prices."""
+        """Store account summaries (Mercadona: with ticket lines, pending review); never replenish stock or generate prices."""
         if store not in ("carrefour","dia","lidl","mercadona"):
             raise CatalogError("La tienda no admite tickets de cuenta.")
         added = 0
@@ -114,6 +114,17 @@ class ReceiptManager(ReceiptShopping):
                     receipt["imported_at"] = existing["imported_at"]
                     if receipt["article_count"] is None:
                         receipt["article_count"] = existing.get("article_count")
+                detail = purchase.get("detail")
+                if (store == "mercadona" and isinstance(detail, dict) and detail.get("lines")
+                        and purchase["purchaseId"] == "ticket:"+str(detail.get("identity") or "")
+                        and type(detail.get("total")) in (int, float) and abs(detail["total"]-purchase["amount"]) <= .02):
+                    # Digital ticket already read while scanning: keep its lines so
+                    # the review opens without downloading it again. Still pending.
+                    receipt = {**deepcopy(detail), **{k:v for k,v in receipt.items() if k not in ("lines","article_count")},
+                        "lines":deepcopy(detail["lines"]),"article_count":detail.get("article_count",receipt["article_count"]),
+                        "pending_review":True}
+                    for field in ("detection_id","shop_id","zone_id","shop_name","shop_image","shop_color","shoppers","purchase_group","completed_products"):
+                        if existing and field in existing:receipt[field]=deepcopy(existing[field])
                 data["history"][receipt["id"]] = receipt
             if data != self.stock.receipts:
                 await self.stock._persist(deepcopy(self.stock._items),receipts=data)
@@ -444,6 +455,7 @@ class ReceiptManager(ReceiptShopping):
                     references.append((product["id"],receipt["store"],reference_line,quantity is not None))
             items = self._reprocess_replenishments(draft, receipt, selections, data)
             self._save_list_review(draft, receipt, original)
+            self._apply_shoppers(draft, receipt)
             await self.stock.catalog.async_bind_receipt_eans([(line["product_id"],line.get("ean","")) for line in receipt["lines"] if line.get("product_id")],references=references)
             data["history"][receipt["id"]]=receipt
             await self.stock._persist(items,receipts=data)
@@ -794,6 +806,8 @@ class ReceiptManager(ReceiptShopping):
         summary = self._summary_match(receipt)
         if summary:
             receipt["account_key"] = summary["account_key"]
+            if summary.get("shoppers") and not receipt.get("shoppers"):
+                receipt["shoppers"] = deepcopy(summary["shoppers"])
         if partial_original is None:
             self._check_duplicate(receipt)
         await self.automation.async_check()
@@ -830,6 +844,15 @@ class ReceiptManager(ReceiptShopping):
             self._drafts[token]["partial_original"] = deepcopy(partial_original)
         return {"token":token, "receipt":receipt, "products":choices, "purchases":deepcopy(purchases),
                 "confirmed_count": sum(line.get("confirmed") is True for line in (partial_original or {}).get("lines", []))}
+
+    @staticmethod
+    def _apply_shoppers(draft, receipt):
+        if "shoppers" not in draft:
+            return
+        if draft["shoppers"]:
+            receipt["shoppers"] = list(draft["shoppers"])
+        else:
+            receipt.pop("shoppers", None)
 
     def discard(self, token, owner):
         if self._drafts.get(token,{}).get("owner") == owner:
@@ -873,6 +896,7 @@ class ReceiptManager(ReceiptShopping):
                     if key in summary:receipt[key]=deepcopy(summary[key])
                 data["history"].pop(summary["id"])
             self._apply_manual_detection(draft,receipt,data["history"])
+            self._apply_shoppers(draft,receipt)
             if len(data["history"]) >= 1000 and receipt["id"] not in data["history"]:
                 raise CatalogError("El historial ha alcanzado los 1000 tickets.")
             groups = {}

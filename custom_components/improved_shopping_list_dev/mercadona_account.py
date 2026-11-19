@@ -54,6 +54,7 @@ class MercadonaAccount(DiaAccount):
         self._options_store = Store(hass, 1, f"{DOMAIN}.mercadona_options", private=True)
         self._session = {"online": {}, "purchase_refs": {}, "mail_seen": {"validity": "", "uids": []}, "online_orders": None}
         self._mail = {}
+        self._parsed = {}
         self._access = ""
         self._api = MercadonaOnlineAPI(hass)
 
@@ -339,6 +340,7 @@ class MercadonaAccount(DiaAccount):
                 for index, receipt in await self.hass.async_add_executor_job(_parse_pdfs, messages.get(uid, [])):
                     reference = "ticket:" + receipt["identity"]
                     key = self.receipts._account_key(reference, STORE)
+                    self._parsed[key] = receipt
                     self._session["purchase_refs"][key] = {"source": "mail", "reference": reference, "amount": receipt["total"],
                         "purchased_at": receipt["purchased_at"], "uid": uid, "validity": validity, "index": index,
                         "article_count": receipt.get("article_count")}
@@ -360,17 +362,53 @@ class MercadonaAccount(DiaAccount):
         if not self._connected():
             raise MercadonaAccountError("Conecta la tienda online o el ticket digital de Mercadona en Ajustes → Tiendas.", "not_connected")
         async with self._lock:
-            output, summaries = [], []
-            if self._mail_connected():
-                for key, ref in await self._scan_mail():
-                    summaries.append({"purchaseId": ref["reference"], "purchaseDate": ref["purchased_at"], "amount": ref["amount"],
-                        "article_count": ref.get("article_count"), "ticket_available": True})
-                    output.append({"id": key, "purchased_at": ref["purchased_at"], "amount": ref["amount"], "store": "Mercadona",
-                        "reviewable": True, "kind": "Ticket digital"})
-            enabled = self._options["history_enabled"] if import_summaries is None else import_summaries
-            added = await self.receipts.async_import_account_purchases(summaries, STORE) if enabled and summaries else 0
-            output.sort(key=lambda row: row["purchased_at"], reverse=True)
-            return {"purchases": output, "next_cursor": None, "added": added}
+            try:
+                output, summaries = [], []
+                enabled = self._options["history_enabled"] if import_summaries is None else import_summaries
+                if self._mail_connected():
+                    refs = await self._scan_mail()
+                    if enabled:
+                        await self._load_details([(key, ref) for key, ref in refs if self._needs_detail(key)])
+                    for key, ref in refs:
+                        summary = {"purchaseId": ref["reference"], "purchaseDate": ref["purchased_at"], "amount": ref["amount"],
+                            "article_count": ref.get("article_count"), "ticket_available": True}
+                        if key in self._parsed:
+                            summary["detail"] = self._parsed[key]
+                        summaries.append(summary)
+                        output.append({"id": key, "purchased_at": ref["purchased_at"], "amount": ref["amount"], "store": "Mercadona",
+                            "reviewable": True, "kind": "Ticket digital"})
+                added = await self.receipts.async_import_account_purchases(summaries, STORE) if enabled and summaries else 0
+                output.sort(key=lambda row: row["purchased_at"], reverse=True)
+                return {"purchases": output, "next_cursor": None, "added": added}
+            finally:
+                self._parsed = {}
+
+    def _needs_detail(self, key):
+        """Only tickets without saved lines are downloaded again from the mailbox."""
+        saved = next((row for row in self.receipts.stock.receipts["history"].values() if row.get("account_key") == key), None)
+        return saved is None or (saved.get("summary_only") and not saved.get("pending_review"))
+
+    async def _load_details(self, refs):
+        """Read again the PDFs of tickets seen in earlier scans, so their lines are stored on import."""
+        generation = self._generation
+        validity = self._session["mail_seen"]["validity"]
+        missing = {}
+        for key, ref in refs:
+            if key not in self._parsed and ref.get("validity") == validity:
+                missing.setdefault(ref["uid"], []).append(key)
+        uids = list(missing)
+        for start in range(0, len(uids), BATCH):
+            chunk = uids[start:start+BATCH]
+            messages = await self.hass.async_add_executor_job(self._mailbox().fetch, validity, chunk)
+            for uid in chunk:
+                for _index, receipt in await self.hass.async_add_executor_job(_parse_pdfs, messages.get(uid, [])):
+                    key = self.receipts._account_key("ticket:" + receipt["identity"], STORE)
+                    if key in missing[uid]:
+                        self._parsed[key] = receipt
+            if not self._active or generation != self._generation:
+                raise MercadonaAccountError("La conexión de Mercadona ha cambiado.", "inactive")
+            if start + BATCH < len(uids):
+                await asyncio.sleep(1)
 
     async def async_sync_history(self, owner):
         if self._sync_lock.locked():

@@ -248,6 +248,73 @@ async def test_automatic_ticket_downloads_latest_mail_ticket_once_per_day(accoun
     assert not account.automatic_due(now, True)
 
 
+async def test_history_import_keeps_ticket_lines_and_reads_only_tickets_without_them(account, monkeypatch):
+    first, second, third = receipt(), receipt("9999-999-100002", 4.5, 30), receipt("9999-999-100003", 2.0, 40)
+    for item in (first, second, third):
+        item["lines"] = [{"id": "0", "description": "PAN", "count": 1, "unit_price": item["total"], "amount": item["total"]}]
+    mailbox = FakeMailbox({"10": [b"%PDF-a"], "11": [b"%PDF-b"], "12": [b"%PDF-c"]})
+    parsed = {b"%PDF-a": [(0, first)], b"%PDF-b": [(0, second)], b"%PDF-c": [(0, third)]}
+    monkeypatch.setattr(module, "_parse_pdfs", lambda pdfs: [item for pdf in pdfs for item in parsed[pdf]])
+    account._mailbox = lambda mail=None: mailbox
+    await account.async_mail_connect("owner", "gmail", "tickets@example.test", "secret")
+    await account.async_purchases("owner", import_summaries=False)
+    assert mailbox.fetched == [["10", "11", "12"]] and account._parsed == {}
+    key = lambda item: ReceiptManager._account_key("ticket:" + item["identity"], "mercadona")
+    account.receipts.stock.receipts["history"] = {
+        "a": {"account_key": key(first), "summary_only": True},
+        "b": {"account_key": key(second), "summary_only": True, "pending_review": True}}
+    await account.async_purchases("owner", import_summaries=True)
+    # Only the earlier-seen summary without lines and the unsaved ticket are read again.
+    assert [sorted(chunk) for chunk in mailbox.fetched[1:]] == [["10", "12"]]
+    summaries = {row["purchaseId"]: row for row in account.receipts.async_import_account_purchases.await_args.args[0]}
+    assert summaries["ticket:9999-999-100001"]["detail"] is first and summaries["ticket:9999-999-100003"]["detail"] is third
+    assert "detail" not in summaries["ticket:9999-999-100002"] and account._parsed == {}
+
+
+async def test_receipt_manager_stores_mercadona_history_lines_pending_review(hass):
+    import asyncio
+    from custom_components.improved_shopping_list_dev.catalog import Catalog
+    from custom_components.improved_shopping_list_dev.stock import StockManager
+    catalog = Catalog(hass); await catalog.async_load(); product = await catalog.async_save_product({"name": "Pan"})
+    stock = StockManager(hass, catalog); await stock.async_load(); item = await stock.async_add("Pan")
+    automation = SimpleNamespace(_lock=asyncio.Lock(), async_check=AsyncMock(), _snapshots={}, settings=SimpleNamespace(snapshot={"primary_entity": "todo.main"}))
+    manager = ReceiptManager(hass, stock, automation, SimpleNamespace(_notify=Mock()))
+    parsed = receipt(total=1.5)
+    parsed["lines"] = [{"id": "0", "description": "PAN", "count": 1, "unit_price": 1.0, "amount": 1.0},
+        {"id": "1", "description": "BOLSA", "count": 1, "unit_price": .5, "amount": .5}]
+    wrong = receipt("9999-999-100002", 3.0)
+    wrong["lines"] = list(parsed["lines"])
+    rows = [{"purchaseId": "ticket:" + parsed["identity"], "purchaseDate": parsed["purchased_at"], "amount": 1.5, "detail": parsed},
+        {"purchaseId": "ticket:" + wrong["identity"], "purchaseDate": wrong["purchased_at"], "amount": 4.0, "detail": wrong}]
+    assert await manager.async_import_account_purchases(rows, "mercadona") == 2
+    saved = {row["account_key"]: row for row in stock.receipts["history"].values()}
+    pending = saved[ReceiptManager._account_key(rows[0]["purchaseId"], "mercadona")]
+    assert pending["summary_only"] and pending["pending_review"] and len(pending["lines"]) == 2
+    other = saved[ReceiptManager._account_key(rows[1]["purchaseId"], "mercadona")]
+    assert other["summary_only"] and not other.get("pending_review") and other["lines"] == []
+    assert stock.snapshot["items"][0]["quantity"] == item["quantity"] and not manager.offers_for(product)
+    # A second import never overwrites a ticket that is already pending review.
+    assert await manager.async_import_account_purchases(rows[:1], "mercadona") == 0
+    review = await manager.async_review_saved(pending["id"], "owner")
+    assert [line["description"] for line in review["receipt"]["lines"]] == ["PAN", "BOLSA"]
+    choices = [{"id": line["id"], "product_id": product["id"] if i == 0 else "", "replenish": i == 0, "quantity": 1 if i == 0 else None,
+        "unit": "uds", "purchase_id": "", "save_price": i == 0} for i, line in enumerate(review["receipt"]["lines"])]
+    manager.settings = SimpleNamespace(snapshot={"purchase_detection": {"persons": ["person.ana", "person.luis"]}})
+    with pytest.raises(CatalogError):
+        await manager.async_confirm(review["token"], "owner", choices, True, shoppers=["person.other"])
+    await manager.async_confirm(review["token"], "owner", choices, True, shoppers=["person.ana", "person.ana"])
+    assert stock.snapshot["items"][0]["quantity"] == item["quantity"] + 1
+    history = list(stock.receipts["history"].values())
+    assert len(history) == 2 and sum(not row.get("summary_only") for row in history) == 1
+    confirmed = next(row for row in history if not row.get("summary_only"))
+    assert confirmed["shoppers"] == ["person.ana"]
+    # Buyers can be changed later from the reviewed ticket; an empty choice removes them.
+    reprocess = await manager.async_review_saved(confirmed["id"], "owner")
+    lines = [{"id": line["id"], "product_id": line["product_id"], "pack_quantity": None, "pack_unit": ""} for line in reprocess["receipt"]["lines"]]
+    await manager.async_reprocess(reprocess["token"], "owner", lines, shoppers=[])
+    assert "shoppers" not in stock.receipts["history"][confirmed["id"]]
+
+
 async def test_receipt_manager_checks_mercadona_mail_ticket_identity(hass):
     manager = ReceiptManager(hass, SimpleNamespace(), SimpleNamespace(), SimpleNamespace())
     manager._prepare_preview = AsyncMock(side_effect=lambda receipt, owner: {"receipt": receipt})

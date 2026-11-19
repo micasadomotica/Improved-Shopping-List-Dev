@@ -1,8 +1,8 @@
 const priceValue=value=>value==null||value===''?'':Number(Number(value).toFixed(2));
-import { ListSettingsSession } from "./list-settings-client.js?v=0.90.2";
-import { installDialogCloseButtons } from "./dialog-controls.js?v=0.90.2";
-import { productNameKey } from "./product-names.js?v=0.90.2";
-import { referenceFor, suggestedContent, referenceContentControls, validReferenceContent, validReferenceFormat, weightFormat, receiptCatalogPrice, barcodeIdentity, recoveredStockQuantity } from "./reference-formats.js?v=0.90.2";
+import { ListSettingsSession } from "./list-settings-client.js?v=0.90.3";
+import { installDialogCloseButtons } from "./dialog-controls.js?v=0.90.3";
+import { productNameKey } from "./product-names.js?v=0.90.3";
+import { referenceFor, suggestedContent, referenceContentControls, validReferenceContent, validReferenceFormat, weightFormat, receiptCatalogPrice, barcodeIdentity, recoveredStockQuantity } from "./reference-formats.js?v=0.90.3";
 
 const node=(tag,cls,text)=>{const el=document.createElement(tag);if(cls)el.className=cls;if(text!==undefined)el.textContent=text;return el;};
 const money=value=>new Intl.NumberFormat('es-ES',{style:'currency',currency:'EUR',minimumFractionDigits:2,maximumFractionDigits:2}).format(value);
@@ -57,7 +57,7 @@ class ImprovedShoppingPurchases extends HTMLElement {
       .reference-content-controls label { min-width:0;margin:0;font-size:12px; }.reference-content-controls input,.reference-content-controls select { min-width:0;width:100%; }
       .reference-confirm { grid-column:1/-1;display:flex!important;align-items:center;gap:8px; }.reference-confirm input { width:auto!important;min-height:0!important;margin:0!important; }
       :host{display:block;color:inherit;font:inherit}*{box-sizing:border-box}[hidden]{display:none!important}
-      .purchase-filters{display:flex;align-items:flex-end;gap:12px;margin:16px 0;flex-wrap:nowrap}.purchase-filters label{flex:1;min-width:0}.purchase-filters .upload-ticket{width:42px;height:42px}.shoppers{font-size:12px;opacity:.7}.product-choice{display:flex!important;align-items:center;gap:10px}.product-choice input{width:auto!important}button,input,select{font:inherit;color:inherit}button{cursor:pointer}button:disabled{opacity:.5;cursor:default}
+      .purchase-filters{display:flex;align-items:flex-end;gap:12px;margin:16px 0;flex-wrap:nowrap}.purchase-filters label{flex:1;min-width:0}.purchase-filters .upload-ticket{width:42px;height:42px}.shoppers{font-size:12px;opacity:.7}.review-shoppers{display:grid;gap:6px;margin-top:12px}.review-shoppers select{width:100%}.product-choice{display:flex!important;align-items:center;gap:10px}.product-choice input{width:auto!important}button,input,select{font:inherit;color:inherit}button{cursor:pointer}button:disabled{opacity:.5;cursor:default}
       input,select{width:100%;min-width:0;min-height:42px;border:1px solid var(--divider-color,#d9e0dd);background:var(--card-background-color,#fff);border-radius:8px;padding:8px}
       .notice{padding:12px;border-radius:10px;background:var(--secondary-background-color,#edf2ef)}.error{color:var(--error-color,#d32f2f)}
       #history{display:grid;gap:8px}#more-purchases{display:block;margin:16px auto 0;padding:12px 20px;border:0;border-radius:10px;background:var(--primary-color,#267052);color:white}#more-purchases:focus-visible{outline:3px solid var(--primary-color,#267052);outline-offset:3px}.ticket{border-radius:14px;background:var(--card-background-color,#fff);padding:16px}
@@ -103,7 +103,7 @@ class ImprovedShoppingPurchases extends HTMLElement {
     <p id="message" class="notice" role="status" hidden></p><section id="spending-chart" class="spending-chart" aria-label="Gasto mensual por tienda" hidden></section><div class="purchase-filters"><label>Tienda<select id="filter-shop" aria-label="Filtrar por tienda"><option value="">Todas las tiendas</option></select></label><label>Usuario<select id="filter-person" aria-label="Filtrar por usuario"><option value="">Todos los usuarios</option></select></label></div><div id="history"></div><button id="more-purchases" type="button" hidden>Mostrar más</button><p id="empty" class="empty" hidden>Todavía no has subido ningún ticket.</p>
     <dialog aria-labelledby="review-title"><form id="review-form"><h2 id="review-title">Revisar ticket</h2><div id="review-summary" class="receipt-info"></div><p id="review-confirmed-summary" class="note" hidden></p>
       <ol id="review-steps" aria-label="Pasos de revisión del ticket"><li><button type="button">1. Vinculación</button></li><li><button type="button">2. Stock</button></li><li><button type="button">3. Precios</button></li><li><button type="button">4. Resumen</button></li></ol><h3 id="step-title"></h3><p id="step-help" class="note"></p>
-      <div id="review-lines"></div><div id="review-result" class="review-summary" hidden></div>
+      <div id="review-lines"></div><div id="review-result" class="review-summary" hidden></div><label id="review-shoppers-label" class="review-shoppers" hidden>Compradores<select id="review-shoppers" multiple aria-describedby="review-shoppers-help"></select><small id="review-shoppers-help" class="note">Personas que hicieron esta compra. Se usan para filtrar por usuario en Analítica.</small></label>
       <p id="review-error" class="notice error" role="alert" hidden></p><div class="actions"><button id="previous-step" class="secondary" type="button">Anterior</button><button id="links-only" type="button">Guardar vinculaciones y cerrar</button><button id="stock-only" type="button" hidden>Revisar reposición</button><button id="prices-only" type="button" hidden>Revisar precios</button><button id="confirm-ticket" type="submit">Continuar</button></div>
     </form></dialog>
     <dialog id="association-dialog" aria-labelledby="association-title"><form id="association-form">
@@ -173,6 +173,7 @@ class ImprovedShoppingPurchases extends HTMLElement {
     this._listReview=null;this._confirmationUpdatePrices=undefined;this._notice='';
     const root=this.shadowRoot,{receipt,products}=this._draft;
     root.querySelector('#review-summary').replaceChildren(node('strong','',receipt.store_name+(receipt.provisional_store?' · Provisional':receipt.zone_candidates?.length>1&&receipt.needs_details?' · Tiendas por confirmar':'')+(receipt.document_type==='invoice'?' · Factura':'')),node('span','',documentDate(receipt)),node('strong','',money(receipt.total)));
+    const people=root.querySelector('#review-shoppers');people.replaceChildren(...[...new Set([...(this._session.persons??[]),...(receipt.shoppers??[])])].map(person=>{const option=new Option(this._hass.states[person]?.attributes?.friendly_name??person,person);option.selected=(receipt.shoppers??[]).includes(person);return option;}));people.size=Math.min(4,Math.max(2,people.options.length));
     const confirmed=root.querySelector('#review-confirmed-summary');confirmed.hidden=!this._draft.confirmed_count;confirmed.textContent=this._draft.confirmed_count+' líneas ya confirmadas. Solo se aplicarán las pendientes que revises ahora. El importe mostrado es el total del ticket.';
     this._step=this._draft.reprocess?2:0;
     root.querySelector('#review-title').textContent=this._draft.reprocess?'Reprocesar ticket':'Revisar ticket';
@@ -451,7 +452,7 @@ class ImprovedShoppingPurchases extends HTMLElement {
     }
     if(step>0&&!this._edits.some(edit=>edit.product_id))container.append(node('p','note','No hay productos vinculados en este ticket.'));
 
-    const result=root.querySelector('#review-result');result.hidden=step!==3;
+    const result=root.querySelector('#review-result');result.hidden=step!==3;root.querySelector('#review-shoppers-label').hidden=step!==3||!root.querySelector('#review-shoppers').options.length;
     if(step===3)this._renderPurchaseSummary(result);
     root.querySelectorAll('dialog button,dialog input,dialog select').forEach(el=>{el.disabled=this._busy||el.dataset.locked==='true';});
   }
@@ -672,6 +673,7 @@ class ImprovedShoppingPurchases extends HTMLElement {
     if(this._step===2){await this._prepareListReview();return;}
     await this._confirm();
   }
+  _shoppersPayload(){const select=this.shadowRoot.querySelector('#review-shoppers');return select.options.length?{shoppers:Array.from(select.selectedOptions,option=>option.value)}:{};}
   async _confirm(updatePrices=this._confirmationUpdatePrices??Boolean(this._pricesEnabled)){
     if(this._busy||!this._draft||!this._validateLinks()||!this._validateStock())return;
     if(!this._listReview){this._confirmationUpdatePrices=updatePrices;if(!updatePrices)for(const edit of this._edits)edit.save_price=false;await this._prepareListReview();return;}
@@ -680,8 +682,8 @@ class ImprovedShoppingPurchases extends HTMLElement {
       const token=this._draft.token;
       if(this._draft?.token!==token)return;
       if(this._draft.reprocess){
-        const saved=await this._hass.callWS({type:'improved_shopping_list_dev/receipts/reprocess',token,list_review:this._listReview,lines:this._edits.map(edit=>({id:edit.id,product_id:edit.product_id,discarded:Boolean(!edit.product_id&&edit.discarded),replenish:Boolean(edit.product_id&&edit.replenish&&!edit.line.replenished),quantity:edit.replenish?edit.quantity:null,unit:edit.unit,pack_quantity:validReferenceContent(edit.packageFormat)?edit.packageFormat.content_quantity:null,pack_unit:validReferenceFormat(edit.packageFormat)?edit.packageFormat.content_unit:'',...this._manualPricePayload(edit)}))});this._notice=saved?.list_pending?'Stock guardado. Queda pendiente actualizar la Lista: abre el ticket para revisarlo.':'Datos del ticket guardados.';
-      }else {const saved=await this._hass.callWS({type:'improved_shopping_list_dev/receipts/confirm',token:this._draft.token,list_review:this._listReview,update_prices:Boolean(updatePrices&&this._pricesEnabled),
+        const saved=await this._hass.callWS({type:'improved_shopping_list_dev/receipts/reprocess',token,list_review:this._listReview,...this._shoppersPayload(),lines:this._edits.map(edit=>({id:edit.id,product_id:edit.product_id,discarded:Boolean(!edit.product_id&&edit.discarded),replenish:Boolean(edit.product_id&&edit.replenish&&!edit.line.replenished),quantity:edit.replenish?edit.quantity:null,unit:edit.unit,pack_quantity:validReferenceContent(edit.packageFormat)?edit.packageFormat.content_quantity:null,pack_unit:validReferenceFormat(edit.packageFormat)?edit.packageFormat.content_unit:'',...this._manualPricePayload(edit)}))});this._notice=saved?.list_pending?'Stock guardado. Queda pendiente actualizar la Lista: abre el ticket para revisarlo.':'Datos del ticket guardados.';
+      }else {const saved=await this._hass.callWS({type:'improved_shopping_list_dev/receipts/confirm',token:this._draft.token,list_review:this._listReview,...this._shoppersPayload(),update_prices:Boolean(updatePrices&&this._pricesEnabled),
         lines:this._edits.map(edit=>({id:edit.id,product_id:edit.product_id,discarded:Boolean(!edit.product_id&&edit.discarded),replenish:Boolean(edit.product_id&&edit.replenish),quantity:edit.replenish?edit.quantity:null,unit:edit.unit,purchase_id:'',save_price:Boolean(edit.product_id&&edit.save_price&&updatePrices&&this._pricesEnabled),quantity_edited:Boolean(edit.quantityEdited),pack_quantity:validReferenceContent(edit.packageFormat)?edit.packageFormat.content_quantity:null,pack_unit:validReferenceFormat(edit.packageFormat)?edit.packageFormat.content_unit:'',...(updatePrices&&this._pricesEnabled?this._manualPricePayload(edit):{})}))});this._notice=saved.list_pending?'Stock guardado. Queda pendiente actualizar la Lista: abre el ticket para revisarlo.':'Compra confirmada.';}
       this._draft=null;this.shadowRoot.querySelector('dialog').close();this.dispatchEvent(new CustomEvent('receipt-imported'));await this._session.refresh();
     }catch(error){this._errorMessage(error.message??'No se ha podido guardar el ticket.');}

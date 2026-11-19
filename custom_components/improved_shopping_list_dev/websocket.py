@@ -243,18 +243,18 @@ async def ws_receipts_preview(hass,connection,msg):
 
 
 @websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/receipts/confirm",vol.Required("token"):str,
-    vol.Required("lines"):list,vol.Required("update_prices"):bool,vol.Optional("list_review"):dict})
+    vol.Required("lines"):list,vol.Required("update_prices"):bool,vol.Optional("list_review"):dict,vol.Optional("shoppers"):[str]})
 @websocket_api.require_admin
 @websocket_api.async_response
 async def ws_receipts_confirm(hass,connection,msg):
-    await _receipt_operation(hass,connection,msg,lambda manager,owner:manager.async_confirm(msg["token"],owner,msg["lines"],msg["update_prices"],msg.get("list_review")))
+    await _receipt_operation(hass,connection,msg,lambda manager,owner:manager.async_confirm(msg["token"],owner,msg["lines"],msg["update_prices"],msg.get("list_review"),msg.get("shoppers")))
 
 
-@websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/receipts/reprocess",vol.Required("token"):str,vol.Required("lines"):list,vol.Optional("list_review"):dict})
+@websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/receipts/reprocess",vol.Required("token"):str,vol.Required("lines"):list,vol.Optional("list_review"):dict,vol.Optional("shoppers"):[str]})
 @websocket_api.require_admin
 @websocket_api.async_response
 async def ws_receipts_reprocess(hass,connection,msg):
-    await _receipt_operation(hass,connection,msg,lambda manager,owner:manager.async_reprocess(msg["token"],owner,msg["lines"],msg.get("list_review")))
+    await _receipt_operation(hass,connection,msg,lambda manager,owner:manager.async_reprocess(msg["token"],owner,msg["lines"],msg.get("list_review"),msg.get("shoppers")))
 
 
 @websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/receipts/options",vol.Required("token"):str})

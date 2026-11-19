@@ -139,6 +139,6 @@ async def test_carrefour_one_attempt_per_detected_purchase_with_durable_scopes(h
 
 def test_physical_store_validation_rejects_unsafe_images_accounts_and_duplicate_ids():
     shop={'id':'shop','name':'Frutería','zones':['zone.shop'],'color':'#123456'}
-    assert normalize_places([shop])[0]['account']==''
-    for data in ([shop,shop],[{**shop,'account':'dia'}],[{**shop,'image_url':'javascript:alert(1)'}]):
+    assert normalize_places([shop])[0]['account']=='' and normalize_places([{**shop,'account':'dia'}])[0]['account']=='dia'
+    for data in ([shop,shop],[{**shop,'account':'alcampo'}],[{**shop,'image_url':'javascript:alert(1)'}]):
         with pytest.raises(ValueError):normalize_places(data)

@@ -152,8 +152,20 @@ class ReceiptShopping:
         draft["list_reviewed_lines"] = [link["id"] for link in expected["links"] if link["product_id"]]
         return actions
 
-    async def async_confirm(self, token, owner, selections, update_prices, list_review=None):
-        self._draft(token, owner)
+    def _set_draft_shoppers(self, draft, shoppers):
+        """Buyers chosen in the review: configured persons or those already on the ticket."""
+        if shoppers is None:
+            return
+        settings = getattr(self, "settings", None)
+        allowed = set(settings.snapshot["purchase_detection"].get("persons", [])) if settings else set()
+        for receipt in (draft["receipt"], draft.get("reprocess_original") or {}, draft.get("partial_original") or {}):
+            allowed.update(receipt.get("shoppers", []))
+        if not isinstance(shoppers, list) or any(not isinstance(person, str) or person not in allowed for person in shoppers):
+            raise CatalogError("Selecciona compradores válidos.")
+        draft["shoppers"] = list(dict.fromkeys(shoppers))
+
+    async def async_confirm(self, token, owner, selections, update_prices, list_review=None, shoppers=None):
+        self._set_draft_shoppers(self._draft(token, owner), shoppers)
         await self.automation.async_check()
         async with AsyncExitStack() as stack:
             await stack.enter_async_context(self.automation._lock)
@@ -166,8 +178,8 @@ class ReceiptShopping:
             receipt = await self._async_confirm_purchase(token, owner, selections, update_prices)
             return await self._apply_list_actions(receipt)
 
-    async def async_reprocess(self, token, owner, selections, list_review=None):
-        self._draft(token, owner)
+    async def async_reprocess(self, token, owner, selections, list_review=None, shoppers=None):
+        self._set_draft_shoppers(self._draft(token, owner), shoppers)
         await self.automation.async_check()
         async with AsyncExitStack() as stack:
             await stack.enter_async_context(self.automation._lock)

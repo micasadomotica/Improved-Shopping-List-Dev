@@ -1,3 +1,9 @@
+# 0.90.3 — Tickets de Mercadona listos y compradores
+
+- Al incorporar el historial de Mercadona (Ticket digital), cada ticket se guarda con todas sus líneas y queda pendiente de revisión. Al abrirlo, la revisión aparece al instante, sin volver a descargarlo del buzón. Stock y precios siguen sin cambiar hasta que confirmes la compra. Los tickets que ya tenías solo como resumen se completan en la siguiente consulta del historial.
+- La revisión de un ticket incluye en el paso «Resumen» un selector de compradores. También se puede cambiar en tickets ya revisados. Los compradores elegidos son los que usa el filtro Usuario de Analítica.
+- DIA ya se puede elegir como «Cuenta vinculada» en el editor de tiendas (Ajustes → Tiendas), igual que Carrefour, Lidl y Mercadona.
+
 # 0.90.2 — DIA en Cuentas y líneas sin vincular
 
 - La cuenta de DIA aparece en Ajustes → Cuentas con su propio diálogo: inicio de sesión, historial, ticket automático y la opción de confirmar compras automáticamente. Hasta ahora existía en el servidor pero no se podía abrir desde el panel.
