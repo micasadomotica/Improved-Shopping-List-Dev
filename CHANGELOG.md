@@ -1,3 +1,9 @@
+# 0.90.5 — Buscar en tiendas
+
+- Nuevo botón «Buscar en tiendas» en Alternativas del producto: busca su nombre en las tiendas activadas y propone hasta 5 fichas por tienda, con foto, formato, precio y precio por kilo o litro. Al pulsar «Usar» se rellena la URL y se recuperan sus datos como si la hubieras pegado. Nada se vincula sin elegirlo.
+- Busca en Mercadona (con el almacén de tu código postal, mediante el mismo buscador público que usa su web) y en Consum (API pública). Para Carrefour, Lidl, Eroski y La Sirena muestra un enlace que abre la búsqueda de la tienda en el navegador, porque sus buscadores no admiten consultas automáticas.
+- Al abrir a mano un ticket de una cuenta con confirmación automática, si quedan líneas pendientes, la revisión se abre en el mismo clic en lugar de pedir un segundo.
+
 # 0.90.4 — Descuentos en tickets de Lidl
 
 - Los tickets de Lidl con descuentos (Lidl Plus, cupones, ofertas) impresos debajo de un artículo ya se pueden abrir y revisar. El descuento se aplica a ese artículo, que guarda el importe neto, el bruto y el descuento. El ticket solo se acepta si los artículos con sus descuentos cuadran con el total de Lidl.

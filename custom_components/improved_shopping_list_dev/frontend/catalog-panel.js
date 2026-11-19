@@ -1,14 +1,14 @@
-import { ReplenishmentEditor, replenishmentMarkup } from './replenishment-editor.js?v=0.90.4';
+import { ReplenishmentEditor, replenishmentMarkup } from './replenishment-editor.js?v=0.90.5';
 const priceValue=value=>value==null||value===''?'':Number(Number(value).toFixed(2));
-import { purchaseQuantity, quantityLabel } from "./quantity-client.js?v=0.90.4";
-import { referenceContentControls, barcodeIdentity, validReferenceContent, validReferenceFormat, weightFormat, pendingProductInformation } from "./reference-formats.js?v=0.90.4";
-import { installDialogCloseButtons } from "./dialog-controls.js?v=0.90.4";
-import { CatalogSession } from "./catalog-client.js?v=0.90.4";
-import { matchCatalogProducts } from "./product-matching.js?v=0.90.4";
-import "./category-panel.js?v=0.90.4";
-import "./recipe-editor.js?v=0.90.4";
-import "./icon-picker.js?v=0.90.4";
-import { imageSource, normalizedName, productNameKey, cachedProductPrice, productPriceLabel, storeProductLink, storeFromProductUrl } from "./product-display.js?v=0.90.4";
+import { purchaseQuantity, quantityLabel } from "./quantity-client.js?v=0.90.5";
+import { referenceContentControls, barcodeIdentity, validReferenceContent, validReferenceFormat, weightFormat, pendingProductInformation } from "./reference-formats.js?v=0.90.5";
+import { installDialogCloseButtons } from "./dialog-controls.js?v=0.90.5";
+import { CatalogSession } from "./catalog-client.js?v=0.90.5";
+import { matchCatalogProducts } from "./product-matching.js?v=0.90.5";
+import "./category-panel.js?v=0.90.5";
+import "./recipe-editor.js?v=0.90.5";
+import "./icon-picker.js?v=0.90.5";
+import { imageSource, normalizedName, productNameKey, cachedProductPrice, productPriceLabel, storeProductLink, storeFromProductUrl } from "./product-display.js?v=0.90.5";
 export { imageSource, normalizedName, productNameKey, cachedProductPrice };
 
 const MONTHS = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
@@ -290,6 +290,19 @@ class ImprovedShoppingCatalog extends HTMLElement {
         @media(max-width:550px){.option-url-row{gap:6px;}.retrieve-option{padding:8px;font-size:11px;}.retrieve-option ha-icon{display:none;}}
         .store-link-add input,.store-link-add button { width:100%; min-width:0; height:46px; min-height:46px; margin:0; }
         #product-store-links { display:grid; gap:12px; }
+        .store-search { display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px; }
+        #search-stores { display:inline-flex;align-items:center;gap:6px;min-height:40px; }
+        #search-stores ha-icon { --mdc-icon-size:18px; }
+        #store-search-status[data-error="true"] { color:var(--error-color,#bd3636); }
+        #store-search-results { display:grid;gap:10px;margin-top:8px; }
+        #store-search-results h3 { margin:6px 0 2px;font-size:13px; }
+        .search-candidate { display:grid;grid-template-columns:44px minmax(0,1fr) auto;gap:10px;align-items:center;padding:6px;border:1px solid var(--divider-color,#ddd);border-radius:10px; }
+        .search-candidate img { width:44px;height:44px;object-fit:contain;border-radius:6px;background:#fff; }
+        .search-candidate .candidate-text { min-width:0;display:grid;gap:2px; }
+        .search-candidate strong { font-size:13px;overflow:hidden;text-overflow:ellipsis; }
+        .search-candidate small { font-size:12px;opacity:.75; }
+        .search-browser-links { display:flex;flex-wrap:wrap;gap:8px; }
+        .search-browser-links a { display:inline-flex;align-items:center;gap:4px;padding:6px 10px;border:1px solid var(--divider-color,#ddd);border-radius:16px;color:inherit;text-decoration:none;font-size:12px; }
         .commercial-reference { padding-top:12px;min-width:0; }
         .product-ean-group { border:1px solid var(--divider-color,#dce4e1);border-radius:12px;padding:12px;margin-top:12px;min-width:0; }
         .product-ean-group > summary { cursor:pointer;font-weight:650;overflow-wrap:anywhere; }
@@ -621,7 +634,7 @@ class ImprovedShoppingCatalog extends HTMLElement {
           </section>
           <section id="product-additional" class="fields" aria-label="Alternativas" hidden>
             <label class="wide">Alternativa preferida<select id="preferred-reference" aria-label="Alternativa preferida"></select><span class="helper">Automática usa la tienda favorita y los formatos disponibles. Si desvinculas la alternativa elegida, vuelve a Automática.</span></label>
-            <div class="wide"><div class="store-link-add"><input id="product-link-value" type="url" pattern="https://.*" aria-label="URL del producto" maxlength="2048" placeholder="URL del producto" title="La tienda se detecta automáticamente a partir de la URL."><button id="retrieve-product-data" class="retrieve-option" type="button"><ha-icon icon="mdi:download" aria-hidden="true"></ha-icon>Recuperar datos</button></div><p id="option-lookup-status" class="helper" role="status" aria-live="polite"></p><div id="product-store-links"></div></div>
+            <div class="wide"><div class="store-link-add"><input id="product-link-value" type="url" pattern="https://.*" aria-label="URL del producto" maxlength="2048" placeholder="URL del producto" title="La tienda se detecta automáticamente a partir de la URL."><button id="retrieve-product-data" class="retrieve-option" type="button"><ha-icon icon="mdi:download" aria-hidden="true"></ha-icon>Recuperar datos</button></div><p id="option-lookup-status" class="helper" role="status" aria-live="polite"></p><div class="store-search"><button id="search-stores" type="button"><ha-icon icon="mdi:magnify" aria-hidden="true"></ha-icon>Buscar en tiendas</button><span id="store-search-status" class="helper" role="status" aria-live="polite">Busca el nombre del producto en tus tiendas para proponer la URL.</span></div><div id="store-search-results"></div><div id="product-store-links"></div></div>
           </section>
           <section id="product-automation" class="fields" aria-label="Reposición" hidden>
             ${replenishmentMarkup}
@@ -662,6 +675,7 @@ class ImprovedShoppingCatalog extends HTMLElement {
     this._built = true;
     const root = this.shadowRoot;
     installDialogCloseButtons(root);
+    root.querySelector('#search-stores').addEventListener('click',()=>void this._searchStores());
     root.querySelector('#retrieve-product-data').addEventListener('click',()=>{
       const value=root.querySelector('#product-link-value').value.trim();
       const ref={store:storeFromProductUrl(value)||'',name:'',ean:'',reference_id:'',url:value,content_quantity:null,content_unit:'',content_confirmed:false};
@@ -1894,6 +1908,45 @@ class ImprovedShoppingCatalog extends HTMLElement {
     }
   }
 
+  async _searchStores(){
+    const root=this.shadowRoot,status=root.querySelector('#store-search-status'),results=root.querySelector('#store-search-results'),button=root.querySelector('#search-stores');
+    const query=(root.querySelector('#product-form [name="name"]')?.value??'').trim();
+    delete status.dataset.error;
+    if(query.length<2){status.textContent='Escribe primero el nombre del producto.';status.dataset.error='true';return;}
+    const token=(this._storeSearchToken||0)+1;this._storeSearchToken=token;
+    button.disabled=true;status.textContent='Buscando «'+query+'» en tus tiendas…';results.replaceChildren();
+    try{
+      const data=await this._hass.callWS({type:'improved_shopping_list_dev/catalog/search_stores',query});
+      if(token!==this._storeSearchToken)return;
+      const nodes=[];let count=0;
+      for(const group of data.results??[]){
+        nodes.push(element('h3','',group.store_name));
+        if(group.error){const note=element('p','helper',group.error);note.dataset.error='true';nodes.push(note);continue;}
+        if(!group.candidates.length){nodes.push(element('p','helper','Sin resultados en '+group.store_name+'.'));continue;}
+        for(const item of group.candidates){
+          count++;
+          const row=element('article','search-candidate');
+          const image=element('img');image.alt='';image.loading='lazy';image.referrerPolicy='no-referrer';if(item.image_url)image.src=item.image_url;
+          const text=element('div','candidate-text');text.append(element('strong','',item.name||item.reference_id));
+          const details=[item.format,item.price!=null?item.price.toFixed(2).replace('.',',')+' €':'',item.measure?'('+item.measure+')':''].filter(Boolean).join(' · ');
+          if(details)text.append(element('small','',details));
+          const use=element('button','primary','Usar');use.type='button';use.setAttribute('aria-label','Usar '+(item.name||item.reference_id)+' de '+group.store_name);
+          use.addEventListener('click',()=>{root.querySelector('#product-link-value').value=item.url;results.replaceChildren();status.textContent='Recuperando los datos de '+group.store_name+'…';root.querySelector('#retrieve-product-data').click();});
+          row.append(image,text,use);nodes.push(row);
+        }
+      }
+      if(data.browser?.length){
+        nodes.push(element('h3','','Buscar en la web de la tienda'));
+        const links=element('div','search-browser-links');
+        for(const link of data.browser){const anchor=element('a','',link.store_name+' ↗');anchor.href=link.url;anchor.target='_blank';anchor.rel='noopener noreferrer';anchor.title='Abre la búsqueda de '+link.store_name+'; copia la URL del producto y pégala arriba';links.append(anchor);}
+        nodes.push(links);
+      }
+      results.replaceChildren(...nodes);
+      status.textContent=count?'Elige la ficha correcta y pulsa «Usar»; se recuperan sus datos como si pegaras la URL.':'No se han encontrado fichas para «'+query+'». Prueba con otro nombre.';
+    }catch(error){if(token===this._storeSearchToken){status.textContent=error?.message??'No se ha podido buscar en las tiendas.';status.dataset.error='true';}}
+    finally{if(token===this._storeSearchToken)button.disabled=false;}
+  }
+
   _openProduct(product, suggestedName = "", reading = null, listOrigin = null) {
     if (this._saving || this._deletingProduct) return;
     if (this._saving) return;
@@ -1927,6 +1980,8 @@ class ImprovedShoppingCatalog extends HTMLElement {
     this._expandedEANs = new Set();
     this._retrievingOption=false;
     root.querySelector('#option-lookup-status').textContent='';
+    this._storeSearchToken=(this._storeSearchToken||0)+1;root.querySelector('#store-search-results').replaceChildren();
+    const searchStatus=root.querySelector('#store-search-status');searchStatus.textContent='Busca el nombre del producto en tus tiendas para proponer la URL.';delete searchStatus.dataset.error;root.querySelector('#search-stores').disabled=false;
     root.querySelector('#save-product').disabled=false;
     for(const [store,link] of Object.entries(this._storeLinks)){const value=typeof link==='string'?link:link.url||link.id;if(!this._commercialReferences.some(ref=>ref.store===store&&(ref.url===value||ref.reference_id===value||ref.reference_id===link.id)))this._commercialReferences.push({store,name:'',ean:'',reference_id:typeof link==='string'?(value.startsWith('https://')?'':value):link.id,url:value.startsWith('https://')?value:'',content_quantity:null,content_unit:'',content_confirmed:false});}
     this._renderStoreLinks();

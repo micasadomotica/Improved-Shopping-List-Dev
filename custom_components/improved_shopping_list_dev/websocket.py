@@ -84,6 +84,7 @@ def async_register_commands(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, ws_catalog_summary)
     websocket_api.async_register_command(hass, ws_product_set_category)
     websocket_api.async_register_command(hass, ws_option_retrieve)
+    websocket_api.async_register_command(hass, ws_store_search)
     websocket_api.async_register_command(hass, ws_attention_get)
     websocket_api.async_register_command(hass, ws_attention_subscribe)
     websocket_api.async_register_command(hass, ws_stock_get)
@@ -524,6 +525,27 @@ async def ws_option_retrieve(hass, connection, msg):
         connection.send_error(msg["id"], "option_lookup_error", str(err))
     else:
         connection.send_result(msg["id"], result)
+
+
+@websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/catalog/search_stores",
+    vol.Required("query"):vol.All(str,vol.Length(min=1,max=200))})
+@websocket_api.require_admin
+@websocket_api.async_response
+async def ws_store_search(hass, connection, msg):
+    if not _catalog(hass, connection, msg):
+        return
+    from .store_search import StoreSearch, StoreSearchError
+    search = hass.data[DOMAIN].setdefault("store_search", StoreSearch(hass))
+    try:
+        result = await search.async_search(msg["query"])
+    except StoreSearchError as err:
+        connection.send_error(msg["id"], "store_search_error", str(err))
+        return
+    failed = [row for row in result["results"] if row.get("error")]
+    if failed:
+        hass.data[DOMAIN]["activity"].record("store.search_error", "Búsqueda en tiendas con errores: "+"; ".join(row["error"] for row in failed),
+            source="user", diagnostics={"stores": [row["store"] for row in failed]})
+    connection.send_result(msg["id"], result)
 
 
 @websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/readers/get"})

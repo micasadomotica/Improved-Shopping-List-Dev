@@ -1,8 +1,8 @@
 const priceValue=value=>value==null||value===''?'':Number(Number(value).toFixed(2));
-import { ListSettingsSession } from "./list-settings-client.js?v=0.90.4";
-import { installDialogCloseButtons } from "./dialog-controls.js?v=0.90.4";
-import { productNameKey } from "./product-names.js?v=0.90.4";
-import { referenceFor, suggestedContent, referenceContentControls, validReferenceContent, validReferenceFormat, weightFormat, receiptCatalogPrice, barcodeIdentity, recoveredStockQuantity } from "./reference-formats.js?v=0.90.4";
+import { ListSettingsSession } from "./list-settings-client.js?v=0.90.5";
+import { installDialogCloseButtons } from "./dialog-controls.js?v=0.90.5";
+import { productNameKey } from "./product-names.js?v=0.90.5";
+import { referenceFor, suggestedContent, referenceContentControls, validReferenceContent, validReferenceFormat, weightFormat, receiptCatalogPrice, barcodeIdentity, recoveredStockQuantity } from "./reference-formats.js?v=0.90.5";
 
 const node=(tag,cls,text)=>{const el=document.createElement(tag);if(cls)el.className=cls;if(text!==undefined)el.textContent=text;return el;};
 const money=value=>new Intl.NumberFormat('es-ES',{style:'currency',currency:'EUR',minimumFractionDigits:2,maximumFractionDigits:2}).format(value);
@@ -797,7 +797,9 @@ class ImprovedShoppingPurchases extends HTMLElement {
   async _reviewPending(receipt){
     if(this._busy)return;
     this._setBusy(true);this._error='';
-    try{const draft=await this._hass.callWS({type:receipt.pending_review?'improved_shopping_list_dev/receipts/review_saved':'improved_shopping_list_dev/'+receipt.store+'_account/preview_saved',receipt_id:receipt.id});if(draft.automatic){this._showAutomaticResult(draft);return;}this._draft=draft;this._buildReview();this.shadowRoot.querySelector('dialog').showModal();}
+    try{const draft=await this._hass.callWS({type:receipt.pending_review?'improved_shopping_list_dev/receipts/review_saved':'improved_shopping_list_dev/'+receipt.store+'_account/preview_saved',receipt_id:receipt.id});if(draft.automatic){this._showAutomaticResult(draft);if(!draft.receipt.pending_review)return;
+        // Opened by hand: continue straight to the lines left pending by the automatic pass.
+        const pending=await this._hass.callWS({type:'improved_shopping_list_dev/receipts/review_saved',receipt_id:draft.receipt.id});this._draft=pending;}else this._draft=draft;this._buildReview();this.shadowRoot.querySelector('dialog').showModal();}
     catch(error){this._error=error.message??'No se ha podido abrir el ticket.';this._render();}
     finally{this._setBusy(false);}
   }
