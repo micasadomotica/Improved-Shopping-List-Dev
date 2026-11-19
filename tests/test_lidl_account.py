@@ -27,6 +27,26 @@ def fixture_ticket():
     return {"id":"safe-receipt-id", "date":when, "totalAmount":0, "htmlPrintedReceipt":html}, when
 
 
+def test_lidl_receipt_line_discounts_are_applied_and_unknown_layouts_are_diagnosed():
+    detail, when = fixture_ticket()
+    html = detail['htmlPrintedReceipt']
+    html = html.replace('PAN 1,00 A</span>', 'PAN 1,00 A</span><br><span class="discount">Descuento Lidl Plus -0,20</span>')
+    html = html.replace('EUR/kg</span>', 'EUR/kg</span><br><span>Cupon fruta 0,30-</span>')
+    html = html.replace('Total          3,00', 'Total          2,50')
+    receipt = extract_lidl_ticket({**detail, 'htmlPrintedReceipt': html}, detail['id'], 2.5, when)
+    bread, fruit = receipt['lines']
+    assert bread['amount'] == .8 and bread['gross_amount'] == 1 and bread['line_discount'] == .2 and bread['unit_price'] == .8
+    assert fruit['amount'] == 1.7 and fruit['line_discount'] == .3 and fruit['ticket_measure_price']['price'] == 4
+    assert receipt['subtotal'] == 3 and receipt['discount'] == .5 and receipt['total'] == 2.5
+    # A discount summary only after the totals is never spread over the articles.
+    other = detail['htmlPrintedReceipt'].replace('Total          3,00', 'Total          2,50\nAhorro Lidl Plus -0,50\nTARJETA 1234567890123456 2,50')
+    with pytest.raises(CatalogError) as err:
+        extract_lidl_ticket({**detail, 'htmlPrintedReceipt': other}, detail['id'], 2.5, when)
+    diagnostics = err.value.diagnostics
+    assert diagnostics['articles_sum'] == 3 and diagnostics['printed_totals'] == [2.5] and diagnostics['expected_total'] == 2.5
+    assert '1234567890123456' not in json.dumps(diagnostics) and any('Ahorro Lidl Plus -0,50' in row for row in diagnostics['after_articles'])
+
+
 def test_lidl_receipt_weight_continuation_zero_header_and_private_fields():
     detail, when = fixture_ticket()
     receipt = extract_lidl_ticket(detail, detail['id'], 3, when)

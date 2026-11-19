@@ -1,3 +1,8 @@
+# 0.90.4 — Descuentos en tickets de Lidl
+
+- Los tickets de Lidl con descuentos (Lidl Plus, cupones, ofertas) impresos debajo de un artículo ya se pueden abrir y revisar. El descuento se aplica a ese artículo, que guarda el importe neto, el bruto y el descuento. El ticket solo se acepta si los artículos con sus descuentos cuadran con el total de Lidl.
+- Si un ticket de Lidl sigue sin cuadrar, el registro de actividad guarda un diagnóstico con su estructura: número de artículos, suma, totales impresos y líneas con importes. Las secuencias largas de números (tarjeta, identificadores) aparecen ocultas. Sirve para adaptar el lector a otros formatos.
+
 # 0.90.3 — Tickets de Mercadona listos y compradores
 
 - Al incorporar el historial de Mercadona (Ticket digital), cada ticket se guarda con todas sus líneas y queda pendiente de revisión. Al abrirlo, la revisión aparece al instante, sin volver a descargarlo del buzón. Stock y precios siguen sin cambiar hasta que confirmes la compra. Los tickets que ya tenías solo como resumen se completan en la siguiente consulta del historial.

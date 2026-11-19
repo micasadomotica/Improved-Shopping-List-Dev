@@ -29,6 +29,8 @@ async def _operation(hass,connection,msg,action):
         data["activity"].record("stores.account","Lidl: "+str(err),source="manual",diagnostics={"action":action,**err.diagnostics})
         connection.send_error(msg["id"],err.code,str(err))
     except CatalogError as err:
+        if action in ("preview","preview_saved") and getattr(err,"diagnostics",None):
+            data["activity"].record("stores.account","Lidl: "+str(err),source="manual",diagnostics={"action":action,"stage":err.code,**err.diagnostics})
         connection.send_error(msg["id"],err.code,str(err))
     except (OSError,HomeAssistantError,TimeoutError):
         connection.send_error(msg["id"],"storage_error","No se ha podido guardar la sesión o preparar el ticket de Lidl.")

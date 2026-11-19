@@ -50,6 +50,7 @@ class PrintedReceipt(HTMLParser):
     def __init__(self):
         super().__init__(convert_charrefs=True)
         self.articles, self.text, self._row, self._depth = [], [], None, 0
+        self.after = []  # printed text after each article, until the next one
 
     def handle_starttag(self, tag, attrs):
         data = dict(attrs)
@@ -59,9 +60,12 @@ class PrintedReceipt(HTMLParser):
             elif "article" in data.get("class", "").split():
                 self._row = {"attributes": data, "text": ""}
                 self.articles.append(self._row)
+                self.after.append("")
                 self._depth = 1
         if tag in ("br", "div", "p"):
             self.text.append("\n")
+            if self._row is None and self.after:
+                self.after[-1] += "\n"
 
     def handle_endtag(self, tag):
         if tag == "span" and self._row is not None:
@@ -73,6 +77,51 @@ class PrintedReceipt(HTMLParser):
         self.text.append(data)
         if self._row is not None:
             self._row["text"] += data
+        elif self.after:
+            self.after[-1] += data
+
+
+DISCOUNT = re.compile(r"^\s*(?P<label>[^\d\n-][^\n]{0,120}?)\s+(?:-(?P<a>\d+[.,]\d{2})|(?P<b>\d+[.,]\d{2})-)\s*[A-Z]?\s*$")
+TOTALS = re.compile(r"\b(?:total|subtotal|a pagar|importe|entregado|cambio|tarjeta|efectivo|iva|base)\b", re.I)
+
+
+def _discounts(text):
+    """Negative amounts printed right after an article (Lidl Plus, coupons, offers)."""
+    result = []
+    for raw in text.split("\n"):
+        if TOTALS.search(raw):
+            break
+        match = DISCOUNT.match(raw)
+        if match:
+            result.append(amount(match["a"] or match["b"]))
+    return result
+
+
+def _apply_discounts(line, discounts):
+    if not discounts:
+        return
+    gross = Decimal(str(line.get("gross_amount", line["amount"])))
+    net = Decimal(str(line["amount"])) - sum(discounts, Decimal(0))
+    if net < 0:
+        raise CatalogError("El descuento de un artículo de Lidl no es válido.", "lidl_ticket_amount")
+    line.update(amount=float(net), unit_price=float((net / line["count"]).quantize(Decimal("0.0001"), rounding=ROUND_HALF_UP)),
+        gross_amount=float(gross), line_discount=float(gross - net))
+
+
+def _masked(line):
+    """Diagnostics keep layout and amounts; long digit runs (cards, ids) are hidden."""
+    line = re.sub(r"\d{4,}", lambda m: "#" * len(m[0]), re.sub(r"\s+", " ", line).strip())
+    return line[:100]
+
+
+def _amount_diagnostics(parser, lines, totals, expected):
+    printed = [_masked(line) for line in "".join(parser.text).split("\n")
+               if re.search(r"\d+[.,]\d{2}", line)]
+    return {"articles": len(parser.articles), "lines": len(lines),
+            "articles_sum": float(sum((Decimal(str(line["amount"])) for line in lines), Decimal(0))),
+            "printed_totals": [float(amount(value)) for value in totals[-3:]], "expected_total": float(expected),
+            "after_articles": [_masked(row) for text in parser.after for row in text.split("\n") if row.strip()][:60],
+            "printed_amount_lines": printed[:80]}
 
 
 def extract_lidl_ticket(detail, reference, expected_total, expected_date):
@@ -99,6 +148,7 @@ def extract_lidl_ticket(detail, reference, expected_total, expected_date):
         signature = tuple(attrs.get(k) for k in ("data-art-id", "data-art-description", "data-unit-price", "data-art-quantity"))
         # Weighted items have a second article span explaining kg × price/kg.
         if previous == signature and re.match(r"^\s*\d+(?:[.,]\d+)?\s*(?:kg|g|uds?)\s*[x×*]", text, re.I):
+            _apply_discounts(lines[-1], _discounts(parser.after[index]))
             continue
         previous = signature
         quantity, price = amount(attrs.get("data-art-quantity", "1")), amount(attrs.get("data-unit-price"))
@@ -127,14 +177,18 @@ def extract_lidl_ticket(detail, reference, expected_total, expected_date):
             line.update(purchased_quantity=float(quantity),purchased_unit=unit,quantity_estimated=False,
                 ticket_measure_price={"price":float(price),"quantity":1,"unit":unit,"currency":"EUR",
                     "checked_at":dt_util.parse_datetime(parsed["purchased_at"]).timestamp(),"source":"ticket"})
+        _apply_discounts(line, _discounts(parser.after[index]))
         lines.append(line)
     text = "".join(parser.text)
     totals = re.findall(r"(?:^|\n)\s*TOTAL\s+(\d+[.,]\d{2})(?:\s|$)", text, re.I)
     total = amount(expected_total); subtotal = sum((Decimal(str(line["amount"])) for line in lines), Decimal(0))
     if not totals or abs(amount(totals[-1]) - total) > Decimal(".02") or abs(subtotal-total) > Decimal(".02"):
         # Unknown discount/return layouts need a dedicated parser, never guessed prices.
-        raise CatalogError("Los artículos no coinciden con el total de Lidl; se conserva la compra sin revisar.", "lidl_ticket_amount")
+        error = CatalogError("Los artículos no coinciden con el total de Lidl; se conserva la compra sin revisar.", "lidl_ticket_amount")
+        error.diagnostics = _amount_diagnostics(parser, lines, totals, total)
+        raise error
+    gross = sum((Decimal(str(line.get("gross_amount", line["amount"]))) for line in lines), Decimal(0))
     receipt = {"store": "lidl", "store_name": "Lidl", "identity": reference, "purchased_at": parsed["purchased_at"],
-        "currency": "EUR", "subtotal": float(subtotal), "discount": 0, "shipping": 0, "total": float(total),
+        "currency": "EUR", "subtotal": float(gross), "discount": float(gross - subtotal), "shipping": 0, "total": float(total),
         "article_count": sum(line["count"] for line in lines), "lines": lines}
     return _identify_receipt(receipt, json.dumps(receipt, ensure_ascii=False, sort_keys=True).encode())
