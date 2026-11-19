@@ -1,17 +1,17 @@
-import { receiptConfirmationControl } from './receipt-confirmation.js?v=0.90.0';
-import "./shopping-places.js?v=0.90.0";
-import "./dia-prices-settings.js?v=0.90.0";
-import "./alcampo-settings.js?v=0.90.0";
-import "./catalog-sources.js?v=0.90.0";
-import "./carrefour-account.js?v=0.90.0";
-import "./lidl-account.js?v=0.90.0";
-import "./mercadona-account.js?v=0.90.0";
-import "./logs-panel.js?v=0.90.0";
-import "./notification-settings.js?v=0.90.0";
-import { installDialogCloseButtons } from "./dialog-controls.js?v=0.90.0";
-import { installToggleStyles } from "./toggle-styles.js?v=0.90.0";
-import { todoEntities, isAvailable } from "./todo-client.js?v=0.90.0";
-import { DEFAULT_APPEARANCE, gradientTextColor, saveMercadonaLocation } from "./list-settings-client.js?v=0.90.0";
+import { receiptConfirmationControl } from './receipt-confirmation.js?v=0.90.1';
+import "./shopping-places.js?v=0.90.1";
+import "./dia-prices-settings.js?v=0.90.1";
+import "./alcampo-settings.js?v=0.90.1";
+import "./catalog-sources.js?v=0.90.1";
+import "./carrefour-account.js?v=0.90.1";
+import "./lidl-account.js?v=0.90.1";
+import "./mercadona-account.js?v=0.90.1";
+import "./logs-panel.js?v=0.90.1";
+import "./notification-settings.js?v=0.90.1";
+import { installDialogCloseButtons } from "./dialog-controls.js?v=0.90.1";
+import { installToggleStyles } from "./toggle-styles.js?v=0.90.1";
+import { todoEntities, isAvailable } from "./todo-client.js?v=0.90.1";
+import { DEFAULT_APPEARANCE, gradientTextColor, saveMercadonaLocation } from "./list-settings-client.js?v=0.90.1";
 
 const MERCADONA_LOGO_URL = new URL("mercadona.png", import.meta.url).href;
 
@@ -42,7 +42,7 @@ class ImprovedShoppingSettings extends HTMLElement {
     }
   }
 
-  set active(value) { this._active = Boolean(value); if(!this._active){this.shadowRoot.querySelector("#lidl-dialog")?.close();this.shadowRoot.querySelector("isl-dev-lidl-account")?.deactivate();this.shadowRoot.querySelector('#carrefour-dialog')?.close();this.shadowRoot.querySelector('isl-dev-carrefour-account')?.deactivate();this.shadowRoot.querySelector('#dia-dialog')?.close();this.shadowRoot.querySelector('isl-dev-dia-prices-settings')?.deactivate();this.shadowRoot.querySelector('isl-dev-mercadona-account')?.deactivate();} this._syncLogs(); this._syncCatalogSources(); }
+  set active(value) { this._active = Boolean(value); if(!this._active){this.shadowRoot.querySelector("#lidl-dialog")?.close();this.shadowRoot.querySelector("isl-dev-lidl-account")?.deactivate();this.shadowRoot.querySelector('#carrefour-dialog')?.close();this.shadowRoot.querySelector('isl-dev-carrefour-account')?.deactivate();this.shadowRoot.querySelector('#dia-dialog')?.close();this.shadowRoot.querySelector('isl-dev-dia-prices-settings')?.deactivate();this.shadowRoot.querySelector('#mercadona-account-dialog')?.close();this.shadowRoot.querySelector('isl-dev-mercadona-account')?.deactivate();} this._syncLogs(); this._syncCatalogSources(); }
 
 
   _syncCatalogSources(){const source=this.shadowRoot.querySelector('isl-dev-catalog-sources');if(source){source.data=this._data;source.active=this._active&&this._view==='stores';}}
@@ -64,7 +64,7 @@ class ImprovedShoppingSettings extends HTMLElement {
     this.active = false;
     this.shadowRoot.querySelector("isl-dev-carrefour-account")?.deactivate();
     this.shadowRoot.querySelector("#lidl-dialog")?.close();this.shadowRoot.querySelector("isl-dev-lidl-account")?.deactivate();
-    this.shadowRoot.querySelector("isl-dev-mercadona-account")?.deactivate();
+    this.shadowRoot.querySelector("#mercadona-account-dialog")?.close();this.shadowRoot.querySelector("isl-dev-mercadona-account")?.deactivate();
     for (const store of ["consum", "lasirena", "eroski", "dia"]) this.shadowRoot.querySelector(`#${store}-dialog`)?.close();
     clearInterval(this._pricesProgressTimer);
     this.shadowRoot.querySelector("#prices-progress-dialog")?.close();
@@ -72,7 +72,7 @@ class ImprovedShoppingSettings extends HTMLElement {
     this._priceStatusToken = null; this._priceStatusConnection = null; this._stopPriceStatus?.(); this._stopPriceStatus = null;
     this._productsLoading = false; this._productsGeneration = (this._productsGeneration || 0) + 1;
     this._carrefourGeneration = (this._carrefourGeneration || 0) + 1; this._carrefourLoading = false; this._alcampoGeneration = (this._alcampoGeneration || 0) + 1;
-    this.shadowRoot.querySelector("#alcampo-dialog")?.close(); this.shadowRoot.querySelector("#carrefour-dialog")?.close(); this.shadowRoot.querySelector("#store-dialog")?.close();
+    this.shadowRoot.querySelector("#alcampo-dialog")?.close(); this.shadowRoot.querySelector("#carrefour-dialog")?.close(); this.shadowRoot.querySelector("#store-dialog")?.close(); this.shadowRoot.querySelector("#mercadona-account-dialog")?.close();
   }
 
   _build() {
@@ -298,7 +298,6 @@ class ImprovedShoppingSettings extends HTMLElement {
           <button id="save-mercadona-location" class="primary" type="submit">Guardar zona</button>
           <p id="mercadona-location-status" class="helper" role="status"></p>
         </form>
-        <isl-dev-mercadona-account></isl-dev-mercadona-account>
 
         <div id="store-dialog-error" class="notice error" role="alert" hidden></div>
         <section id="store-products-view">
@@ -308,6 +307,7 @@ class ImprovedShoppingSettings extends HTMLElement {
         </section>
 
       </dialog>
+      <dialog id="mercadona-account-dialog" aria-labelledby="mercadona-account-title"><h2 id="mercadona-account-title">Mercadona</h2><isl-dev-mercadona-account></isl-dev-mercadona-account></dialog>
       <section id="settings-logs" aria-label="Información" hidden>
       <section id="settings-community" class="card" aria-labelledby="settings-community-title">
         <h2 id="settings-community-title">Comunidad</h2>
@@ -358,7 +358,7 @@ class ImprovedShoppingSettings extends HTMLElement {
     this._receiptConfirmationControls=[];
     for(const store of ['carrefour','lidl','alcampo','mercadona','consum','lasirena','eroski','dia']){
       const control=receiptConfirmationControl(store,()=>this._data);
-      root.querySelector(store==='mercadona'?'#store-dialog':'#'+store+'-dialog').append(control.element);
+      root.querySelector(store==='mercadona'?'#mercadona-account-dialog':'#'+store+'-dialog').append(control.element);
       this._receiptConfirmationControls.push(control);
     }
     installDialogCloseButtons(root);
@@ -415,7 +415,10 @@ class ImprovedShoppingSettings extends HTMLElement {
     root.querySelector("#carrefour-dialog").addEventListener("cancel",event=>{if(this._busy)event.preventDefault();});
     root.querySelector("#carrefour-dialog").addEventListener("close", () => { if (!root.querySelector("#carrefour-dialog").open) { this._carrefourGeneration = (this._carrefourGeneration || 0) + 1; this._carrefourLoading = false; root.querySelector("isl-dev-carrefour-account")?.deactivate(); } });
     root.querySelector("#mercadona-enabled").addEventListener("change",()=>void this._saveRetailSettings(()=>this._data.settings.setStoreEnabled("mercadona",root.querySelector("#mercadona-enabled").checked)));
-    root.querySelector("#configure-mercadona").addEventListener("click", () => this._openStore());
+    root.querySelector("#configure-mercadona").addEventListener("click", () => this._openMercadonaAccount());
+    const mercadonaAccountDialog=root.querySelector("#mercadona-account-dialog");
+    mercadonaAccountDialog.addEventListener("cancel",event=>{if(this._busy)event.preventDefault();});
+    mercadonaAccountDialog.addEventListener("close",()=>{if(!mercadonaAccountDialog.open)root.querySelector("isl-dev-mercadona-account")?.deactivate();});
     root.querySelector('isl-dev-catalog-sources').addEventListener('configure-mercadona-location',()=>this._openStore());
     root.querySelector('#mercadona-location-form').addEventListener('submit',event=>{
       event.preventDefault();
@@ -426,7 +429,6 @@ class ImprovedShoppingSettings extends HTMLElement {
     root.querySelector("#store-dialog").addEventListener("cancel", event => { if (this._busy) event.preventDefault(); });
     root.querySelector("#store-dialog").addEventListener("close", () => {
       if (root.querySelector("#store-dialog").open) return;
-      root.querySelector("isl-dev-mercadona-account")?.deactivate();
       this._storeEnableDraft = undefined; this._storeDirty = false;
       this._productsGeneration = (this._productsGeneration || 0) + 1; this._productsLoading = false;
       this._error = ""; this._render();
@@ -497,7 +499,7 @@ class ImprovedShoppingSettings extends HTMLElement {
     for (const store of ["mercadona", "carrefour", "lidl", "alcampo", "consum", "lasirena", "eroski", "dia"]) {
       if(store==="lidl"){root.querySelector("#lidl-enabled").checked=Boolean(settings.stores?.lidl?.enabled);root.querySelector("#lidl-enabled").disabled=locked;}
       root.querySelector(`#${store}-enabled`).closest(".store-row").dataset.enabled = String(Boolean(settings.stores?.[store]?.enabled));
-      const available=universal?["carrefour","lidl"].includes(store):(settings.availableStores??["mercadona","carrefour","consum","lasirena","eroski"]).includes(store);
+      const available=universal?["carrefour","lidl","mercadona"].includes(store):(settings.availableStores??["mercadona","carrefour","consum","lasirena","eroski"]).includes(store);
       root.querySelector(`#${store}-enabled`).closest(".store-row").hidden=!available;
       if(!available&&store!=='mercadona'){
         const dialog=root.querySelector(store==='mercadona'?'#store-dialog':`#${store}-dialog`);
@@ -783,7 +785,7 @@ class ImprovedShoppingSettings extends HTMLElement {
         delete section.dataset.dirty;
       }));
       section.append(label,select,help,save);
-      root.querySelector(store==='mercadona'?'#store-dialog':'#'+store+'-dialog').append(section);
+      root.querySelector(store==='mercadona'?'#mercadona-account-dialog':'#'+store+'-dialog').append(section);
     }
   }
 
@@ -880,8 +882,12 @@ class ImprovedShoppingSettings extends HTMLElement {
     root.querySelector('#mercadona-location-status').textContent='';
     this._renderStore();
     root.querySelector("#store-dialog").showModal();
-    const account = root.querySelector("isl-dev-mercadona-account"); account.hass = this._data.hass; void account.activate();
+  }
 
+  _openMercadonaAccount() {
+    const root = this.shadowRoot;
+    root.querySelector("#mercadona-account-dialog").showModal();
+    const account = root.querySelector("isl-dev-mercadona-account"); account.hass = this._data.hass; void account.activate();
   }
 
   _renderStoreProducts() {

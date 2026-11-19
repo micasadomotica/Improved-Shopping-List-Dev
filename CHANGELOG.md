@@ -1,6 +1,12 @@
+# 0.90.1 — Mercadona en Cuentas y tickets pendientes
+
+- La cuenta de Mercadona (Ticket digital y Tienda online) aparece en Ajustes → Cuentas, junto a Carrefour y Lidl, con su propio diálogo y la revisión de tickets.
+- El diálogo de Mercadona de Catálogos queda solo para el código postal de entrega.
+- En Analítica → Compras, el botón del ticket indica su estado: gris si solo hay resumen de la cuenta, verde si está revisado y ámbar con el número de líneas pendientes si falta revisarlo o vincular productos.
+
 # 0.90.0 — Cuenta de Mercadona
 
-- Añade la cuenta de Mercadona en Ajustes → Tiendas → Mercadona, con dos opciones independientes: **Ticket digital** (compras en tienda) y **Tienda online**. Se puede conectar una, la otra o ambas.
+- Añade la cuenta de Mercadona en Ajustes → Cuentas → Mercadona, con dos opciones independientes: **Ticket digital** (compras en tienda) y **Tienda online**. Se puede conectar una, la otra o ambas.
 - Ticket digital: lee en solo lectura el buzón que recibe los tickets en PDF de Mercadona (Gmail por defecto u otro proveedor IMAP con servidor, puerto y carpeta). No marca, mueve ni borra correos y solo descarga los PDF de Mercadona. Recupera los tickets de los últimos 12 meses, descarga automáticamente el último tras una compra y permite la recuperación manual por día, como las demás cuentas.
 - Asistente por pasos para el ticket digital: aviso de usar un correo dedicado en lugar del personal, enlaces para crear una cuenta de Gmail y su contraseña de aplicación, enlace al WhatsApp de Mercadona para cambiar el correo del Ticket Digital y a sus condiciones.
 - Tienda online: inicio de sesión con la API privada de tienda.mercadona.es. La contraseña no se guarda; solo se conserva la sesión renovable. Muestra cuántos pedidos online tiene la cuenta y avisa cuando todavía no hay ninguno. La importación del detalle de los pedidos se activará cuando se verifique su formato; incluye un comando de diagnóstico que solo devuelve la estructura de los datos, sin valores personales.

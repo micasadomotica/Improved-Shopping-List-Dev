@@ -1,5 +1,5 @@
-import { installDialogCloseButtons } from "./dialog-controls.js?v=0.90.0";
-import { installToggleStyles } from "./toggle-styles.js?v=0.90.0";
+import { installDialogCloseButtons } from "./dialog-controls.js?v=0.90.1";
+import { installToggleStyles } from "./toggle-styles.js?v=0.90.1";
 
 export const MERCADONA_LINKS = Object.freeze({
   gmailSignup: "https://accounts.google.com/signup",
