@@ -1,17 +1,18 @@
-import { receiptConfirmationControl } from './receipt-confirmation.js?v=0.90.1';
-import "./shopping-places.js?v=0.90.1";
-import "./dia-prices-settings.js?v=0.90.1";
-import "./alcampo-settings.js?v=0.90.1";
-import "./catalog-sources.js?v=0.90.1";
-import "./carrefour-account.js?v=0.90.1";
-import "./lidl-account.js?v=0.90.1";
-import "./mercadona-account.js?v=0.90.1";
-import "./logs-panel.js?v=0.90.1";
-import "./notification-settings.js?v=0.90.1";
-import { installDialogCloseButtons } from "./dialog-controls.js?v=0.90.1";
-import { installToggleStyles } from "./toggle-styles.js?v=0.90.1";
-import { todoEntities, isAvailable } from "./todo-client.js?v=0.90.1";
-import { DEFAULT_APPEARANCE, gradientTextColor, saveMercadonaLocation } from "./list-settings-client.js?v=0.90.1";
+import { receiptConfirmationControl } from './receipt-confirmation.js?v=0.90.2';
+import "./shopping-places.js?v=0.90.2";
+import "./dia-prices-settings.js?v=0.90.2";
+import "./alcampo-settings.js?v=0.90.2";
+import "./catalog-sources.js?v=0.90.2";
+import "./carrefour-account.js?v=0.90.2";
+import "./lidl-account.js?v=0.90.2";
+import "./mercadona-account.js?v=0.90.2";
+import "./dia-account.js?v=0.90.2";
+import "./logs-panel.js?v=0.90.2";
+import "./notification-settings.js?v=0.90.2";
+import { installDialogCloseButtons } from "./dialog-controls.js?v=0.90.2";
+import { installToggleStyles } from "./toggle-styles.js?v=0.90.2";
+import { todoEntities, isAvailable } from "./todo-client.js?v=0.90.2";
+import { DEFAULT_APPEARANCE, gradientTextColor, saveMercadonaLocation } from "./list-settings-client.js?v=0.90.2";
 
 const MERCADONA_LOGO_URL = new URL("mercadona.png", import.meta.url).href;
 
@@ -42,7 +43,7 @@ class ImprovedShoppingSettings extends HTMLElement {
     }
   }
 
-  set active(value) { this._active = Boolean(value); if(!this._active){this.shadowRoot.querySelector("#lidl-dialog")?.close();this.shadowRoot.querySelector("isl-dev-lidl-account")?.deactivate();this.shadowRoot.querySelector('#carrefour-dialog')?.close();this.shadowRoot.querySelector('isl-dev-carrefour-account')?.deactivate();this.shadowRoot.querySelector('#dia-dialog')?.close();this.shadowRoot.querySelector('isl-dev-dia-prices-settings')?.deactivate();this.shadowRoot.querySelector('#mercadona-account-dialog')?.close();this.shadowRoot.querySelector('isl-dev-mercadona-account')?.deactivate();} this._syncLogs(); this._syncCatalogSources(); }
+  set active(value) { this._active = Boolean(value); if(!this._active){this.shadowRoot.querySelector("#lidl-dialog")?.close();this.shadowRoot.querySelector("isl-dev-lidl-account")?.deactivate();this.shadowRoot.querySelector('#carrefour-dialog')?.close();this.shadowRoot.querySelector('isl-dev-carrefour-account')?.deactivate();this.shadowRoot.querySelector('#dia-dialog')?.close();this.shadowRoot.querySelector('isl-dev-dia-prices-settings')?.deactivate();this.shadowRoot.querySelector('#mercadona-account-dialog')?.close();this.shadowRoot.querySelector('isl-dev-mercadona-account')?.deactivate();this.shadowRoot.querySelector('#dia-account-dialog')?.close();this.shadowRoot.querySelector('isl-dev-dia-account')?.deactivate();} this._syncLogs(); this._syncCatalogSources(); }
 
 
   _syncCatalogSources(){const source=this.shadowRoot.querySelector('isl-dev-catalog-sources');if(source){source.data=this._data;source.active=this._active&&this._view==='stores';}}
@@ -65,6 +66,7 @@ class ImprovedShoppingSettings extends HTMLElement {
     this.shadowRoot.querySelector("isl-dev-carrefour-account")?.deactivate();
     this.shadowRoot.querySelector("#lidl-dialog")?.close();this.shadowRoot.querySelector("isl-dev-lidl-account")?.deactivate();
     this.shadowRoot.querySelector("#mercadona-account-dialog")?.close();this.shadowRoot.querySelector("isl-dev-mercadona-account")?.deactivate();
+    this.shadowRoot.querySelector("#dia-account-dialog")?.close();this.shadowRoot.querySelector("isl-dev-dia-account")?.deactivate();
     for (const store of ["consum", "lasirena", "eroski", "dia"]) this.shadowRoot.querySelector(`#${store}-dialog`)?.close();
     clearInterval(this._pricesProgressTimer);
     this.shadowRoot.querySelector("#prices-progress-dialog")?.close();
@@ -72,7 +74,7 @@ class ImprovedShoppingSettings extends HTMLElement {
     this._priceStatusToken = null; this._priceStatusConnection = null; this._stopPriceStatus?.(); this._stopPriceStatus = null;
     this._productsLoading = false; this._productsGeneration = (this._productsGeneration || 0) + 1;
     this._carrefourGeneration = (this._carrefourGeneration || 0) + 1; this._carrefourLoading = false; this._alcampoGeneration = (this._alcampoGeneration || 0) + 1;
-    this.shadowRoot.querySelector("#alcampo-dialog")?.close(); this.shadowRoot.querySelector("#carrefour-dialog")?.close(); this.shadowRoot.querySelector("#store-dialog")?.close(); this.shadowRoot.querySelector("#mercadona-account-dialog")?.close();
+    this.shadowRoot.querySelector("#alcampo-dialog")?.close(); this.shadowRoot.querySelector("#carrefour-dialog")?.close(); this.shadowRoot.querySelector("#store-dialog")?.close(); this.shadowRoot.querySelector("#mercadona-account-dialog")?.close(); this.shadowRoot.querySelector("#dia-account-dialog")?.close();
   }
 
   _build() {
@@ -358,7 +360,7 @@ class ImprovedShoppingSettings extends HTMLElement {
     this._receiptConfirmationControls=[];
     for(const store of ['carrefour','lidl','alcampo','mercadona','consum','lasirena','eroski','dia']){
       const control=receiptConfirmationControl(store,()=>this._data);
-      root.querySelector(store==='mercadona'?'#mercadona-account-dialog':'#'+store+'-dialog').append(control.element);
+      root.querySelector(['mercadona','dia'].includes(store)?'#'+store+'-account-dialog':'#'+store+'-dialog').append(control.element);
       this._receiptConfirmationControls.push(control);
     }
     installDialogCloseButtons(root);
@@ -471,7 +473,7 @@ class ImprovedShoppingSettings extends HTMLElement {
     const locked = !admin || !settings.loaded || settings.loading || this._busy;
     for(const control of this._receiptConfirmationControls??[])control.render(locked);
     const detection=settings.purchaseDetection??{enabled:false,threshold:5};
-    const universal=Array.isArray(detection.shops);
+    const universal=Array.isArray(detection.shops);this._universal=universal;
     if(universal&&!root.querySelector('isl-dev-shopping-places')){
       const places=document.createElement('isl-dev-shopping-places');places.setAttribute('compact-card','');root.querySelector('#settings-stores').append(places);
       const users=document.createElement('section');users.className='purchase-users';
@@ -499,7 +501,7 @@ class ImprovedShoppingSettings extends HTMLElement {
     for (const store of ["mercadona", "carrefour", "lidl", "alcampo", "consum", "lasirena", "eroski", "dia"]) {
       if(store==="lidl"){root.querySelector("#lidl-enabled").checked=Boolean(settings.stores?.lidl?.enabled);root.querySelector("#lidl-enabled").disabled=locked;}
       root.querySelector(`#${store}-enabled`).closest(".store-row").dataset.enabled = String(Boolean(settings.stores?.[store]?.enabled));
-      const available=universal?["carrefour","lidl","mercadona"].includes(store):(settings.availableStores??["mercadona","carrefour","consum","lasirena","eroski"]).includes(store);
+      const available=universal?["carrefour","lidl","mercadona","dia"].includes(store):(settings.availableStores??["mercadona","carrefour","consum","lasirena","eroski"]).includes(store);
       root.querySelector(`#${store}-enabled`).closest(".store-row").hidden=!available;
       if(!available&&store!=='mercadona'){
         const dialog=root.querySelector(store==='mercadona'?'#store-dialog':`#${store}-dialog`);
@@ -785,7 +787,7 @@ class ImprovedShoppingSettings extends HTMLElement {
         delete section.dataset.dirty;
       }));
       section.append(label,select,help,save);
-      root.querySelector(store==='mercadona'?'#mercadona-account-dialog':'#'+store+'-dialog').append(section);
+      root.querySelector(['mercadona','dia'].includes(store)?'#'+store+'-account-dialog':'#'+store+'-dialog').append(section);
     }
   }
 
@@ -807,13 +809,26 @@ class ImprovedShoppingSettings extends HTMLElement {
       container.innerHTML = `<dialog id="${store}-dialog" aria-labelledby="${store}-title"><h2 id="${store}-title">${name}</h2><div id="${store}-error" class="notice error" role="alert" hidden></div><section id="${store}-products-view"><div id="${store}-products" class="store-products"></div><p id="${store}-status" class="store-cache-footer" role="status"></p></section></dialog>`;
       root.append(...container.children);
       const dialog = root.querySelector(`#${store}-dialog`);
-      if(store==="dia"){const account=document.createElement("isl-dev-dia-prices-settings");dialog.querySelector("h2").after(account);dialog.addEventListener("close",()=>account.deactivate());}
-      root.querySelector(`#configure-${store}`).addEventListener("click",()=>this._openRegionalStore(store));
+      if(store==="dia"){
+        const account=document.createElement("isl-dev-dia-prices-settings");dialog.querySelector("h2").after(account);dialog.addEventListener("close",()=>account.deactivate());
+        const accountDialog=document.createElement("dialog");accountDialog.id="dia-account-dialog";accountDialog.setAttribute("aria-labelledby","dia-account-title");
+        accountDialog.innerHTML='<h2 id="dia-account-title">DIA</h2><isl-dev-dia-account></isl-dev-dia-account>';root.append(accountDialog);
+        accountDialog.addEventListener("cancel",event=>{if(this._busy)event.preventDefault();});
+        accountDialog.addEventListener("close",()=>{if(!accountDialog.open)accountDialog.querySelector("isl-dev-dia-account").deactivate();});
+        const openAccount=document.createElement("button");openAccount.type="button";openAccount.id="open-dia-account";openAccount.className="primary";openAccount.style.marginTop="16px";openAccount.textContent="Cuenta de DIA";
+        openAccount.addEventListener("click",()=>{dialog.close();this._openDiaAccount();});dialog.append(openAccount);
+      }
+      root.querySelector(`#configure-${store}`).addEventListener("click",()=>store==="dia"&&this._universal?this._openDiaAccount():this._openRegionalStore(store));
       root.querySelector(`#${store}-enabled`).addEventListener("change",()=>void this._saveRetailSettings(()=>this._data.settings.setStoreEnabled(store,root.querySelector(`#${store}-enabled`).checked)));
       dialog.addEventListener("cancel",event=>{if(this._busy)event.preventDefault();});
       dialog.addEventListener("close",()=>{this._regionalDrafts[store]=null;this._render();});
       this._regionalDrafts[store] = null;
     }
+  }
+
+  _openDiaAccount() {
+    const dialog=this.shadowRoot.querySelector("#dia-account-dialog");dialog.showModal();
+    const account=dialog.querySelector("isl-dev-dia-account");account.hass=this._data.hass;void account.activate();
   }
 
   _openRegionalStore(store) {

@@ -391,7 +391,7 @@ class ReceiptManager(ReceiptShopping):
             date=dt_util.parse_datetime(receipt["purchased_at"])
             price_at=dt_util.as_utc(date.replace(tzinfo=dt_util.DEFAULT_TIME_ZONE) if date.tzinfo is None else date).timestamp() if date else None
             for selection in selections:
-                if not isinstance(selection,dict) or set(selection)-{"manual_measure_price","replenish","quantity","unit"} not in ({"id","pack_quantity","pack_unit"},{"id","product_id","pack_quantity","pack_unit"}):
+                if not isinstance(selection,dict) or set(selection)-{"manual_measure_price","replenish","quantity","unit","discarded"} not in ({"id","pack_quantity","pack_unit"},{"id","product_id","pack_quantity","pack_unit"}):
                     raise CatalogError("Los datos del envase no son válidos.")
                 stock_fields = set(selection) & {"replenish", "quantity", "unit"}
                 if stock_fields and (stock_fields != {"replenish", "quantity", "unit"} or type(selection["replenish"]) is not bool):
@@ -412,6 +412,12 @@ class ReceiptManager(ReceiptShopping):
                 product=next((product for product in self.stock.catalog.products if product["id"]==product_id),None)
                 if product_id and not product:
                     raise CatalogError("El producto vinculado ya no existe.","conflict")
+                if type(selection.get("discarded",False)) is not bool or selection.get("discarded") and product_id:
+                    raise CatalogError("Una línea descartada no puede vincularse.")
+                if product or "discarded" in selection:
+                    line.pop("discarded",None)
+                if selection.get("discarded"):
+                    line["discarded"]=True
                 if product:
                     line.update(product_id=product_id,product_name=product["name"],matched=True)
                     self._remember_alias(data,receipt["store"],line,product)
@@ -879,7 +885,7 @@ class ReceiptManager(ReceiptShopping):
                 raise CatalogError("Las líneas seleccionadas no son válidas.")
             self._links(receipt,[{key:selection.get(key) for key in ("id","product_id")} for selection in selections])
             for selection in selections:
-                if set(selection)-{"save_price","unit","pack_quantity","pack_unit","quantity_edited","manual_measure_price","defer"} != {"id","product_id","replenish","quantity","purchase_id"}:
+                if set(selection)-{"save_price","unit","pack_quantity","pack_unit","quantity_edited","manual_measure_price","defer","discarded"} != {"id","product_id","replenish","quantity","purchase_id"}:
                     raise CatalogError("Las líneas seleccionadas no son válidas.")
                 if any(not isinstance(selection[key],str) or len(selection[key]) > 200 for key in ("id","product_id","purchase_id")):
                     raise CatalogError("Las líneas seleccionadas no son válidas.")
@@ -887,14 +893,19 @@ class ReceiptManager(ReceiptShopping):
                 if line is None or line["id"] in seen or type(selection["replenish"]) is not bool:
                     raise CatalogError("Las líneas seleccionadas no son válidas.")
                 seen.add(line["id"])
-                if type(selection.get("defer", False)) is not bool:
+                if type(selection.get("defer", False)) is not bool or type(selection.get("discarded", False)) is not bool:
                     raise CatalogError("La revisión de la línea no es válida.")
+                if selection.get("discarded") and (selection["product_id"] or selection["replenish"] or selection.get("defer")):
+                    raise CatalogError("Una línea descartada no puede vincularse.")
+                line.pop("discarded", None)
                 if selection.get("defer"):
                     if selection["product_id"] or selection["replenish"]:
                         raise CatalogError("Una línea pendiente no puede aplicarse.")
                     line.update(confirmed=False, product_id="", product_name="", replenished=False, price_saved=False, quantity=None, unit="")
                     continue
                 line["confirmed"] = True
+                if selection.get("discarded"):
+                    line["discarded"] = True
                 product = next((p for p in self.stock.catalog.products if p["id"] == selection["product_id"]),None)
                 self._apply_lidl_metadata(draft,line,product)
                 save_price = selection.get("save_price",update_prices)

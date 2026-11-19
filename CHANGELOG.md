@@ -1,3 +1,10 @@
+# 0.90.2 — DIA en Cuentas y líneas sin vincular
+
+- La cuenta de DIA aparece en Ajustes → Cuentas con su propio diálogo: inicio de sesión, historial, ticket automático y la opción de confirmar compras automáticamente. Hasta ahora existía en el servidor pero no se podía abrir desde el panel.
+- Sin el modo de Cuentas, el diálogo de DIA incluye un botón «Cuenta de DIA» para abrirla.
+- Las líneas de un ticket sin producto vinculado cuentan como pendientes, también en los tickets confirmados a mano: el botón del ticket se marca en ámbar con su número y el ticket indica cuántas quedan sin vincular. Al pulsarlo se abre directamente la vinculación de esas líneas.
+- Nueva opción «Descartar línea» en la revisión para las líneas que no son productos (bolsas, envases…): dejan de contar como pendientes y se pueden recuperar después.
+
 # 0.90.1 — Mercadona en Cuentas y tickets pendientes
 
 - La cuenta de Mercadona (Ticket digital y Tienda online) aparece en Ajustes → Cuentas, junto a Carrefour y Lidl, con su propio diálogo y la revisión de tickets.

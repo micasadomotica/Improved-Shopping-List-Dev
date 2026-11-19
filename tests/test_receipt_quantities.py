@@ -234,3 +234,18 @@ async def test_retry_after_stops_further_queries(hass,aioclient_mock,monkeypatch
         with pytest.raises(ValueError,match="pausa"):await lookup.retrieve(URL.replace("prod1","prod2"),measure=True)
         assert aioclient_mock.call_count==1
     finally:lookup.close()
+
+
+async def test_discarded_line_is_saved_kept_on_reprocess_and_cleared_by_linking(hass):
+    manager,catalog,stock,product,draft=await environment(hass)
+    with pytest.raises(CatalogError):
+        await manager.async_confirm(draft['token'],'owner',[{'id':'0','product_id':product['id'],'replenish':False,'quantity':None,'purchase_id':'','discarded':True}],False)
+    saved=await manager.async_confirm(draft['token'],'owner',[{'id':'0','product_id':'','replenish':False,'quantity':None,'purchase_id':'','discarded':True}],False)
+    assert saved['lines'][0]['discarded'] is True and saved['lines'][0]['confirmed'] is True and not saved.get('pending_review')
+    preview=await manager.async_review_saved(saved['id'],'owner')
+    assert preview['receipt']['lines'][0]['discarded'] is True
+    kept=await manager.async_reprocess(preview['token'],'owner',[{'id':'0','product_id':'','pack_quantity':None,'pack_unit':''}])
+    assert kept['lines'][0]['discarded'] is True
+    preview=await manager.async_review_saved(kept['id'],'owner')
+    linked=await manager.async_reprocess(preview['token'],'owner',[{'id':'0','product_id':product['id'],'pack_quantity':None,'pack_unit':''}])
+    assert 'discarded' not in linked['lines'][0] and linked['lines'][0]['product_id']==product['id']
