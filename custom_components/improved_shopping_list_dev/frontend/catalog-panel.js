@@ -1,14 +1,14 @@
-import { ReplenishmentEditor, replenishmentMarkup } from './replenishment-editor.js?v=0.90.5';
+import { ReplenishmentEditor, replenishmentMarkup } from './replenishment-editor.js?v=0.90.6';
 const priceValue=value=>value==null||value===''?'':Number(Number(value).toFixed(2));
-import { purchaseQuantity, quantityLabel } from "./quantity-client.js?v=0.90.5";
-import { referenceContentControls, barcodeIdentity, validReferenceContent, validReferenceFormat, weightFormat, pendingProductInformation } from "./reference-formats.js?v=0.90.5";
-import { installDialogCloseButtons } from "./dialog-controls.js?v=0.90.5";
-import { CatalogSession } from "./catalog-client.js?v=0.90.5";
-import { matchCatalogProducts } from "./product-matching.js?v=0.90.5";
-import "./category-panel.js?v=0.90.5";
-import "./recipe-editor.js?v=0.90.5";
-import "./icon-picker.js?v=0.90.5";
-import { imageSource, normalizedName, productNameKey, cachedProductPrice, productPriceLabel, storeProductLink, storeFromProductUrl } from "./product-display.js?v=0.90.5";
+import { purchaseQuantity, quantityLabel } from "./quantity-client.js?v=0.90.6";
+import { referenceContentControls, barcodeIdentity, validReferenceContent, validReferenceFormat, weightFormat, pendingProductInformation } from "./reference-formats.js?v=0.90.6";
+import { installDialogCloseButtons } from "./dialog-controls.js?v=0.90.6";
+import { CatalogSession } from "./catalog-client.js?v=0.90.6";
+import { matchCatalogProducts } from "./product-matching.js?v=0.90.6";
+import "./category-panel.js?v=0.90.6";
+import "./recipe-editor.js?v=0.90.6";
+import "./icon-picker.js?v=0.90.6";
+import { imageSource, normalizedName, productNameKey, cachedProductPrice, productPriceLabel, storeProductLink, storeFromProductUrl } from "./product-display.js?v=0.90.6";
 export { imageSource, normalizedName, productNameKey, cachedProductPrice };
 
 const MONTHS = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
@@ -1331,7 +1331,7 @@ class ImprovedShoppingCatalog extends HTMLElement {
       if(container.dataset.signature===signature)continue;container.dataset.signature=signature;
       const label=element('label','replenishment-row','Acción del lector'),select=element('select');
       select.setAttribute('aria-label',reader?.name??'Acción del lector para '+(kind==='barcode'?'códigos de barras/QR':'NFC'));
-      const defaults={none:'Sin acción',add_list:'Añadir a la lista',stock_remove:'Quitar stock',stock_add:'Añadir stock'};
+      const defaults={none:'Sin acción',add_list:'Añadir a la lista',stock_remove:'Quitar stock',stock_add:'Añadir stock',add_catalog:'Añadir al catálogo'};
       for(const [value,text] of [['default',`Usar acción por defecto del lector (${defaults[reader?.default_action]??defaults.none})`],['none','Sin acción'],['add_list','Añadir a la lista de la compra'],['stock_remove','Quitar una unidad al stock'],['stock_add','Añadir una unidad al stock']])select.add(new Option(text,value));
       select.value=this._readerActionDraft?.[id]??'default';select.disabled=!reader;
       select.addEventListener('change',()=>{this._readerActionDraft??={};if(select.value==='default')delete this._readerActionDraft[id];else this._readerActionDraft[id]=select.value;container.dataset.signature='';});

@@ -1,9 +1,12 @@
 """Counts, saved-price estimates and receipt history exposed as native sensors."""
 
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntity, SensorEntityDescription, SensorStateClass
+from homeassistant.core import callback
+from homeassistant.helpers import entity_registry as er
 
 from .const import DOMAIN
 from .entity import ShoppingEntity
+from .readers import RESULTS
 from .store_links import STORES
 
 SENSORS = (
@@ -24,6 +27,74 @@ SENSORS = (
 async def async_setup_entry(hass, entry, async_add_entities):
     data = hass.data[DOMAIN]["entity_data"]
     async_add_entities(ShoppingSensor(entry, data, description) for description in SENSORS)
+    readers = hass.data[DOMAIN]["readers"]
+    added = set()
+
+    @callback
+    def add_reader_results():
+        new = [reader for reader in readers.snapshot["readers"] if reader["id"] not in added]
+        added.update(reader["id"] for reader in new)
+        if new:
+            async_add_entities(ReaderResultSensor(entry, data, readers, reader) for reader in new)
+
+    add_reader_results()
+    entry.async_on_unload(readers.subscribe(add_reader_results))
+
+
+class ReaderResultSensor(ShoppingEntity, SensorEntity):
+    """Outcome of each scan, so a device can show it (for example with an RGB LED)."""
+
+    _attr_icon = "mdi:barcode-scan"
+    _attr_device_class = SensorDeviceClass.ENUM
+    _attr_options = list(RESULTS)
+
+    def __init__(self, entry, data, readers, reader):
+        super().__init__(entry, data, f"reader_result_{reader['id']}")
+        self._attr_translation_key = None
+        self._attr_name = f"Resultado {reader['name']}"
+        self._readers = readers
+        self._reader_id = reader["id"]
+
+    def _reader(self):
+        return next((reader for reader in self._readers.snapshot["readers"] if reader["id"] == self._reader_id), None)
+
+    async def async_added_to_hass(self):
+        await super().async_added_to_hass()
+        self.async_on_remove(self._readers.subscribe(self._reader_changed))
+
+    @callback
+    def _reader_changed(self):
+        if self._reader() is None:
+            registry = er.async_get(self.hass)
+            if self.registry_entry is not None:
+                registry.async_remove(self.entity_id)
+            return
+        self.async_write_ha_state()
+
+    @property
+    def available(self):
+        return super().available and self._reader() is not None
+
+    @property
+    def native_value(self):
+        last = (self._reader() or {}).get("last") or {}
+        return last.get("result")
+
+    @property
+    def extra_state_attributes(self):
+        reader = self._reader() or {}
+        last = reader.get("last") or {}
+        return {
+            "reader": reader.get("name"),
+            "kind": reader.get("kind"),
+            "mode": reader.get("default_action"),
+            "code": last.get("code"),
+            "product": last.get("product"),
+            "message": last.get("message"),
+            "time": last.get("time"),
+            # Changes on every scan, even when the result repeats (for ESPHome).
+            "scan": f'{last["scan"]}:{last["result"]}' if last else None,
+        }
 
 
 class ShoppingSensor(ShoppingEntity, SensorEntity):

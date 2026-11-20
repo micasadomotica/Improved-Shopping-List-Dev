@@ -30,7 +30,11 @@ FIELDS = {
     "barcodes", "nfc_tags", "reader_actions", "recurrence", "store_links",
     "purchase_unit", "unit_quantity", "quantity_step", "scan_quantity", "commercial_references", "preferred_reference",
 }
-READER_ACTIONS = {"none", "add_list", "stock_remove", "stock_add"}
+# Actions a product can override per reader.
+PRODUCT_READER_ACTIONS = {"none", "add_list", "stock_remove", "stock_add"}
+# Reader-wide actions (modes). "add_catalog" registers scanned codes instead
+# of acting on known products, so it is never a per-product override.
+READER_ACTIONS = PRODUCT_READER_ACTIONS | {"add_catalog"}
 LEGACY_PRODUCT_FIELDS = {"brand", "format"}
 
 
@@ -153,7 +157,7 @@ def normalize_product(data: dict[str, Any]) -> dict[str, Any]:
     product["nfc_tags"] = _codes(data, "nfc_tags", "nfc")
     actions = data.get("reader_actions", {})
     if not isinstance(actions, dict) or len(actions) > 100 or any(
-        not isinstance(key, str) or not 1 <= len(key) <= 100 or not isinstance(value, str) or value not in READER_ACTIONS
+        not isinstance(key, str) or not 1 <= len(key) <= 100 or not isinstance(value, str) or value not in PRODUCT_READER_ACTIONS
         for key, value in actions.items()
     ):
         raise CatalogError("Las acciones de los lectores no son válidas.")

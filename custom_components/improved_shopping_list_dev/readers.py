@@ -20,14 +20,42 @@ from .quantity_values import purchase_defaults
 
 _LOGGER = logging.getLogger(__name__)
 INVALID_STATES = {"", "unknown", "unavailable", "none"}
+MODE_DOMAINS = ("select", "input_select")
+# Outcome of a scan, exposed per reader so devices can give visual feedback.
+RESULTS = ("ok", "known", "unknown", "created", "repeat", "error")
+# Options a mode entity (for example an ESPHome select on the scanner) may use.
+# The first label is the one the integration writes back to the device.
+MODE_LABELS = {
+    "none": ("Sin acción",),
+    "add_list": ("Añadir a la lista", "Añadir a la lista de la compra", "Lista"),
+    "stock_remove": ("Quitar del stock", "Quitar stock", "Quitar una unidad al stock"),
+    "stock_add": ("Añadir al stock", "Añadir stock", "Añadir una unidad al stock"),
+    "add_catalog": ("Añadir al catálogo", "Catálogo"),
+}
+
+
+def mode_action(value) -> str | None:
+    """Map a mode option (action id or Spanish label) to a reader action."""
+    if not isinstance(value, str):
+        return None
+    key = normalized_name(value)
+    for action, labels in MODE_LABELS.items():
+        if key == action or any(key == normalized_name(label) for label in labels):
+            return action
+    return None
+
+
+def mode_options(state) -> list:
+    options = state.attributes.get("options") if state is not None else None
+    return options if isinstance(options, list) else []
 
 
 def normalize_reader(data: dict, hass: HomeAssistant, settings) -> dict:
-    fields = {"id", "revision", "name", "kind", "source", "entity_id", "attribute", "device_id", "list_entity", "cooldown", "enabled", "default_action"}
+    fields = {"id", "revision", "name", "kind", "source", "entity_id", "attribute", "device_id", "list_entity", "cooldown", "enabled", "default_action", "mode_entity"}
     if not isinstance(data, dict) or set(data) - fields:
         raise CatalogError("El lector contiene campos no admitidos.")
     result = {}
-    for field, limit in (("name", 100), ("entity_id", 255), ("attribute", 100), ("device_id", 100), ("list_entity", 255)):
+    for field, limit in (("name", 100), ("entity_id", 255), ("attribute", 100), ("device_id", 100), ("list_entity", 255), ("mode_entity", 255)):
         value = data.get(field, "")
         if not isinstance(value, str) or len(value.strip()) > limit:
             raise CatalogError("Los campos del lector no son válidos.")
@@ -55,6 +83,18 @@ def normalize_reader(data: dict, hass: HomeAssistant, settings) -> dict:
         raise CatalogError("Selecciona una acción por defecto válida para el lector.")
     if type(result["cooldown"]) is not int or not 0 <= result["cooldown"] <= 3600 or not isinstance(result["enabled"], bool):
         raise CatalogError("La protección antirrepetición debe estar entre 0 y 3600 segundos (0 la desactiva).")
+    if result["mode_entity"]:
+        state = hass.states.get(result["mode_entity"])
+        if result["mode_entity"].split(".", 1)[0] not in MODE_DOMAINS or state is None:
+            raise CatalogError("La entidad de modo debe ser un selector (select o input_select) existente.")
+        options = mode_options(state)
+        if state.state not in ("unknown", "unavailable") and (
+            not options or any(mode_action(option) is None for option in options)
+        ):
+            raise CatalogError("Todas las opciones de la entidad de modo deben ser acciones del lector: "
+                               + ", ".join(labels[0] for labels in MODE_LABELS.values()) + ".")
+        if options and not any(mode_action(option) == result["default_action"] for option in options):
+            raise CatalogError("La entidad de modo no incluye la acción por defecto elegida.")
     return result
 
 
@@ -67,6 +107,7 @@ class ReaderManager:
         self._operation_lock = Lock()
         self._listeners = set()
         self._last = {}
+        self._scans = 0
         self._captures = {}
         self._tasks = set()
         self._unsubscribers = []
@@ -86,6 +127,7 @@ class ReaderManager:
             self._data = data
             for reader in self._data["readers"].values():
                 reader.setdefault("default_action", "none")
+                reader.setdefault("mode_entity", "")
 
     @property
     def snapshot(self):
@@ -166,8 +208,11 @@ class ReaderManager:
         self._data = data
 
     @callback
-    def _status(self, reader_id, code, message, product=None):
-        self._last[reader_id] = {"code": code, "message": message, "product": product, "time": datetime.now(UTC).isoformat()}
+    def _status(self, reader_id, code, message, product=None, *, result):
+        """Record the outcome of a scan. result: ok, known, unknown, created, repeat or error."""
+        self._scans += 1
+        self._last[reader_id] = {"code": code, "message": message, "product": product, "time": datetime.now(UTC).isoformat(),
+                                 "result": result, "scan": self._scans}
         if self.activity:
             reader = self._data["readers"].get(reader_id, {})
             self.activity.record("reader.scan", message, source="reader", reader=reader.get("name", reader_id),
@@ -187,9 +232,13 @@ class ReaderManager:
                 raise CatalogError("Otra sesión ha cambiado el lector. Vuelve a abrirlo.", "conflict")
             if current and "default_action" not in data:
                 reader["default_action"] = current.get("default_action", "none")
+            if current and "mode_entity" not in data:
+                reader["mode_entity"] = current.get("mode_entity", "")
             for other in self._data["readers"].values():
                 if other["id"] == reader_id:
                     continue
+                if reader["mode_entity"] and reader["mode_entity"] == other.get("mode_entity"):
+                    raise CatalogError("Esa entidad de modo ya la utiliza otro lector.")
                 if reader["source"] == other["source"] and (reader["entity_id"] if reader["source"] == "entity" else reader["device_id"]) == (other["entity_id"] if other["source"] == "entity" else other["device_id"]):
                     raise CatalogError("Ya hay un lector configurado con esa fuente.")
             reader.update({"id": reader_id or str(uuid4()), "revision": current["revision"] + 1 if current else 1})
@@ -199,7 +248,56 @@ class ReaderManager:
         self._listen_sources()
         self._cancel_capture(reader["id"])
         self._notify()
+        await self._push_mode(reader)
         return deepcopy(reader)
+
+    @callback
+    def _mode(self, reader):
+        """The reader action now selected on its mode entity, or its stored default."""
+        if reader.get("mode_entity"):
+            state = self.hass.states.get(reader["mode_entity"])
+            if state is not None and (action := mode_action(state.state)):
+                return action
+        return reader.get("default_action", "none")
+
+    async def _push_mode(self, reader):
+        """Show a default action changed in the panel on the device's mode selector."""
+        entity_id = reader.get("mode_entity")
+        state = self.hass.states.get(entity_id) if entity_id else None
+        if state is None or state.state in ("unknown", "unavailable") or mode_action(state.state) == reader["default_action"]:
+            return
+        option = next((option for option in mode_options(state) if mode_action(option) == reader["default_action"]), None)
+        if option is None:
+            return
+        try:
+            await self.hass.services.async_call(entity_id.split(".", 1)[0], "select_option",
+                                                {"entity_id": entity_id, "option": option}, blocking=True)
+        except Exception:  # The reader is saved; the device catches up when it reports its mode.
+            _LOGGER.warning("Could not update the mode entity %s", entity_id, exc_info=True)
+
+    @callback
+    def _mode_event(self, event):
+        state = event.data.get("new_state")
+        if state is not None and (action := mode_action(state.state)):
+            self._spawn(self._apply_mode(state.entity_id, action))
+
+    async def _apply_mode(self, entity_id, action):
+        """Adopt a mode chosen on the device (button) as the reader's default action."""
+        changed = False
+        try:
+            async with self._lock:
+                updated = deepcopy(self._data)
+                for reader in updated["readers"].values():
+                    if reader.get("mode_entity") == entity_id and reader["default_action"] != action:
+                        reader.update({"default_action": action, "revision": reader["revision"] + 1})
+                        changed = True
+                if changed:
+                    await self._persist(updated)
+        except OSError:
+            _LOGGER.exception("Could not store the mode selected on %s", entity_id)
+            return
+        if changed:
+            self._notify()
 
     async def async_delete_reader(self, reader_id, revision):
         async with self._lock:
@@ -232,6 +330,11 @@ class ReaderManager:
         self._active = True
         self._catalog_unsubscribe = self.catalog.subscribe(self._catalog_changed)
         self._listen_sources()
+        # The device keeps its mode while Home Assistant restarts: adopt it.
+        for entity_id in {reader["mode_entity"] for reader in self._data["readers"].values() if reader.get("mode_entity")}:
+            state = self.hass.states.get(entity_id)
+            if state is not None and (action := mode_action(state.state)):
+                self._spawn(self._apply_mode(entity_id, action))
         for item in self._data["pending"].values():
             if self.catalog.find_by_code(item["kind"], item["code"]) is None:
                 self._schedule_lookup(item)
@@ -291,6 +394,9 @@ class ReaderManager:
             self._unsubscribers.append(async_track_state_report_event(self.hass, entities, self._entity_report_event))
         if any(reader["enabled"] and reader["source"] == "tag" for reader in self._data["readers"].values()):
             self._unsubscribers.append(self.hass.bus.async_listen("tag_scanned", self._tag_event))
+        modes = sorted({reader["mode_entity"] for reader in self._data["readers"].values() if reader.get("mode_entity")})
+        if modes:
+            self._unsubscribers.append(async_track_state_change_event(self.hass, modes, self._mode_event))
 
     @callback
     def _entity_event(self, event):
@@ -346,32 +452,47 @@ class ReaderManager:
                     return
                 if capture := self._captures.get(reader_id):
                     capture["listener"]({"status":"scanned", "reader_id":reader_id, "kind":reader["kind"], "code":code})
+                    # Feedback for the device only: no activity record for a capture.
+                    self._scans += 1
+                    self._last[reader_id] = {"code": code, "message": "Código capturado en la ficha del producto", "product": None,
+                                             "time": datetime.now(UTC).isoformat(), "result": "ok", "scan": self._scans}
+                    self._notify()
                     return  # No list action, cooldown write, lookup or unknown-code suggestion.
                 product = self.catalog.find_by_code(reader["kind"], code)
+                mode = self._mode(reader)
                 now = time.time()
                 code_id = f'{reader["kind"]}:{code_key(reader["kind"], code)}'
                 keys = [f"{reader_id}:code:{code_id}"]
                 if product:
                     keys.append(f'{reader_id}:product:{product["id"]}')
                 if any(now - self._data["cooldowns"].get(key, 0) < reader["cooldown"] for key in keys):
-                    self._status(reader_id, code, "Lectura repetida ignorada", product["name"] if product else None)
+                    self._status(reader_id, code, "Lectura repetida ignorada", product["name"] if product else None, result="repeat")
                     return
                 updated = deepcopy(self._data)
                 updated["cooldowns"] = {key: timestamp for key, timestamp in updated["cooldowns"].items() if now - timestamp < 3600}
                 updated["cooldowns"].update({key: now for key in keys})
+                if not product and mode == "add_catalog" and code_id in updated["dismissed"]:
+                    # Scanning in catalogue mode is an explicit request to register it again.
+                    updated["dismissed"].remove(code_id)
                 if not product and code_id not in updated["dismissed"]:
                     existing = next((item for item in updated["pending"].values() if item["kind"] == reader["kind"] and code_key(item["kind"], item["code"]) == code_key(reader["kind"], code)), None)
                     pending_id = existing["id"] if existing else str(uuid4())
                     updated["pending"][pending_id] = {"id": pending_id, "kind": reader["kind"], "code": code, "reader_id": reader_id, "reader_name": reader["name"], "time": datetime.now(UTC).isoformat()}
                 await self._persist(updated)  # Persist the guard before any provider mutation.
+            if mode == "add_catalog":
+                if product is not None:
+                    self._status(reader_id, code, "Ya está en el catálogo", product["name"], result="known")
+                else:
+                    await self._register(reader, code)
+                return
             if product is None:
-                self._status(reader_id, code, "Código desconocido en Sugerencias" if code_id not in self._data["dismissed"] else "Código desconocido descartado")
+                self._status(reader_id, code, "Código desconocido en Sugerencias" if code_id not in self._data["dismissed"] else "Código desconocido descartado", result="unknown")
                 if pending_id and (pending := self._data["pending"].get(pending_id)):
                     self._schedule_lookup(pending)
                 return
-            action = product.get("reader_actions", {}).get(reader_id, reader.get("default_action", "none"))
+            action = product.get("reader_actions", {}).get(reader_id, mode)
             if action == "none":
-                self._status(reader_id, code, "Sin acción configurada para este producto y lector", product["name"])
+                self._status(reader_id, code, "Sin acción configurada para este producto y lector", product["name"], result="known")
             elif action in ("stock_remove", "stock_add"):
                 if self.stock is None:
                     raise CatalogError("El stock no está disponible.")
@@ -380,13 +501,38 @@ class ReaderManager:
                     return self._active and self._data["readers"].get(reader_id) == reader and matched is not None and matched["id"] == product["id"] and matched["revision"] == product["revision"]
                 result = await self.stock.async_change_product(product, 1 if action == "stock_add" else -1,
                     reader=reader["name"], guard=still_current)
-                self._status(reader_id, code, f'Stock: {result["quantity"]} unidades', product["name"])
+                self._status(reader_id, code, f'Stock: {result["quantity"]} unidades', product["name"], result="ok")
             elif action == "add_list":
                 async with self._operation_lock:
                     await self._add_to_list(reader, product, code)
         except Exception:  # Provider and storage failures must never become unhandled tasks.
             _LOGGER.exception("Could not process reader %s", reader_id)
-            self._status(reader_id, code, "No se pudo completar la lectura. Comprueba el lector, la lista o el registro.")
+            self._status(reader_id, code, "No se pudo completar la lectura. Comprueba el lector, la lista o el registro.", result="error")
+
+    async def _register(self, reader, code):
+        """Catalogue mode: create the product from public data, or leave it pending."""
+        unknown = "Etiqueta NFC" if reader["kind"] == "nfc" else "Código"
+        hint = await self.lookup.async_lookup(code) if reader["kind"] == "barcode" and is_product_barcode(code) else {}
+        name = hint.get("name", "").strip() if hint.get("status") == "found" and isinstance(hint.get("name"), str) else ""
+        if not name:
+            self._notify()
+            self._status(reader["id"], code, f"{unknown} sin datos: complétalo en Catálogo → Productos escaneados", result="unknown")
+            return
+        async with self._operation_lock:
+            if not self._active or self._data["readers"].get(reader["id"], {}).get("enabled") is not True:
+                return
+            if (product := self.catalog.find_by_code(reader["kind"], code)) is not None:
+                self._status(reader["id"], code, "Ya está en el catálogo", product["name"], result="known")
+                return
+            if any(normalized_name(item["name"]) == normalized_name(name) for item in self.catalog.products):
+                self._status(reader["id"], code, f"Ya existe «{name}»: asígnale el código desde Productos escaneados", name, result="unknown")
+                return
+            try:
+                product = await self.catalog.async_save_product({"name": name, "barcodes": [code]})
+            except CatalogError as err:
+                self._status(reader["id"], code, f"No se ha podido añadir al catálogo: {err}", name, result="error")
+                return
+        self._status(reader["id"], code, "Añadido al catálogo", product["name"], result="created")
 
     def _still_current(self, reader, product, code, target):
         current = self._data["readers"].get(reader["id"])
@@ -415,7 +561,7 @@ class ReaderManager:
                 reader=reader["name"], guard=lambda: self._still_current(reader, product, code, target),
                 scan_quantity=product.get("scan_quantity", purchase_defaults(product)["unit_quantity"]))
             value = result["entries"][target][str(pending["uid"])]
-            self._status(reader["id"], code, f"Cantidad en la lista: {value['quantity']} {value['unit']}", product["name"])
+            self._status(reader["id"], code, f"Cantidad en la lista: {value['quantity']} {value['unit']}", product["name"], result="ok")
             return
         self._still_current(reader, product, code, target)
         state = self.hass.states.get(target)
@@ -437,7 +583,7 @@ class ReaderManager:
             await self.quantities.async_adjust(target, str(pending["uid"]), 1,
                 reader=reader["name"], guard=lambda: self._still_current(reader, product, code, target),
                 scan_quantity=product.get("scan_quantity", purchase_defaults(product)["unit_quantity"]), reset=True)
-        self._status(reader["id"], code, f"Añadido a {state.attributes.get('friendly_name', target)}", product["name"])
+        self._status(reader["id"], code, f"Añadido a {state.attributes.get('friendly_name', target)}", product["name"], result="ok")
 
     async def _confirm_pending_item(self, reader, product, code, target):
         try:

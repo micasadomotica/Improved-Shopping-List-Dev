@@ -681,3 +681,121 @@ async def test_reader_websocket_admin_and_reload(hass,hass_ws_client,hass_read_o
     assert await hass.config_entries.async_setup(entry.entry_id)
     assert hass.data[DOMAIN]["readers"].snapshot["readers"][0]["id"]==saved["id"]
     assert hass.data[DOMAIN]["readers"].snapshot["readers"][0]["default_action"]=="add_list"
+
+
+def reader_config(env, **changes):
+    return {key: value for key, value in env.manager.snapshot["readers"][0].items() if key != "last"} | changes
+
+
+async def test_catalog_mode_creates_known_name_and_reports_results(reader_env, monkeypatch):
+    env = reader_env
+    reader = await add_reader(env, default_action="add_catalog")
+    monkeypatch.setattr(env.manager.lookup, "_fetch", AsyncMock(return_value={"status":"found","name":"Cacao soluble"}))
+    await env.manager.async_process(reader["id"], "3017620422003")
+    [product] = env.catalog.products
+    assert product["name"] == "Cacao soluble" and "3017620422003" in product["barcodes"]
+    last = env.manager.snapshot["readers"][0]["last"]
+    assert last["result"] == "created" and last["product"] == "Cacao soluble"
+    assert env.calls == []  # Catalogue mode never touches lists.
+    env.clock[0] += 61
+    await env.manager.async_process(reader["id"], "3017620422003")
+    again = env.manager.snapshot["readers"][0]["last"]
+    assert again["result"] == "known" and again["scan"] > last["scan"] and len(env.catalog.products) == 1
+    await env.manager.async_process(reader["id"], "3017620422003")
+    assert env.manager.snapshot["readers"][0]["last"]["result"] == "repeat"
+
+
+async def test_catalog_mode_without_data_or_same_name_leaves_code_pending(reader_env, monkeypatch):
+    env = reader_env
+    reader = await add_reader(env, default_action="add_catalog")
+    await env.catalog.async_save_product({"name":"Cacao soluble"})
+    monkeypatch.setattr(env.manager.lookup, "_fetch", AsyncMock(return_value={"status":"found","name":"Cacao Soluble"}))
+    await env.manager.async_process(reader["id"], "3017620422003")
+    assert env.manager.snapshot["readers"][0]["last"]["result"] == "unknown"
+    assert len(env.catalog.products) == 1 and env.catalog.products[0]["barcodes"] == []
+    assert [item["code"] for item in env.manager.snapshot["pending"]] == ["3017620422003"]
+    await env.manager.async_process(reader["id"], "QR-libre")
+    assert env.manager.snapshot["readers"][0]["last"]["result"] == "unknown"
+    assert len(env.manager.snapshot["pending"]) == 2
+
+
+async def test_catalog_mode_restores_dismissed_codes_and_ignores_product_overrides(reader_env):
+    env = reader_env
+    reader = await add_reader(env, default_action="add_list")
+    await env.manager.async_process(reader["id"], "QR-1")
+    await env.manager.async_dismiss(env.manager.snapshot["pending"][0]["id"])
+    assert env.manager.snapshot["pending"] == []
+    await add_product(env, reader)
+    await env.manager.async_save_reader(reader_config(env, default_action="add_catalog"))
+    env.clock[0] += 61
+    await env.manager.async_process(reader["id"], "QR-1")
+    assert [item["code"] for item in env.manager.snapshot["pending"]] == ["QR-1"]
+    await env.manager.async_process(reader["id"], "0012345")
+    assert env.manager.snapshot["readers"][0]["last"]["result"] == "known" and env.calls == []
+
+
+async def test_product_override_cannot_be_catalog_mode(reader_env):
+    env = reader_env
+    reader = await add_reader(env)
+    with pytest.raises(CatalogError):
+        await add_product(env, reader, reader_actions={reader["id"]:"add_catalog"})
+
+
+async def test_scan_results_for_list_and_unknown_codes(reader_env):
+    env = reader_env
+    reader = await add_reader(env, default_action="add_list", list_entity="todo.local")
+    await add_product(env, reader, reader_actions={})
+    await env.manager.async_process(reader["id"], "0012345")
+    assert env.manager.snapshot["readers"][0]["last"]["result"] == "ok"
+    await env.manager.async_process(reader["id"], "QR-2")
+    assert env.manager.snapshot["readers"][0]["last"]["result"] == "unknown"
+    await env.manager.async_save_reader(reader_config(env, default_action="none"))
+    env.clock[0] += 61
+    await env.manager.async_process(reader["id"], "0012345")
+    assert env.manager.snapshot["readers"][0]["last"]["result"] == "known"
+
+
+async def test_mode_entity_syncs_both_ways_and_drives_scans(hass, reader_env):
+    env = reader_env
+    options = ["Sin acción", "Añadir a la lista", "Quitar del stock", "Añadir al stock", "Añadir al catálogo"]
+    hass.states.async_set("select.modo", "Añadir a la lista", {"options": options})
+    selected = []
+
+    async def select_option(call):
+        selected.append(call.data["option"])
+        hass.states.async_set("select.modo", call.data["option"], {"options": options})
+
+    hass.services.async_register("select", "select_option", select_option)
+    reader = await add_reader(env, default_action="add_list", mode_entity="select.modo", list_entity="todo.local")
+    assert selected == []
+    # Button on the device: the reader adopts the new mode.
+    hass.states.async_set("select.modo", "Añadir al catálogo", {"options": options})
+    await hass.async_block_till_done()
+    current = env.manager.snapshot["readers"][0]
+    assert current["default_action"] == "add_catalog" and current["revision"] == reader["revision"] + 1
+    # Panel change: pushed to the device without a loop.
+    saved = await env.manager.async_save_reader(reader_config(env, default_action="add_list"))
+    await hass.async_block_till_done()
+    assert selected == ["Añadir a la lista"] and saved["revision"] == current["revision"] + 1
+    assert env.manager.snapshot["readers"][0]["revision"] == saved["revision"]
+    # A scan uses the mode shown on the device right now.
+    await add_product(env, reader, reader_actions={})
+    hass.states.async_set("select.modo", "Sin acción", {"options": options})
+    await env.manager.async_process(reader["id"], "0012345")
+    assert env.calls == [] and env.manager.snapshot["readers"][0]["last"]["result"] == "known"
+
+
+async def test_mode_entity_validation(hass, reader_env):
+    env = reader_env
+    hass.states.async_set("select.otro", "Rojo", {"options": ["Rojo", "Verde"]})
+    hass.states.async_set("select.parcial", "Añadir a la lista", {"options": ["Añadir a la lista", "Añadir al catálogo"]})
+    hass.states.async_set("sensor.no_select", "x")
+    for entity, action in (("select.otro", "add_list"), ("sensor.no_select", "add_list"), ("select.falta", "add_list"),
+                           ("select.parcial", "stock_add")):
+        with pytest.raises(CatalogError):
+            await add_reader(env, mode_entity=entity, default_action=action)
+    reader = await add_reader(env, mode_entity="select.parcial", default_action="add_list")
+    hass.states.async_set("sensor.scanner2", "")
+    with pytest.raises(CatalogError, match="otro lector"):
+        await env.manager.async_save_reader({"name":"Otro","entity_id":"sensor.scanner2","mode_entity":"select.parcial","default_action":"add_list"})
+    assert reader["mode_entity"] == "select.parcial"

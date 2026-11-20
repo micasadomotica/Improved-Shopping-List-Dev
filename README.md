@@ -1,6 +1,6 @@
 # <img src="custom_components/improved_shopping_list_dev/frontend/logo.png" alt="" width="40" height="40" align="left"> Improved Shopping List Dev
 
-> **Integración de desarrollo independiente — 0.90.5.** Basada en la versión 0.88.0 de [TitoTB](https://github.com/TitoTB/Improved-Shopping-List), con las correcciones para guardar URL aunque falle la consulta y recuperar productos frescos de Mercadona sin compartir sus códigos internos como EAN. Puede convivir con el original: usa el dominio `improved_shopping_list_dev`, un panel propio y almacenamiento separado. No copia ni modifica la configuración o el catálogo del original.
+> **Integración de desarrollo independiente — 0.90.6.** Basada en la versión 0.88.0 de [TitoTB](https://github.com/TitoTB/Improved-Shopping-List), con las correcciones para guardar URL aunque falle la consulta y recuperar productos frescos de Mercadona sin compartir sus códigos internos como EAN. Puede convivir con el original: usa el dominio `improved_shopping_list_dev`, un panel propio y almacenamiento separado. No copia ni modifica la configuración o el catálogo del original.
 
 Para probar sin modificar tus artículos habituales, utiliza una lista de tareas creada para pruebas. **Si eliges la misma entidad `todo` en ambas integraciones, ambas modificarán los mismos artículos.** Dev incorpora inicialmente solo la lista seleccionada; añadir más listas es una acción explícita.
 
@@ -28,7 +28,7 @@ No necesitas instalar tarjetas adicionales ni apps de Home Assistant OS. Home As
 
 Añade `https://github.com/micasadomotica/Improved-Shopping-List-Dev` desde **Ajustes → Marketplace → Añadir desde enlace**, e instala **Improved Shopping List Dev**. Sigue el aviso de reinicio si aparece y añade la integración Dev desde **Ajustes → Dispositivos y servicios**. Elige una lista de pruebas.
 
-El original puede permanecer instalado y funcionando. No hay que desinstalarlo ni sustituir sus archivos. Las versiones de este repositorio pertenecen al canal Dev; la versión 0.90.5 se publica como release normal de GitHub para que Marketplace la ofrezca sin activar versiones preliminares. Consulta la [guía de instalación, pruebas y retirada de Dev](docs/fork-testing.md).
+El original puede permanecer instalado y funcionando. No hay que desinstalarlo ni sustituir sus archivos. Las versiones de este repositorio pertenecen al canal Dev; la versión 0.90.6 se publica como release normal de GitHub para que Marketplace la ofrezca sin activar versiones preliminares. Consulta la [guía de instalación, pruebas y retirada de Dev](docs/fork-testing.md).
 
 Consulta la [documentación oficial de Marketplace](https://www.home-assistant.io/integrations/marketplace).
 
@@ -214,6 +214,12 @@ Las entidades de lectores se escuchan también cuando comunican de nuevo el mism
 Desde **Reposición** en la ficha de cada producto puedes escanear y asociar uno o varios códigos o etiquetas. Para cada lector se utiliza su acción predeterminada, salvo que elijas una acción específica para ese producto: añadirlo a la lista, aumentar Stock, reducir Stock o no realizar ninguna acción. Para modificar Stock, el producto debe estar incluido previamente en él.
 
 Cada tarjeta permite activar o desactivar el lector, consultar las lecturas en directo, editarlo o quitarlo. También muestra la fecha y hora de su último uso. Los códigos desconocidos aparecen en **Catálogo → Pendiente** para vincularlos a un producto existente o crear uno nuevo. Los lectores siguen funcionando aunque cierres la interfaz.
+
+Con **Añadir al catálogo**, el lector no actúa sobre los productos que ya conoce: indica «Ya está en el catálogo». Si el código es nuevo y Open Food Facts o el diccionario comunitario conocen su nombre, crea el producto con ese código. Si no hay datos, o ya existe un producto con ese nombre, el código queda en **Productos escaneados** para completarlo a mano. Esta acción solo se elige para el lector, no para cada producto, y las acciones específicas de los productos no se aplican mientras esté activa.
+
+**Entidad de modo (opcional).** Un selector del dispositivo (`select` o `input_select`) cuyas opciones son las acciones: «Sin acción», «Añadir a la lista», «Quitar del stock», «Añadir al stock» y «Añadir al catálogo». Al cambiarlo en el dispositivo (por ejemplo, con un botón) cambia la acción por defecto del lector, y al guardar el lector desde el panel se actualiza el selector. Cada lectura utiliza el modo que muestra el dispositivo en ese momento.
+
+**Resultado de cada lectura.** Cada lector crea el sensor «Resultado *nombre del lector*», con los valores `ok` (acción realizada), `known` (está en el catálogo, sin acción), `unknown` (no está en el catálogo), `created` (añadido al catálogo), `repeat` (lectura repetida ignorada) y `error`. Sus atributos incluyen el código, el producto, el mensaje y `scan`, que cambia en cada lectura aunque el resultado se repita. Sirve para que el dispositivo muestre el resultado, por ejemplo con colores en un LED.
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/TitoTB/Improved-Shopping-List/main/docs/images/stock-lectores.png" alt="Lectores de códigos de barras y NFC con sus controles">

@@ -1,3 +1,10 @@
+# 0.90.6 — Modos del lector y colores del resultado
+
+- Nueva acción de lector «Añadir al catálogo»: un código nuevo con nombre en Open Food Facts o en el diccionario comunitario se crea como producto con ese código; si no hay datos o ya existe un producto con ese nombre, queda en Productos escaneados. Los productos ya conocidos se indican como «Ya está en el catálogo».
+- Nuevo campo «Entidad de modo» en cada lector: un `select` del dispositivo (por ejemplo, el escáner ESPHome) se sincroniza en los dos sentidos con la acción por defecto. Cambiar el modo con el botón del aparato cambia la acción del lector, y guardarla en el panel actualiza el aparato.
+- Nuevo sensor «Resultado *lector*» por lector con el resultado de cada lectura: `ok`, `known`, `unknown`, `created`, `repeat` o `error`. Su atributo `scan` cambia en cada lectura, para que el dispositivo muestre el resultado con colores aunque se repita.
+- Las tarjetas de Lectores muestran la acción o el modo actual del dispositivo.
+
 # 0.90.5 — Buscar en tiendas
 
 - Nuevo botón «Buscar en tiendas» en Alternativas del producto: busca su nombre en las tiendas activadas y propone hasta 5 fichas por tienda, con foto, formato, precio y precio por kilo o litro. Al pulsar «Usar» se rellena la URL y se recuperan sus datos como si la hubieras pegado. Nada se vincula sin elegirlo.

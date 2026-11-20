@@ -216,3 +216,26 @@ async def test_receipt_history_low_stock_reader_and_community_states(env, hass):
     assert "credentials" not in env.state("community_sharing", "binary_sensor").attributes
     community._data["sharing"] = False; community._notify()
     assert env.state("community_sharing", "binary_sensor").state == "off"
+
+
+async def test_reader_result_sensor_follows_scans_and_reader_removal(env, hass):
+    readers = env.managers["readers"]
+    hass.states.async_set("sensor.lector", "")
+    reader = await readers.async_save_reader({"name": "GM60", "entity_id": "sensor.lector", "default_action": "add_catalog"})
+    await hass.async_block_till_done()
+    state = env.state(f"reader_result_{reader['id']}")
+    assert state.state == "unknown" and state.attributes["mode"] == "add_catalog"
+    assert state.attributes["device_class"] == "enum" and "created" in state.attributes["options"]
+    await readers.async_process(reader["id"], "QR-libre")
+    await hass.async_block_till_done()
+    state = env.state(f"reader_result_{reader['id']}")
+    first = state.attributes["scan"]
+    assert state.state == "unknown" and state.attributes["code"] == "QR-libre" and first.endswith(":unknown")
+    await readers.async_process(reader["id"], "QR-otro")
+    await hass.async_block_till_done()
+    assert env.state(f"reader_result_{reader['id']}").attributes["scan"] != first
+    current = next(item for item in readers.snapshot["readers"] if item["id"] == reader["id"])
+    await readers.async_delete_reader(reader["id"], current["revision"])
+    await hass.async_block_till_done()
+    registry = er.async_get(hass)
+    assert registry.async_get_entity_id("sensor", DOMAIN, f"{env.entry.entry_id}_reader_result_{reader['id']}") is None
